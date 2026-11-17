@@ -357,7 +357,7 @@ label.sw:first-of-type { border-top: 0; }
 /* the street, looking down it to the ocean, just above the tab bar */
 .scene { position: absolute; left: 0; right: 0; bottom: var(--tabh); height: clamp(210px, 34vh, 340px); z-index: 1; }
 body.hero .scene { bottom: auto; top: var(--heroTop, 200px); }
-.streetgap { display: none; height: calc(clamp(210px, 34vh, 340px) * 0.9); }
+.streetgap { display: none; height: calc(clamp(210px, 34vh, 340px) * 1.05); }
 body.hero .streetgap { display: block; }
 #roadfx { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: calc(100% + 170px); }
 .sea { position: absolute; left: 0; right: 0; top: var(--seaTop, 40px); height: var(--seaH, 16px); overflow: hidden; background: var(--sea2); transition: background 2s; }
@@ -375,8 +375,8 @@ body.hero .streetgap { display: block; }
 .page { padding-bottom: calc(var(--tabh) + 24px); }
 /* logo */
 .logo { display: inline-flex; flex-direction: column; align-items: center; line-height: 0.9; font-weight: 900; color: #fff; letter-spacing: -1px; }
-.logo .z { font-size: calc(30px * var(--fs)); }
-.logo .a { font-size: calc(12px * var(--fs)); letter-spacing: 4px; color: #ffe2a8; margin-top: 2px; padding-left: 4px; }
+.logo .z { font-size: calc(21px * var(--fs)); letter-spacing: -0.5px; white-space: nowrap; }
+.logo .a { font-size: calc(10px * var(--fs)); letter-spacing: 3px; color: #ffe2a8; margin-top: 3px; padding-left: 3px; }
 .ttl { display: flex; align-items: center; gap: 10px; }
 .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 /* install banner */
@@ -415,7 +415,7 @@ body.hero .streetgap { display: block; }
       <svg viewBox="0 0 24 24"><path d="M15.4 7.4 14 6l-6 6 6 6 1.4-1.4L10.8 12z"/></svg>Back
     </button>
     <div class="ttl">
-      <span class="logo" aria-hidden="true"><span class="z">ZAC</span><span class="a">APP</span></span>
+      <span class="logo" aria-hidden="true"><span class="z">FULL SEND</span><span class="a">WEATHER</span></span>
       <div><h1 class="vh" id="title">Full Send Weather</h1><div class="sub" id="stamp">Loading…</div></div>
     </div>
     <div class="hbtns">
@@ -2974,7 +2974,7 @@ var ROUTES = S.routes;
       var p = onV(now.getTime(), st.sunrise.getTime(), st.solarNoon.getTime(), st.sunset.getTime());
       sunEl.hidden = false; sunEl.style.left = p.x + "%"; sunEl.style.top = (trackTop + (horizon - trackTop) * p.y) + "px";
       sunEl.classList.toggle("low", p.y > 0.75);
-      sunEl.style.opacity = { clear: 1, partly: 0.9, cloudy: 0.35, fog: 0.3, rain: 0.2, storm: 0.12 }[WX.kind];
+      sunEl.style.opacity = { clear: 1, partly: 0.9, cloudy: 0.5, fog: 0.45, rain: 0.42, storm: 0.3 }[WX.kind];
       glint.style.left = p.x + "%"; glint.style.opacity = p.y > 0.6 && dull < 0.5 ? 0.9 * (p.y - 0.6) / 0.4 : 0;
     } else { sunEl.hidden = true; glint.style.opacity = 0; }
     // Moon, whenever it's above the horizon, day or night
@@ -2984,7 +2984,7 @@ var ROUTES = S.routes;
       moonEl.hidden = false; moonEl.innerHTML = moonPhoto(mi.phase, day);
       moonEl.classList.toggle("day", day);
       moonEl.style.left = q.x + "%"; moonEl.style.top = (trackTop + (horizon - trackTop) * q.y) + "px";
-      moonEl.style.opacity = day ? 0.55 : ({ partly: 0.8, cloudy: 0.12, fog: 0.15, rain: 0.08, storm: 0.05 }[WX.kind] || 1);
+      moonEl.style.opacity = day ? 0.55 : ({ partly: 0.85, cloudy: 0.5, fog: 0.45, rain: 0.45, storm: 0.32 }[WX.kind] || 1);
       if (!day && !glint.style.opacity || (!day && +glint.style.opacity === 0 && q.y > 0.5 && dull < 0.5)) { glint.style.left = q.x + "%"; glint.style.opacity = 0.35 * mi.fraction; }
     } else moonEl.hidden = true;
     // Streetlight comes on after sunset, or on a dark stormy day
@@ -3095,7 +3095,7 @@ var ROUTES = S.routes;
     W = window.innerWidth; H = window.innerHeight;
     // Weather tab: the street sits in the open space above the cards, so it's in plain view
     var gap = document.body.classList.contains("hero") && document.querySelector('.view:not([hidden]) .streetgap');
-    if (gap) { var sh = sky.querySelector(".scene").offsetHeight; root.setProperty("--heroTop", (gap.getBoundingClientRect().top + window.scrollY - sh * 0.08) + "px"); }
+    if (gap) { var sh = sky.querySelector(".scene").offsetHeight; root.setProperty("--heroTop", (gap.getBoundingClientRect().top + window.scrollY + sh * 0.1) + "px"); }
     cv.width = W * r; cv.height = H * r; if (cx) cx.setTransform(r, 0, 0, r, 0, 0);
     roadSize();
   }
@@ -3173,7 +3173,7 @@ var ROUTES = S.routes;
       heroRaf = requestAnimationFrame(function () {
         var gap = document.body.classList.contains("hero") && document.querySelector('.view:not([hidden]) .streetgap');
         if (!gap) return;
-        var want = gap.getBoundingClientRect().top + window.scrollY - sky.querySelector(".scene").offsetHeight * 0.08;
+        var want = gap.getBoundingClientRect().top + window.scrollY + sky.querySelector(".scene").offsetHeight * 0.1;
         if (Math.abs(want - (parseFloat(root.getPropertyValue("--heroTop")) || 0)) > 2) window.skyResize();
       });
     }).observe(page);
