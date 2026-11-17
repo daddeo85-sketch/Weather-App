@@ -1,4 +1,4 @@
-// Zac Weather App: lets the app open like a regular app and load without signal.
+// Full Send Weather: lets the app open like a regular app and load without signal.
 // The app's own files are fetched fresh from the internet first, so updates show up right away;
 // the saved copy is only used when there's no connection. Weather data is never saved here.
 var CACHE = "zac-weather-v1";

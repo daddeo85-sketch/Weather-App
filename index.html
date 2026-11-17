@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Zac Weather App</title>
+<title>Full Send Weather</title>
 <meta name="description" content="Your weather: live radar with lightning, ocean and tides, sun and moon, traffic, planes and hurricanes.">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Zac Weather">
+<meta name="apple-mobile-web-app-title" content="Full Send">
 <meta name="application-name" content="Zac Weather">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#2f6fa3">
@@ -262,7 +262,8 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; justif
 .tabbar::-webkit-scrollbar { display: none; }
 .tabbar button { flex: 1 0 auto; min-width: calc(62px * var(--fs)); background: none; border: 0; border-radius: 10px; color: var(--muted); cursor: pointer;
   display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 5px 6px; font: 600 calc(11px * var(--fs)) var(--font); }
-.tabbar button .ic { font-size: calc(20px * var(--fs)); line-height: 1.1; }
+.tabbar button .ic { width: calc(30px * var(--fs)); height: calc(30px * var(--fs)); border-radius: 8px; object-fit: cover; margin-bottom: 1px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+.tabbar button.on .ic { outline: 2px solid var(--accent); outline-offset: 1px; }
 .tabbar button.on { color: var(--accent); background: var(--chip); }
 .optbar { display: flex; gap: 8px; align-items: center; justify-content: space-between; margin: 0 0 10px; }
 .chip { display: inline-flex; align-items: center; gap: 4px; min-height: 36px; max-width: 70%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
@@ -321,10 +322,9 @@ label.sw:first-of-type { border-top: 0; }
 }
 #skyfx { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2; }
 .sunEl, .moonEl { position: absolute; transform: translate(-50%, -50%); transition: left 1s, top 1s, opacity 1s; }
-.sunEl { width: 70px; height: 70px; border-radius: 50%;
-  background: radial-gradient(circle, #fffbe6 0%, #ffe27a 38%, #ffc44d 55%, rgba(255,196,77,0) 72%);
-  box-shadow: 0 0 60px 30px rgba(255,214,120,0.45); }
-.sunEl.low { background: radial-gradient(circle, #fff2c4 0%, #ffb35c 40%, #ff8a4c 56%, rgba(255,138,76,0) 72%); box-shadow: 0 0 80px 40px rgba(255,140,80,0.45); }
+.sunEl { width: 46px; height: 46px; border-radius: 50%; background: url(img/sun.webp) center / 100% no-repeat;
+  box-shadow: 0 0 40px 18px rgba(255,190,90,0.5); }
+.sunEl.low { box-shadow: 0 0 60px 28px rgba(255,130,70,0.5); }
 .moonEl { width: 46px; height: 46px; filter: drop-shadow(0 0 14px rgba(230,240,255,0.55)); }
 .moonEl.day { opacity: 0.55; filter: none; }
 .cloud { position: absolute; width: 260px; height: 80px; border-radius: 80px; background: var(--cloud);
@@ -356,6 +356,9 @@ label.sw:first-of-type { border-top: 0; }
 @keyframes flash { 0%, 91%, 93.5%, 100% { opacity: 0; } 92% { opacity: 0.55; } 93% { opacity: 0.1; } 93.2% { opacity: 0.45; } }
 /* the street, looking down it to the ocean, just above the tab bar */
 .scene { position: absolute; left: 0; right: 0; bottom: var(--tabh); height: clamp(210px, 34vh, 340px); z-index: 1; }
+body.hero .scene { bottom: auto; top: var(--heroTop, 200px); }
+.streetgap { display: none; height: calc(clamp(210px, 34vh, 340px) * 0.9); }
+body.hero .streetgap { display: block; }
 #roadfx { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: calc(100% + 170px); }
 .sea { position: absolute; left: 0; right: 0; top: var(--seaTop, 40px); height: var(--seaH, 16px); overflow: hidden; background: var(--sea2); transition: background 2s; }
 .sea svg { position: absolute; left: 0; width: 200%; height: 70%; animation: swell 14s linear infinite; }
@@ -413,7 +416,7 @@ label.sw:first-of-type { border-top: 0; }
     </button>
     <div class="ttl">
       <span class="logo" aria-hidden="true"><span class="z">ZAC</span><span class="a">APP</span></span>
-      <div><h1 class="vh" id="title">Zac Weather App</h1><div class="sub" id="stamp">Loading…</div></div>
+      <div><h1 class="vh" id="title">Full Send Weather</h1><div class="sub" id="stamp">Loading…</div></div>
     </div>
     <div class="hbtns">
       <button class="btn" id="openSettings" type="button" data-go="#/settings" aria-label="Settings" title="Settings"><svg viewBox="0 0 24 24"><path d="M19.14 12.94a7.1 7.1 0 0 0 0-1.88l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7 7 0 0 0-1.63-.94l-.36-2.54A.5.5 0 0 0 13.9 2h-3.8a.5.5 0 0 0-.49.42l-.36 2.54c-.59.24-1.13.56-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.71 8.48a.5.5 0 0 0 .12.64l2.03 1.58a7.1 7.1 0 0 0 0 1.88l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.13.22.39.3.6.22l2.39-.96c.5.38 1.04.7 1.63.94l.36 2.54c.04.24.25.42.49.42h3.8c.24 0 .45-.18.49-.42l.36-2.54c.59-.24 1.13-.56 1.63-.94l2.39.96c.22.08.47 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.64zM12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z"/></svg></button>
@@ -433,6 +436,7 @@ label.sw:first-of-type { border-top: 0; }
     <section class="card opts" hidden></section>
     <section class="card detail" hidden></section>
     <div class="content">
+    <div class="streetgap" aria-hidden="true"></div>
     <div id="locAsk"></div>
     <section class="card" id="now">
       <div class="card-head"><h2>Right now</h2><span class="small" id="obsTime"></span></div>
@@ -904,7 +908,7 @@ var ROUTES = S.routes;
   var GOES_CONUS = "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/CONUS/GEOCOLOR/GOES19-CONUS-GEOCOLOR-625x375.gif";
   function applyLabels() {
     var place = S.name + (S.state && S.state !== "FL" ? ", " + S.state : "");
-    document.title = "Zac Weather App";
+    document.title = "Full Send Weather";
     $("nowSrc").textContent = "Current readings from " + S.stationName + " (" + S.station + "). Forecast from the National Weather Service in " + S.officeName + ".";
     $("rHome").setAttribute("aria-label", "Center on " + place); $("rHome").setAttribute("title", "Center on " + place);
     $("tideName").textContent = S.tide ? S.tide.name : "";
@@ -2271,8 +2275,8 @@ var ROUTES = S.routes;
   }
 
   /* ---------------- Tabs, options and back button ---------------- */
-  var TABS = [["weather", "Weather", "☀️"], ["radar", "Radar", "📡"], ["ocean", "Tides & waves", "🌊"],
-              ["storms", "Hurricanes", "🌀"], ["traffic", "Traffic", "🚗"], ["planes", "Planes", "✈️"], ["ride", "Full Send", "🏍️"]];
+  var TABS = [["weather", "Weather", "☀️", "weather"], ["radar", "Radar", "📡", "radar"], ["ocean", "Tides & waves", "🌊", "tides"],
+              ["storms", "Hurricanes", "🌀", "hurricane"], ["traffic", "Traffic", "🚗", "traffic"], ["planes", "Planes", "✈️", "planes"], ["ride", "Full Send", "🏍️", "ride"]];
   // Windows that open from the Weather tab instead of having a tab of their own
   var SUBS = { sky: ["Sun & moon", "weather"], why: ["Why it's raining", "weather"] };
   var OPTS = {
@@ -2295,7 +2299,7 @@ var ROUTES = S.routes;
   function tabLabel(t) { if (SUBS[t]) return SUBS[t][0]; for (var i = 0; i < TABS.length; i++) if (TABS[i][0] === t) return TABS[i][1]; return t; }
   function renderTabbar() {
     $("tabbar").innerHTML = TABS.filter(function (x) { return tabOn(x[0]); }).map(function (x) {
-      return '<button type="button" data-go="#/' + x[0] + '" data-tabbtn="' + x[0] + '"><span class="ic" aria-hidden="true">' + x[2] + "</span>" + esc(x[1]) + "</button>";
+      return '<button type="button" data-go="#/' + x[0] + '" data-tabbtn="' + x[0] + '"><img class="ic" alt="" width="30" height="30" decoding="async" src="img/tab-' + x[3] + '.webp">' + esc(x[1]) + "</button>";
     }).join("");
     markTab();
   }
@@ -2332,6 +2336,8 @@ var ROUTES = S.routes;
       if (r.sub === "d") renderDetail(r.v, r.key, det);
     }
     $("backBtn").hidden = r.v === mainTab() && !r.sub;
+    var hero = r.v === "weather" && !r.sub;
+    if (hero !== document.body.classList.contains("hero")) { document.body.classList.toggle("hero", hero); if (window.skyResize) setTimeout(window.skyResize, 0); }
     $("alertBanner").hidden = r.v === "alerts" || !ALERTS.length;
     markTab();
     window.scrollTo(0, 0);
@@ -2923,6 +2929,15 @@ var ROUTES = S.routes;
     var d = "M0 " + -r + " A" + r + " " + r + " 0 0 " + side + " 0 " + r + " A" + rx + " " + r + " 0 0 " + inner + " 0 " + -r + "Z";
     return '<circle r="' + r + '" fill="' + dark + '"/><path d="' + d + '" fill="' + lit + '"/>';
   }
+  // The NASA moon photo with the dark part of tonight's phase shaded over it
+  function moonPhoto(phase, day) {
+    var r = 46, k = Math.cos(phase * 2 * Math.PI), wax = phase < 0.5, rx = Math.abs(k) * r;
+    var side = wax ? 1 : 0, inner = k > 0 ? (wax ? 0 : 1) : (wax ? 1 : 0);
+    var d = "M0 " + -r + " A" + r + " " + r + " 0 0 " + side + " 0 " + r + " A" + rx + " " + r + " 0 0 " + inner + " 0 " + -r + "Z";
+    return '<defs><mask id="mphase"><circle r="' + (r + 1) + '" fill="#fff"/><path d="' + d + '" fill="#000"/></mask></defs>' +
+      '<image href="img/moon.webp" x="' + -r + '" y="' + -r + '" width="' + 2 * r + '" height="' + 2 * r + '"/>' +
+      '<circle r="' + (r + 0.5) + '" fill="' + (day ? "rgba(150,180,220,0.8)" : "rgba(8,12,22,0.86)") + '" mask="url(#mphase)"/>';
+  }
   function classify() {
     var o = WX.obsText.toLowerCase(), c = WX.code, k = "clear";
     if (WX.cover >= 85) k = "cloudy"; else if (WX.cover >= 35) k = "partly";
@@ -2966,7 +2981,7 @@ var ROUTES = S.routes;
     var arc = moonArc(now);
     if (arc) {
       var q = onV(now.getTime(), arc.rise, arc.peak, arc.set), day = alt > -2;
-      moonEl.hidden = false; moonEl.innerHTML = moonSvg(mi.phase, day);
+      moonEl.hidden = false; moonEl.innerHTML = moonPhoto(mi.phase, day);
       moonEl.classList.toggle("day", day);
       moonEl.style.left = q.x + "%"; moonEl.style.top = (trackTop + (horizon - trackTop) * q.y) + "px";
       moonEl.style.opacity = day ? 0.55 : ({ partly: 0.8, cloudy: 0.12, fog: 0.15, rain: 0.08, storm: 0.05 }[WX.kind] || 1);
@@ -3083,6 +3098,9 @@ var ROUTES = S.routes;
   function size() {
     var r = window.devicePixelRatio > 1 ? 1.5 : 1;
     W = window.innerWidth; H = window.innerHeight;
+    // Weather tab: the street sits in the open space above the cards, so it's in plain view
+    var gap = document.body.classList.contains("hero") && document.querySelector('.view:not([hidden]) .streetgap');
+    if (gap) { var sh = sky.querySelector(".scene").offsetHeight; root.setProperty("--heroTop", (gap.getBoundingClientRect().top + window.scrollY - sh * 0.08) + "px"); }
     cv.width = W * r; cv.height = H * r; if (cx) cx.setTransform(r, 0, 0, r, 0, 0);
     roadSize();
   }
@@ -3150,7 +3168,21 @@ var ROUTES = S.routes;
     set: function (kind) { WX.kind = kind; update(); }   // for testing: SKY.set("storm")
   };
   size(); update();
-  window.addEventListener("resize", function () { size(); drops = []; update(); });
+  window.skyResize = function () { size(); drops = []; update(); };
+  window.addEventListener("resize", window.skyResize);
+  // Keep the street lined up with its open space when banners above it come and go
+  if (window.ResizeObserver) {
+    var heroRaf = 0, page = document.querySelector(".page");
+    new ResizeObserver(function () {
+      cancelAnimationFrame(heroRaf);
+      heroRaf = requestAnimationFrame(function () {
+        var gap = document.body.classList.contains("hero") && document.querySelector('.view:not([hidden]) .streetgap');
+        if (!gap) return;
+        var want = gap.getBoundingClientRect().top + window.scrollY - sky.querySelector(".scene").offsetHeight * 0.08;
+        if (Math.abs(want - (parseFloat(root.getPropertyValue("--heroTop")) || 0)) > 2) window.skyResize();
+      });
+    }).observe(page);
+  }
   setInterval(update, 60000);
   document.addEventListener("visibilitychange", function () { if (!document.hidden) { update(); } });
 })();
@@ -3172,17 +3204,17 @@ var ROUTES = S.routes;
   }
   window.addEventListener("beforeinstallprompt", function (e) {
     e.preventDefault(); deferred = e;
-    show('<b>Get Zac Weather App</b><br>Put it on your home screen like a regular app.<div style="margin-top:6px"><button class="btn primary" type="button" id="doInstall">Install</button></div>');
+    show('<b>Get Full Send Weather</b><br>Put it on your home screen like a regular app.<div style="margin-top:6px"><button class="btn primary" type="button" id="doInstall">Install</button></div>');
     document.getElementById("doInstall").addEventListener("click", function () {
       deferred.prompt();
       deferred.userChoice.then(function (r) { if (r.outcome === "accepted") box.hidden = true; deferred = null; });
     });
   });
   window.addEventListener("appinstalled", function () { box.hidden = true; try { localStorage.setItem(KEY, "1"); } catch (e) {} });
-  if (ios) show('<b>Get Zac Weather App on your iPhone</b><ol><li>Tap ' + shareIcon + ' Share' + (/CriOS|FxiOS|EdgiOS/.test(ua) ? " (top right or bottom of the screen)" : " at the bottom of Safari") + '.</li>' +
+  if (ios) show('<b>Get Full Send Weather on your iPhone</b><ol><li>Tap ' + shareIcon + ' Share' + (/CriOS|FxiOS|EdgiOS/.test(ua) ? " (top right or bottom of the screen)" : " at the bottom of Safari") + '.</li>' +
     '<li>Scroll down and tap <b>Add to Home Screen</b>.</li><li>If you see <b>Open as Web App</b>, leave it on. Then tap <b>Add</b>.</li></ol>');
   else if (android) setTimeout(function () {
-    if (!deferred) show('<b>Get Zac Weather App</b><br>Tap your browser\'s menu (⋮), then <b>Install app</b> or <b>Add to Home screen</b>.');
+    if (!deferred) show('<b>Get Full Send Weather</b><br>Tap your browser\'s menu (⋮), then <b>Install app</b> or <b>Add to Home screen</b>.');
   }, 3500);
 })();
 </script>
