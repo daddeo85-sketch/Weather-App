@@ -3771,7 +3771,6 @@ var ROUTES = S.routes;
       rg.addColorStop(0, rgba([255, 184, 80], 0.6 * glow)); rg.addColorStop(0.55, rgba([255, 170, 60], 0.22 * glow)); rg.addColorStop(1, rgba([255, 170, 60], 0));
       c.fillStyle = rg; c.beginPath(); c.arc(0, 0, rx, 0, Math.PI * 2); c.fill(); c.restore();
     });
-    drawHouse(c, n, shade);
     // haze: far things fade into the sky color, more in rain and fog
     var hz = Math.min(0.9, 0.35 + dull * 0.5), hg = c.createLinearGradient(0, R.hy, 0, gy(9));
     hg.addColorStop(0, rgba(low, hz)); hg.addColorStop(1, rgba(low, 0));
@@ -3780,6 +3779,7 @@ var ROUTES = S.routes;
     var sg = c.createLinearGradient(0, R.hy - 16, 0, R.hy + 6);
     sg.addColorStop(0, rgba(low, 0)); sg.addColorStop(0.75, rgba(low, Math.min(0.85, hz + 0.1))); sg.addColorStop(1, rgba(low, hz));
     c.fillStyle = sg; c.fillRect(0, R.hy - 16, R.w, 22);
+    drawHouse(c, n, shade);   // after the haze, so the horizon never cuts a line across the house
     // street lights, far to near
     LAMPS.slice().reverse().forEach(function (L) {
       var side = L[0], z = L[1], p = pz(z), xp = gx(side * (H2 + 0.9), z), x0 = gx(side * (H2 - 1.3), z);
