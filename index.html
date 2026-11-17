@@ -673,7 +673,7 @@ var TOMTOM_KEY = "";
         if (b.wt != null) tiles += '<div class="tile"><div class="k">Ocean temp</div><div class="v">' + Math.round(b.wt) + '°</div><div class="s">At the buoy</div></div>';
       } else if (m && m.current) {
         var y = wv(m.current.wave_height, m.current.wave_period, m.current.wave_direction);
-        tiles += '<div class="tile"><div class="k">Waves offshore now</div><div class="v">' + esc(y.v) + '</div><div class="s">' + esc(y.s) + "<br>Wave model estimate (buoy not reachable)</div></div>";
+        tiles += '<div class="tile"><div class="k">Waves offshore now</div><div class="v">' + esc(y.v) + '</div><div class="s">' + esc(y.s) + '<br>Computer model estimate, which can read low in rough seas. <a href="https://www.ndbc.noaa.gov/station_page.php?station=41114" target="_blank" rel="noopener">Measured height at the Fort Pierce buoy</a></div></div>';
       }
       $("waveNow").innerHTML = tiles || '<div class="err">Couldn\'t load wave readings right now.</div>';
       if (m && m.daily && m.daily.time) {
