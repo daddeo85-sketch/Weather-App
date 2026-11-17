@@ -146,7 +146,10 @@ details > summary { cursor: pointer; font-weight: 600; color: var(--accent); pad
 
 /* ---------- Radar ---------- */
 .mapwrap { position: relative; height: 58vh; min-height: 340px; border-radius: 14px; overflow: hidden; border: 1px solid var(--line); }
-.mapwrap.full { position: fixed; inset: 0; height: auto; z-index: 2000; border-radius: 0; border: 0; }
+.mapwrap.full { position: fixed; inset: 0; height: auto; min-height: 0; z-index: 2000; border-radius: 0; border: 0; }
+body.mapfull .page { z-index: auto; }
+body.mapfull .card { backdrop-filter: none; -webkit-backdrop-filter: none; }
+body.mapfull .tabbar, body.mapfull .install { display: none; }
 #map, #tmap { position: absolute; inset: 0; background: var(--panel-solid); }
 .mapbtns { position: absolute; top: 10px; right: 10px; z-index: 1000; display: flex; flex-direction: column; gap: 8px; }
 .mapwrap.full .mapbtns { top: calc(env(safe-area-inset-top, 0px) + 10px); right: calc(env(safe-area-inset-right, 0px) + 10px); }
@@ -790,7 +793,7 @@ label.sw:first-of-type { border-top: 0; }
     <div id="alerts"></div>
   </div>
 
-  <p class="foot">Data: NWS, NOAA, NDBC, NHC, Open-Meteo, RainViewer, ADS-B Exchange, OurAirports, OpenStreetMap, CARTO, Waze, Wikipedia.</p>
+  <p class="foot">Data: NWS, NOAA, NDBC, NHC, Open-Meteo, RainViewer, ADS-B Exchange, OurAirports, OpenStreetMap, Esri, Waze, Wikipedia.</p>
 </div>
 
 <nav class="tabbar" id="tabbar" aria-label="Sections"></nav>
@@ -1169,9 +1172,10 @@ var ROUTES = S.routes;
   var map, frames = [], layers = {}, host = "", pos = 0, timer = null, playing = true;
   function initRadar() {
     map = L.map("map", { zoomControl: false }).setView(HOME, 8);
-    L.tileLayer(dark ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-                     : "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
-      { subdomains: "abcd", maxZoom: 18, attribution: "&copy; OpenStreetMap &copy; CARTO | Radar &copy; RainViewer" }).addTo(map);
+    var esri = "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_" + (dark ? "Dark" : "Light") + "_Gray_";
+    L.tileLayer(esri + "Base/MapServer/tile/{z}/{y}/{x}", { maxZoom: 18, maxNativeZoom: 16, attribution: "Map &copy; Esri, HERE, Garmin, OpenStreetMap | Radar &copy; RainViewer" }).addTo(map);
+    map.createPane("labels"); map.getPane("labels").style.zIndex = 450; map.getPane("labels").style.pointerEvents = "none";
+    L.tileLayer(esri + "Reference/MapServer/tile/{z}/{y}/{x}", { maxZoom: 18, maxNativeZoom: 16, pane: "labels" }).addTo(map);
     homeDot = L.circleMarker(HOME, { radius: 5, color: "#fff", weight: 2, fillColor: "#e24a3b", fillOpacity: 1 }).bindTooltip(S.name);
     setHomeDot();
     $("play").addEventListener("click", function () { setPlaying(!playing); });
@@ -1188,7 +1192,7 @@ var ROUTES = S.routes;
       }, function (e) { $("rMsg").textContent = locError(e); }, { timeout: 15000 });
     });
     touchMap(map, $("radarWrap"));
-    fullToggle("rFull", "radarWrap", function () { map.invalidateSize(); mapFull(map, $("radarWrap")); });
+    fullToggle("rFull", "radarWrap", function () { map.invalidateSize(); mapFull(map, $("radarWrap")); show(pos); if (playing) setPlaying(true); });
     setLightning();
   }
   function layerFor(i) {
@@ -1207,8 +1211,14 @@ var ROUTES = S.routes;
     pos = i; $("slider").value = i;
     var t = new Date(frames[i].time * 1000);
     $("rtime").textContent = fmtTime.format(t) + (TZA ? " " + TZA : "");
-    var mins = Math.round((Date.now() - t.getTime()) / 60000);
-    $("ago").textContent = mins <= 1 ? "Now" : mins + " min ago";
+    $("ago").textContent = agoText(i === frames.length - 1 ? 0 : Math.round((Date.now() - t.getTime()) / 60000));
+  }
+  // "Now", "40 min ago", then hours in half steps: "1 hr ago", "1.5 hrs ago", "2 hrs ago"
+  function agoText(mins) {
+    if (mins <= 2) return "Now";
+    if (mins < 60) return mins + " min ago";
+    var h = Math.round(mins / 30) / 2;
+    return (h === 1 ? "1 hr" : h + " hrs") + " ago";
   }
   function tick() { show(pos + 1); timer = setTimeout(tick, pos === frames.length - 1 ? 1600 : 600); }
   function setPlaying(p) {
@@ -1275,13 +1285,21 @@ var ROUTES = S.routes;
     b.addEventListener("click", function () { wrap.querySelector(".mapbtns .btn").click(); });
     wrap.appendChild(b);
   }
-  function fullToggle(btnId, wrapId, after) {
-    $(btnId).addEventListener("click", function () {
-      var w = $(wrapId); w.classList.toggle("full");
-      document.body.style.overflow = w.classList.contains("full") ? "hidden" : "";
-      setTimeout(after || function () {}, 50);
-    });
+  // Full screen. The cards' glass blur and the page layer would trap a fixed map inside its card,
+  // so while a map is full screen the body gets "mapfull", which switches those off.
+  var fullNow = null;
+  function setFull(w, onIt, after) {
+    if (onIt === w.classList.contains("full")) return;
+    w.classList.toggle("full", onIt); document.body.classList.toggle("mapfull", onIt);
+    fullNow = onIt ? w : null;
+    document.body.style.overflow = onIt ? "hidden" : "";
+    var b = w.querySelector(".mapbtns .btn"); if (b) b.setAttribute("aria-label", onIt ? "Close full screen" : "Full screen");
+    setTimeout(after || function () {}, 60);
   }
+  function fullToggle(btnId, wrapId, after) {
+    $(btnId).addEventListener("click", function () { var w = $(wrapId); setFull(w, !w.classList.contains("full"), after); w._after = after; });
+  }
+  function exitFull() { if (fullNow) setFull(fullNow, false, fullNow._after); }
 
   /* ---------------- Why it's raining ---------------- */
   function section(text, name) {
@@ -1600,8 +1618,8 @@ var ROUTES = S.routes;
     if (TOMTOM_KEY) {
       var div = document.createElement("div"); div.id = "tmap"; wrap.insertBefore(div, wrap.firstChild);
       tmap = L.map("tmap", { zoomControl: false }).setView(HOME, 12);
-      L.tileLayer(dark ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" : "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
-        { subdomains: "abcd", maxZoom: 18, attribution: "&copy; OpenStreetMap &copy; CARTO | Traffic &copy; TomTom" }).addTo(tmap);
+      L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+        { maxZoom: 19, attribution: "Map &copy; Esri, HERE, Garmin, OpenStreetMap | Traffic &copy; TomTom" }).addTo(tmap);
       tFlow = L.tileLayer("https://api.tomtom.com/traffic/map/4/tile/flow/relative0/{z}/{x}/{y}.png?key=" + encodeURIComponent(TOMTOM_KEY), { maxZoom: 18, opacity: 0.9, zIndex: 5 }).addTo(tmap);
       tIncidents = L.layerGroup().addTo(tmap);
       tmap.on("moveend", loadIncidents);
@@ -2195,6 +2213,7 @@ var ROUTES = S.routes;
   });
   var seen = {};
   function render() {
+    exitFull();
     var r = route(), known = r.v === "settings" || r.v === "alerts" || !!SUBS[r.v] || TABS.some(function (x) { return x[0] === r.v && tabOn(x[0]); });
     if (!known) { location.replace("#/" + mainTab()); return; }
     Array.prototype.forEach.call(document.querySelectorAll(".view"), function (v) { v.hidden = v.getAttribute("data-view") !== r.v; });
