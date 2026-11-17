@@ -4187,7 +4187,7 @@ var ROUTES = S.routes;
   }
   window.addEventListener("resize", place);
   window.addEventListener("beforeinstallprompt", function (e) {
-    e.preventDefault(); deferred = e;
+    e.preventDefault(); if (preview === "ios" || preview === "inapp") return; deferred = e;
     show('<span class="sub">Free. Installs in a second and opens like a regular app.</span>',
       '<div class="go"><button class="yes" type="button" id="doInstall">Install</button><button class="no" type="button">Not now</button></div>');
     document.getElementById("doInstall").addEventListener("click", function () {
