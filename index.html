@@ -4124,7 +4124,7 @@ var ROUTES = S.routes;
   function safeUpdate() {
     try { update(); } catch (e) {
       window.__skyErr = String(e && e.stack || e);
-      if (/debug/.test(location.search)) document.title = "ERR " + (e && e.message) + " @ " + String(e && e.stack || "").split("\n").slice(0, 3).join(" | ");
+      if (/debug/.test(location.search)) document.title = ("ERR " + (e && e.message) + " @ " + String(e && e.stack || "").split("\n").slice(1, 3).map(function (l) { return l.replace(/^.*index\.html[^:]*:/, "").replace(/\)$/, "").trim(); }).join(" ")).slice(0, 150);
       if (window.console) console.error(e);
     }
   }
