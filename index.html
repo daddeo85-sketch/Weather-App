@@ -137,6 +137,8 @@ nav.jump a {
 .btn.primary { background: var(--accent); color: var(--accent-fg); border-color: transparent; }
 .btn:focus-visible, .links a:focus-visible, nav.jump a:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .btn svg { width: 18px; height: 18px; fill: currentColor; }
+#reloadAll.spin svg { animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
 img.wide { display: block; width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--line); background: var(--panel-solid); }
 details > summary { cursor: pointer; font-weight: 600; color: var(--accent); padding: 6px 0; }
 .err { color: var(--bad); font-size: 13px; }
@@ -496,8 +498,11 @@ var TOMTOM_KEY = "";
 
   function $(id) { return document.getElementById(id); }
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  var FRESH = false;   // true right after the refresh button: skip the phone's saved copies
   function getJSON(url, opts) {
-    return fetch(url, opts || {}).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); });
+    opts = opts || {};
+    if (FRESH) { var o = {}; for (var k in opts) o[k] = opts[k]; o.cache = "reload"; opts = o; }
+    return fetch(url, opts).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); });
   }
   function nws(path) { return getJSON(NWS + path, { headers: { Accept: "application/geo+json" } }); }
   function bust(url, minutes) { return url + (url.indexOf("?") < 0 ? "?" : "&") + "v=" + Math.floor(Date.now() / (minutes * 60000)); }
@@ -658,7 +663,7 @@ var TOMTOM_KEY = "";
   var BUOY = "41114";   // NDBC / Scripps waverider off Fort Pierce
   var WAVE_API = "https://marine-api.open-meteo.com/v1/marine?latitude=27.47&longitude=-80.27&current=wave_height,wave_direction,wave_period&daily=wave_height_max,wave_direction_dominant,wave_period_max&timezone=America%2FNew_York&length_unit=imperial&forecast_days=6";
   function loadWaves() {
-    var buoy = fetch(bust("https://www.ndbc.noaa.gov/data/realtime2/" + BUOY + ".txt", 10)).then(function (r) {
+    var buoy = fetch(bust("https://www.ndbc.noaa.gov/data/realtime2/" + BUOY + ".txt", 10), FRESH ? { cache: "reload" } : {}).then(function (r) {
       if (!r.ok) throw new Error(r.status); return r.text();
     }).then(function (txt) {
       var rows = txt.split("\n").filter(function (l) { return l && l.charAt(0) !== "#"; });
@@ -1234,7 +1239,12 @@ var TOMTOM_KEY = "";
   initTraffic();
   refreshFast();
   refreshSlow();
-  $("reloadAll").addEventListener("click", function () { refreshFast(); refreshSlow(); });
+  $("reloadAll").addEventListener("click", function () {
+    var b = this; if (b.classList.contains("spin")) return;
+    FRESH = true; b.classList.add("spin"); $("stamp").textContent = "Getting new numbers…";
+    refreshFast(); refreshSlow();
+    setTimeout(function () { FRESH = false; b.classList.remove("spin"); stamp(); }, 4000);
+  });
   setInterval(function () { if (!document.hidden) refreshFast(); }, 10 * 60000);
   setInterval(function () { if (!document.hidden) refreshSlow(); }, 30 * 60000);
   var hiddenAt = 0;
