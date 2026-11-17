@@ -270,14 +270,15 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; justif
 .tabbar button { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 .tabbar.sorting { overflow-x: hidden; }
 .tabbar button.dragging { transform: translateY(-8px) scale(1.12); background: rgba(255,255,255,0.14); box-shadow: 0 6px 16px rgba(0,0,0,0.45); z-index: 2; }
-.tabbar button { flex: 1 1 0; min-width: 44px; background: none; border: 0; border-radius: 12px; color: rgba(225,232,245,0.72); cursor: pointer; position: relative;
-  display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 5px 1px 4px; font: 700 calc(9.5px * var(--fs)) var(--font); letter-spacing: -0.1px; }
-.tabbar button .tl { white-space: nowrap; }
-.tabbar button .ic { width: calc(46px * var(--fs)); height: calc(30px * var(--fs)); object-fit: contain; transition: transform 0.15s;
-  filter: drop-shadow(0 2px 2px rgba(0,0,0,0.7)) drop-shadow(0 0 5px rgba(255,255,255,0.18)); }
-.tabbar button.on { color: #fff; background: radial-gradient(ellipse at 50% 35%, rgba(255,200,90,0.28), rgba(255,255,255,0.06) 70%); }
-.tabbar button.on::before { content: ""; position: absolute; top: -4px; left: 22%; right: 22%; height: 3px; border-radius: 0 0 3px 3px; background: #ffc35a; box-shadow: 0 0 8px #ffb02e; }
-.tabbar button.on .ic { transform: scale(1.12); filter: drop-shadow(0 0 7px rgba(255,195,90,0.7)) drop-shadow(0 2px 2px rgba(0,0,0,0.7)); }
+.tabbar button { flex: 1 1 0; min-width: calc(42px * var(--fs)); background: none; border: 0; border-radius: 10px; color: rgba(214,224,240,0.66); cursor: pointer; position: relative;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 7px 0 5px; font: 600 calc(10px * var(--fs)) var(--font); letter-spacing: 0; transition: color .15s; }
+.tabbar button .tl { white-space: nowrap; line-height: 1; }
+.tabbar button .ic { width: calc(23px * var(--fs)); height: calc(23px * var(--fs)); flex: none; }
+.tabbar button.on { color: #ffc35a; }
+.tabbar button.on::before { content: ""; position: absolute; top: -4px; left: 30%; right: 30%; height: 2px; border-radius: 0 0 2px 2px; background: #ffc35a; }
+@media (max-width: 374px) { .tabbar button { font-size: calc(9px * var(--fs)); } .tabbar button .ic { width: calc(21px * var(--fs)); height: calc(21px * var(--fs)); } }
+.swl { display: inline-flex; align-items: center; gap: 10px; }
+.swl .ic { width: 22px; height: 22px; flex: none; color: var(--muted); }
 .vehimg { display: block; width: 100%; max-width: 280px; height: 120px; object-fit: contain; margin: 4px auto 8px; filter: drop-shadow(0 6px 8px rgba(0,0,0,0.35)); }
 .placechips .btn { position: relative; padding-right: 30px; }
 .placechips .btn.on { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
@@ -292,7 +293,9 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; justif
 .chip { display: inline-flex; align-items: center; gap: 4px; min-height: 36px; max-width: 70%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
   background: var(--chip); color: var(--fg); border: 1px solid var(--line); border-radius: 999px; padding: 0 12px; font: 600 calc(13px * var(--fs)) var(--font); cursor: pointer;
   backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
-.optbtn { min-height: 36px; }
+.optbtn { min-height: 36px; display: inline-flex; align-items: center; gap: 6px; }
+.btn .cic, .chip .cic { width: 15px; height: 15px; fill: currentColor; flex: none; opacity: 0.85; vertical-align: -2px; margin-right: 5px; }
+.optbtn .cic { margin-right: 0; }
 .soonbar { margin: 0 0 10px; padding: 9px 14px; border-radius: 12px; background: rgba(20,30,48,0.78); border: 1px solid rgba(255,255,255,0.18); color: #fff; font-size: 14px; line-height: 1.35; text-align: center; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
 label.sw { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); cursor: pointer; }
 label.sw:first-of-type { border-top: 0; }
@@ -302,7 +305,7 @@ label.sw:first-of-type { border-top: 0; }
 .sw input:checked::after { left: 23px; }
 .sw input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .tap { cursor: pointer; position: relative; padding-right: 22px; }
-.tap::after { content: "\203A"; position: absolute; right: 8px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: calc(20px * var(--fs)); font-weight: 700; }
+.tap::after { content: "\203A"; position: absolute; right: 9px; top: 50%; transform: translateY(-50%); color: var(--muted); opacity: 0.55; font-size: calc(17px * var(--fs)); font-weight: 500; }
 .tap:active { opacity: 0.75; }
 .golinks { grid-template-columns: 1fr 1fr; }
 .golinks .tile { text-align: left; font: inherit; color: inherit; border: 1px solid var(--line); }
@@ -497,8 +500,8 @@ body.hero .streetgap { display: block; }
 
   <div class="view" data-view="weather" hidden>
     <div class="optbar">
-      <button class="chip" type="button" data-go="#/settings" aria-label="Change your place">📍 <span class="pname"></span></button>
-      <button class="btn optbtn" type="button" data-go="#/weather/options">⚙ Weather options</button>
+      <button class="chip" type="button" data-go="#/settings" aria-label="Change your place"><svg class="cic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5a7 7 0 0 0-7 7c0 5.2 7 12 7 12s7-6.8 7-12a7 7 0 0 0-7-7zm0 9.6a2.6 2.6 0 1 1 0-5.2 2.6 2.6 0 0 1 0 5.2z"/></svg><span class="pname"></span></button>
+      <button class="btn optbtn" type="button" data-go="#/weather/options" aria-label="Weather options"><svg class="cic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9.2a2.8 2.8 0 0 0 5.6 0H20v-2h-1.2a2.8 2.8 0 0 0-5.6 0H4zm12-.8a.8.8 0 1 1 0 1.6.8.8 0 0 1 0-1.6zM4 17h2.2a2.8 2.8 0 0 0 5.6 0H20v-2h-8.2a2.8 2.8 0 0 0-5.6 0H4zm5-.8a.8.8 0 1 1 0 1.6.8.8 0 0 1 0-1.6z"/></svg>Options</button>
     </div>
     <section class="card opts" hidden></section>
     <section class="card detail" hidden></section>
@@ -539,8 +542,8 @@ body.hero .streetgap { display: block; }
 
   <div class="view" data-view="radar" hidden>
     <div class="optbar">
-      <button class="chip" type="button" data-go="#/settings" aria-label="Change your place">📍 <span class="pname"></span></button>
-      <button class="btn optbtn" type="button" data-go="#/radar/options">⚙ Radar options</button>
+      <button class="chip" type="button" data-go="#/settings" aria-label="Change your place"><svg class="cic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5a7 7 0 0 0-7 7c0 5.2 7 12 7 12s7-6.8 7-12a7 7 0 0 0-7-7zm0 9.6a2.6 2.6 0 1 1 0-5.2 2.6 2.6 0 0 1 0 5.2z"/></svg><span class="pname"></span></button>
+      <button class="btn optbtn" type="button" data-go="#/radar/options" aria-label="Radar options"><svg class="cic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9.2a2.8 2.8 0 0 0 5.6 0H20v-2h-1.2a2.8 2.8 0 0 0-5.6 0H4zm12-.8a.8.8 0 1 1 0 1.6.8.8 0 0 1 0-1.6zM4 17h2.2a2.8 2.8 0 0 0 5.6 0H20v-2h-8.2a2.8 2.8 0 0 0-5.6 0H4zm5-.8a.8.8 0 1 1 0 1.6.8.8 0 0 1 0-1.6z"/></svg>Options</button>
     </div>
     <section class="card opts" hidden></section>
     <section class="card detail" hidden></section>
@@ -574,8 +577,8 @@ body.hero .streetgap { display: block; }
 
   <div class="view" data-view="ocean" hidden>
     <div class="optbar">
-      <button class="chip" type="button" data-go="#/settings" aria-label="Change your place">📍 <span class="pname"></span></button>
-      <button class="btn optbtn" type="button" data-go="#/ocean/options">⚙ Ocean options</button>
+      <button class="chip" type="button" data-go="#/settings" aria-label="Change your place"><svg class="cic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5a7 7 0 0 0-7 7c0 5.2 7 12 7 12s7-6.8 7-12a7 7 0 0 0-7-7zm0 9.6a2.6 2.6 0 1 1 0-5.2 2.6 2.6 0 0 1 0 5.2z"/></svg><span class="pname"></span></button>
+      <button class="btn optbtn" type="button" data-go="#/ocean/options" aria-label="Ocean options"><svg class="cic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9.2a2.8 2.8 0 0 0 5.6 0H20v-2h-1.2a2.8 2.8 0 0 0-5.6 0H4zm12-.8a.8.8 0 1 1 0 1.6.8.8 0 0 1 0-1.6zM4 17h2.2a2.8 2.8 0 0 0 5.6 0H20v-2h-8.2a2.8 2.8 0 0 0-5.6 0H4zm5-.8a.8.8 0 1 1 0 1.6.8.8 0 0 1 0-1.6z"/></svg>Options</button>
     </div>
     <section class="card opts" hidden></section>
     <section class="card detail" hidden></section>
@@ -618,8 +621,8 @@ body.hero .streetgap { display: block; }
 
   <div class="view" data-view="sky" hidden>
     <div class="optbar">
-      <button class="chip" type="button" data-go="#/settings" aria-label="Change your place">📍 <span class="pname"></span></button>
-      <button class="btn optbtn" type="button" data-go="#/sky/options">⚙ Sun and moon options</button>
+      <button class="chip" type="button" data-go="#/settings" aria-label="Change your place"><svg class="cic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5a7 7 0 0 0-7 7c0 5.2 7 12 7 12s7-6.8 7-12a7 7 0 0 0-7-7zm0 9.6a2.6 2.6 0 1 1 0-5.2 2.6 2.6 0 0 1 0 5.2z"/></svg><span class="pname"></span></button>
+      <button class="btn optbtn" type="button" data-go="#/sky/options" aria-label="Sun and moon options"><svg class="cic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9.2a2.8 2.8 0 0 0 5.6 0H20v-2h-1.2a2.8 2.8 0 0 0-5.6 0H4zm12-.8a.8.8 0 1 1 0 1.6.8.8 0 0 1 0-1.6zM4 17h2.2a2.8 2.8 0 0 0 5.6 0H20v-2h-8.2a2.8 2.8 0 0 0-5.6 0H4zm5-.8a.8.8 0 1 1 0 1.6.8.8 0 0 1 0-1.6z"/></svg>Options</button>
     </div>
     <section class="card opts" hidden></section>
     <section class="card detail" hidden></section>
@@ -662,8 +665,8 @@ body.hero .streetgap { display: block; }
 
   <div class="view" data-view="why" hidden>
     <div class="optbar">
-      <button class="chip" type="button" data-go="#/settings" aria-label="Change your place">📍 <span class="pname"></span></button>
-      <button class="btn optbtn" type="button" data-go="#/why/options">⚙ Why options</button>
+      <button class="chip" type="button" data-go="#/settings" aria-label="Change your place"><svg class="cic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5a7 7 0 0 0-7 7c0 5.2 7 12 7 12s7-6.8 7-12a7 7 0 0 0-7-7zm0 9.6a2.6 2.6 0 1 1 0-5.2 2.6 2.6 0 0 1 0 5.2z"/></svg><span class="pname"></span></button>
+      <button class="btn optbtn" type="button" data-go="#/why/options" aria-label="Why options"><svg class="cic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9.2a2.8 2.8 0 0 0 5.6 0H20v-2h-1.2a2.8 2.8 0 0 0-5.6 0H4zm12-.8a.8.8 0 1 1 0 1.6.8.8 0 0 1 0-1.6zM4 17h2.2a2.8 2.8 0 0 0 5.6 0H20v-2h-8.2a2.8 2.8 0 0 0-5.6 0H4zm5-.8a.8.8 0 1 1 0 1.6.8.8 0 0 1 0-1.6z"/></svg>Options</button>
     </div>
     <section class="card opts" hidden></section>
     <section class="card detail" hidden></section>
@@ -709,8 +712,8 @@ body.hero .streetgap { display: block; }
 
   <div class="view" data-view="storms" hidden>
     <div class="optbar">
-      <button class="chip" type="button" data-go="#/settings" aria-label="Change your place">📍 <span class="pname"></span></button>
-      <button class="btn optbtn" type="button" data-go="#/storms/options">⚙ Hurricane options</button>
+      <button class="chip" type="button" data-go="#/settings" aria-label="Change your place"><svg class="cic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5a7 7 0 0 0-7 7c0 5.2 7 12 7 12s7-6.8 7-12a7 7 0 0 0-7-7zm0 9.6a2.6 2.6 0 1 1 0-5.2 2.6 2.6 0 0 1 0 5.2z"/></svg><span class="pname"></span></button>
+      <button class="btn optbtn" type="button" data-go="#/storms/options" aria-label="Hurricane options"><svg class="cic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9.2a2.8 2.8 0 0 0 5.6 0H20v-2h-1.2a2.8 2.8 0 0 0-5.6 0H4zm12-.8a.8.8 0 1 1 0 1.6.8.8 0 0 1 0-1.6zM4 17h2.2a2.8 2.8 0 0 0 5.6 0H20v-2h-8.2a2.8 2.8 0 0 0-5.6 0H4zm5-.8a.8.8 0 1 1 0 1.6.8.8 0 0 1 0-1.6z"/></svg>Options</button>
     </div>
     <section class="card opts" hidden></section>
     <section class="card detail" hidden></section>
@@ -749,8 +752,8 @@ body.hero .streetgap { display: block; }
   <div class="view" data-view="traffic" hidden>
     <div class="soonbar" id="tSoon" role="note"><b>Live traffic is coming soon.</b> Our developers are working on it.</div>
     <div class="optbar">
-      <button class="chip" type="button" data-go="#/settings" aria-label="Change your place">📍 <span class="pname"></span></button>
-      <button class="btn optbtn" type="button" data-go="#/traffic/options">⚙ Traffic options</button>
+      <button class="chip" type="button" data-go="#/settings" aria-label="Change your place"><svg class="cic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5a7 7 0 0 0-7 7c0 5.2 7 12 7 12s7-6.8 7-12a7 7 0 0 0-7-7zm0 9.6a2.6 2.6 0 1 1 0-5.2 2.6 2.6 0 0 1 0 5.2z"/></svg><span class="pname"></span></button>
+      <button class="btn optbtn" type="button" data-go="#/traffic/options" aria-label="Traffic options"><svg class="cic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9.2a2.8 2.8 0 0 0 5.6 0H20v-2h-1.2a2.8 2.8 0 0 0-5.6 0H4zm12-.8a.8.8 0 1 1 0 1.6.8.8 0 0 1 0-1.6zM4 17h2.2a2.8 2.8 0 0 0 5.6 0H20v-2h-8.2a2.8 2.8 0 0 0-5.6 0H4zm5-.8a.8.8 0 1 1 0 1.6.8.8 0 0 1 0-1.6z"/></svg>Options</button>
     </div>
     <section class="card opts" hidden></section>
     <section class="card detail" hidden></section>
@@ -763,7 +766,7 @@ body.hero .streetgap { display: block; }
       <form class="fstack routeform" id="rtForm" hidden>
         <label class="small" for="rtName">Name</label><input id="rtName" placeholder="Like Home to work" maxlength="40" autocomplete="off">
         <label class="small" for="rtFrom">Start (point A)</label>
-        <div class="frow"><input id="rtFrom" placeholder="Address or place" autocomplete="off"><button class="btn" id="rtHere" type="button">📍 My location</button></div>
+        <div class="frow"><input id="rtFrom" placeholder="Address or place" autocomplete="off"><button class="btn" id="rtHere" type="button"><svg class="cic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5a7 7 0 0 0-7 7c0 5.2 7 12 7 12s7-6.8 7-12a7 7 0 0 0-7-7zm0 9.6a2.6 2.6 0 1 1 0-5.2 2.6 2.6 0 0 1 0 5.2z"/></svg>My location</button></div>
         <div class="sugg" id="sgFrom"></div>
         <label class="small" for="rtTo">End (point B)</label><input id="rtTo" placeholder="Address or place" autocomplete="off">
         <div class="sugg" id="sgTo"></div>
@@ -777,7 +780,7 @@ body.hero .streetgap { display: block; }
         <div class="rtwx small" id="rtWx"></div>
         <div class="mapwrap rmapwrap" id="rmapWrap"><div id="rmap" aria-label="Route map"></div></div>
         <div class="frow"><a class="btn primary" id="rtG" target="_blank" rel="noopener">Google Maps (live traffic)</a><a class="btn primary" id="rtW" target="_blank" rel="noopener">Waze</a></div>
-        <div class="frow"><button class="btn" type="button" id="rtZA">📍 A</button><button class="btn" type="button" id="rtZB">📍 B</button></div>
+        <div class="frow"><button class="btn" type="button" id="rtZA"><svg class="cic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5a7 7 0 0 0-7 7c0 5.2 7 12 7 12s7-6.8 7-12a7 7 0 0 0-7-7zm0 9.6a2.6 2.6 0 1 1 0-5.2 2.6 2.6 0 0 1 0 5.2z"/></svg>A</button><button class="btn" type="button" id="rtZB"><svg class="cic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5a7 7 0 0 0-7 7c0 5.2 7 12 7 12s7-6.8 7-12a7 7 0 0 0-7-7zm0 9.6a2.6 2.6 0 1 1 0-5.2 2.6 2.6 0 0 1 0 5.2z"/></svg>B</button></div>
         <div class="frow"><button class="btn" type="button" id="rtEdit">Edit</button><button class="btn" type="button" id="rtDel">Delete</button></div>
         <p class="small" id="rtNote"></p>
       </div>
@@ -805,8 +808,8 @@ body.hero .streetgap { display: block; }
 
   <div class="view" data-view="planes" hidden>
     <div class="optbar">
-      <button class="chip" type="button" data-go="#/settings" aria-label="Change your place">📍 <span class="pname"></span></button>
-      <button class="btn optbtn" type="button" data-go="#/planes/options">⚙ Planes options</button>
+      <button class="chip" type="button" data-go="#/settings" aria-label="Change your place"><svg class="cic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5a7 7 0 0 0-7 7c0 5.2 7 12 7 12s7-6.8 7-12a7 7 0 0 0-7-7zm0 9.6a2.6 2.6 0 1 1 0-5.2 2.6 2.6 0 0 1 0 5.2z"/></svg><span class="pname"></span></button>
+      <button class="btn optbtn" type="button" data-go="#/planes/options" aria-label="Planes options"><svg class="cic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9.2a2.8 2.8 0 0 0 5.6 0H20v-2h-1.2a2.8 2.8 0 0 0-5.6 0H4zm12-.8a.8.8 0 1 1 0 1.6.8.8 0 0 1 0-1.6zM4 17h2.2a2.8 2.8 0 0 0 5.6 0H20v-2h-8.2a2.8 2.8 0 0 0-5.6 0H4zm5-.8a.8.8 0 1 1 0 1.6.8.8 0 0 1 0-1.6z"/></svg>Options</button>
     </div>
     <section class="card opts" hidden></section>
     <section class="card detail" hidden></section>
@@ -834,8 +837,8 @@ body.hero .streetgap { display: block; }
 
   <div class="view" data-view="ride" hidden>
     <div class="optbar">
-      <button class="chip" type="button" data-go="#/settings" aria-label="Change your place">📍 <span class="pname"></span></button>
-      <button class="btn optbtn" type="button" data-go="#/ride/options">⚙ Full Send options</button>
+      <button class="chip" type="button" data-go="#/settings" aria-label="Change your place"><svg class="cic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5a7 7 0 0 0-7 7c0 5.2 7 12 7 12s7-6.8 7-12a7 7 0 0 0-7-7zm0 9.6a2.6 2.6 0 1 1 0-5.2 2.6 2.6 0 0 1 0 5.2z"/></svg><span class="pname"></span></button>
+      <button class="btn optbtn" type="button" data-go="#/ride/options" aria-label="Full Send options"><svg class="cic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9.2a2.8 2.8 0 0 0 5.6 0H20v-2h-1.2a2.8 2.8 0 0 0-5.6 0H4zm12-.8a.8.8 0 1 1 0 1.6.8.8 0 0 1 0-1.6zM4 17h2.2a2.8 2.8 0 0 0 5.6 0H20v-2h-8.2a2.8 2.8 0 0 0-5.6 0H4zm5-.8a.8.8 0 1 1 0 1.6.8.8 0 0 1 0-1.6z"/></svg>Options</button>
     </div>
     <section class="card opts" hidden></section>
     <section class="card detail" hidden></section>
@@ -860,8 +863,8 @@ body.hero .streetgap { display: block; }
 
   <div class="view" data-view="rockets" hidden>
     <div class="optbar">
-      <button class="chip" type="button" data-go="#/settings" aria-label="Change your place">📍 <span class="pname"></span></button>
-      <button class="btn optbtn" type="button" data-go="#/rockets/options">⚙ Rocket options</button>
+      <button class="chip" type="button" data-go="#/settings" aria-label="Change your place"><svg class="cic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5a7 7 0 0 0-7 7c0 5.2 7 12 7 12s7-6.8 7-12a7 7 0 0 0-7-7zm0 9.6a2.6 2.6 0 1 1 0-5.2 2.6 2.6 0 0 1 0 5.2z"/></svg><span class="pname"></span></button>
+      <button class="btn optbtn" type="button" data-go="#/rockets/options" aria-label="Rocket options"><svg class="cic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9.2a2.8 2.8 0 0 0 5.6 0H20v-2h-1.2a2.8 2.8 0 0 0-5.6 0H4zm12-.8a.8.8 0 1 1 0 1.6.8.8 0 0 1 0-1.6zM4 17h2.2a2.8 2.8 0 0 0 5.6 0H20v-2h-8.2a2.8 2.8 0 0 0-5.6 0H4zm5-.8a.8.8 0 1 1 0 1.6.8.8 0 0 1 0-1.6z"/></svg>Options</button>
     </div>
     <section class="card opts" hidden></section>
     <section class="card detail" hidden></section>
@@ -899,7 +902,7 @@ body.hero .streetgap { display: block; }
       <h3>Right now</h3>
       <div class="placebox" id="placeNow"></div>
       <div class="frow">
-        <button class="btn primary" id="useMyLoc" type="button">📍 Use my location</button>
+        <button class="btn primary" id="useMyLoc" type="button"><svg class="cic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5a7 7 0 0 0-7 7c0 5.2 7 12 7 12s7-6.8 7-12a7 7 0 0 0-7-7zm0 9.6a2.6 2.6 0 1 1 0-5.2 2.6 2.6 0 0 1 0 5.2z"/></svg>Use my location</button>
         <button class="btn" id="resetPlace" type="button">Back to Fort Pierce</button>
       </div>
       <form class="frow" id="placeForm">
@@ -931,6 +934,10 @@ body.hero .streetgap { display: block; }
 
 
 <script>
+// Preview only: ?pw=360 shows the app at a phone's width
+(function () { var m = location.search.match(/[?&]pw=(\d{3})/); if (m && innerWidth > +m[1]) document.documentElement.style.zoom = innerWidth / +m[1]; })();
+</script>
+<script>
 /* ---------------- Install prompt, Install button and updates ----------------
    Its own script, ahead of everything else, so a hiccup anywhere else can't stop it. */
 (function () {
@@ -947,9 +954,12 @@ body.hero .streetgap { display: block; }
       reg.update().catch(function () {});
       document.addEventListener("visibilitychange", function () { if (!document.hidden) reg.update().catch(function () {}); });
     }).catch(function () {});
+    // A new version reloads in quietly, but never while someone is typing or dragging a tab
+    var busy = function () { var a = document.activeElement; return !!(document.querySelector(".tabbar.sorting") || (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.type !== "checkbox" && a.type !== "range")); };
+    var swap = function () { if (busy()) { setTimeout(swap, 3000); return; } location.reload(); };
     navigator.serviceWorker.addEventListener("controllerchange", function () {
       if (!hadSW || reloaded) { hadSW = true; return; }
-      reloaded = true; location.reload();
+      reloaded = true; swap();
     });
   }
   if (standalone && !preview) return;   // already running as the installed app
@@ -1968,7 +1978,7 @@ var ROUTES = S.routes;
     $("rtW").href = "https://www.waze.com/ul?ll=" + b.lat + "," + b.lon + "&navigate=yes";
     $("rtNote").textContent = "Drive time here is typical, from the road map without live traffic. Google Maps and Waze show the live time. Waze always starts from where you are. The live map below is zoomed to this route and shows crashes, closures and construction drivers have reported.";
     $("rtTime").textContent = r.name + ": finding the route…";
-    $("rtZA").textContent = "📍 A: " + a.label.split(",")[0]; $("rtZB").textContent = "📍 B: " + b.label.split(",")[0]; $("rtWx").innerHTML = "";
+    $("rtZA").innerHTML = PINSVG + "A: " + esc(a.label.split(",")[0]); $("rtZB").innerHTML = PINSVG + "B: " + esc(b.label.split(",")[0]); $("rtWx").innerHTML = "";
     if (!rmap) {
       rmap = L.map("rmap", { zoomControl: false, attributionControl: true });
       L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19, attribution: "Map &copy; Esri, OpenStreetMap | Route &copy; OSRM" }).addTo(rmap);
@@ -2027,7 +2037,7 @@ var ROUTES = S.routes;
     return a.filter(function (x) { return x && x.trim(); }).join(", ");
   }
   function showPeek(x) {
-    var box = $("peekBox"); box.hidden = false; $("peekLbl").textContent = "📍 " + x.label + ". Check the pin is the right spot.";
+    var box = $("peekBox"); box.hidden = false; $("peekLbl").textContent = x.label + ". Check the pin is the right spot.";
     if (!window.L) return;
     if (!peekMap) {
       peekMap = L.map("peekMap", { zoomControl: false, attributionControl: true });
@@ -2493,7 +2503,7 @@ var ROUTES = S.routes;
   function samePlace(a, b) { return Math.abs(a.lat - b.lat) < 0.01 && Math.abs(a.lon - b.lon) < 0.01; }
   function renderPlaces() {
     var list = placesGet(), follow = gpsMode() !== "off", here = list.some(function (p) { return samePlace(p, S); });
-    $("placeChips").innerHTML = '<button class="btn me' + (follow ? " on" : "") + '" type="button" data-pl="me">📍 My location</button>' +
+    $("placeChips").innerHTML = '<button class="btn me' + (follow ? " on" : "") + '" type="button" data-pl="me">' + PINSVG + 'My location</button>' +
       list.map(function (p, i) {
         return '<button class="btn' + (!follow && samePlace(p, S) ? " on" : "") + '" type="button" data-pl="' + i + '">' + esc(p.name) + (p.state ? ", " + esc(p.state) : "") +
           '<span class="x" role="button" aria-label="Remove ' + esc(p.name) + '" data-prm="' + i + '">×</span></button>';
@@ -2512,7 +2522,7 @@ var ROUTES = S.routes;
     var fs = S.fs || 1;
     $("fsSlider").value = fs; $("fsVal").textContent = Math.round(fs * 100) + "%";
     $("tabSwitches").innerHTML = TABS.map(function (x) {
-      return '<label class="sw"><span>' + x[2] + " " + esc(x[1]) + '</span><input type="checkbox" data-tab="' + x[0] + '"' + (tabOn(x[0]) ? " checked" : "") + "></label>";
+      return '<label class="sw"><span class="swl">' + tabIcon(x[0]) + esc(x[1]) + '</span><input type="checkbox" data-tab="' + x[0] + '"' + (tabOn(x[0]) ? " checked" : "") + "></label>";
     }).join("");
   }
   var STN = null;
@@ -2591,7 +2601,7 @@ var ROUTES = S.routes;
     if (asked) return;
     $("locAsk").innerHTML = '<section class="card"><h2>Set it up for where you are?</h2>' +
       "<p>The app fills in your closest weather station, tide station, wave buoy, water temperature, airports and tracks on its own, and follows your phone when you travel.</p>" +
-      '<div class="frow"><button class="btn primary" id="laYes" type="button">📍 Use my location</button><button class="btn" id="laNo" type="button">Keep ' + esc(S.name) + '</button></div>' +
+      '<div class="frow"><button class="btn primary" id="laYes" type="button">' + PINSVG + 'Use my location</button><button class="btn" id="laNo" type="button">Keep ' + esc(S.name) + '</button></div>' +
       '<p class="small" id="laMsg" role="status"></p></section>';
     $("laYes").addEventListener("click", function () { useMyLocation("laMsg"); });
     $("laNo").addEventListener("click", function () { try { localStorage.setItem(ASKED_KEY, "1"); localStorage.setItem(GPSK, "off"); } catch (e) {} saveS(S); $("locAsk").innerHTML = ""; });
@@ -2668,8 +2678,12 @@ var ROUTES = S.routes;
   }
 
   /* ---------------- Tabs, options and back button ---------------- */
+  // Simple line icons for the tab bar and the tab list in Settings (drawn for this app)
+  var TABICON = {"weather": "<circle cx=\"8.5\" cy=\"8\" r=\"3.2\"/><path d=\"M8.5 1.8v1.4M2.3 8h1.4M4.1 3.6l1 1M12.9 3.6l-1 1M4.1 12.4l1-1\"/><path d=\"M8 20.5h9.2a3.6 3.6 0 0 0 .3-7.2 5.2 5.2 0 0 0-9.9 1A3.1 3.1 0 0 0 8 20.5z\"/>", "radar": "<circle cx=\"12\" cy=\"12\" r=\"9\"/><circle cx=\"12\" cy=\"12\" r=\"5.2\"/><circle cx=\"12\" cy=\"12\" r=\"1.4\" fill=\"currentColor\" stroke=\"none\"/><path d=\"M12 12l6.4-6.4\"/>", "tides": "<path d=\"M2.5 9c1.6 0 2.4-1.5 4-1.5S8.9 9 10.5 9s2.4-1.5 4-1.5S16.9 9 18.5 9s2.4-1.5 3-1.5\"/><path d=\"M2.5 13.5c1.6 0 2.4-1.5 4-1.5s2.4 1.5 4 1.5 2.4-1.5 4-1.5 2.4 1.5 4 1.5 2.4-1.5 3-1.5\"/><path d=\"M2.5 18c1.6 0 2.4-1.5 4-1.5S8.9 18 10.5 18s2.4-1.5 4-1.5 2.4 1.5 4 1.5 2.4-1.5 3-1.5\"/>", "storms": "<circle cx=\"12\" cy=\"12\" r=\"3.2\"/><path d=\"M12 8.8C12 5.4 9.6 3.2 5.8 3M12 15.2c0 3.4 2.4 5.6 6.2 5.8\"/>", "traffic": "<rect x=\"8\" y=\"2.5\" width=\"8\" height=\"17\" rx=\"2.6\"/><circle cx=\"12\" cy=\"6.6\" r=\"1.5\"/><circle cx=\"12\" cy=\"11\" r=\"1.5\"/><circle cx=\"12\" cy=\"15.4\" r=\"1.5\"/><path d=\"M12 19.5v2.5M8 6.6H5.5M8 11H5.5M18.5 6.6H16M18.5 11H16\"/>", "planes": "<path d=\"M21 15.5v-1.8l-7.5-4.6V4a1.5 1.5 0 0 0-3 0v5.1L3 13.7v1.8l7.5-2.3V18l-2.2 1.6V21l3.7-1.1 3.7 1.1v-1.4L13.5 18v-4.8z\"/>", "rockets": "<path d=\"M12 2.5c3 2.2 4.3 5.4 4.3 9.2v4.1H7.7v-4.1c0-3.8 1.3-7 4.3-9.2z\"/><circle cx=\"12\" cy=\"9.5\" r=\"1.6\"/><path d=\"M7.7 12.5 5 15.6v2.7l2.7-1.5M16.3 12.5l2.7 3.1v2.7l-2.7-1.5M10.2 18.5 12 21.5l1.8-3\"/>", "ride": "<circle cx=\"5.2\" cy=\"16.8\" r=\"3.3\"/><circle cx=\"18.8\" cy=\"16.8\" r=\"3.3\"/><path d=\"M5.2 16.8 9 13.2h4.2l2.3-3.4M18.8 16.8 16 7.6M14.6 7.6h3M3 11.4l4-.9h5.6l2.4-1.2M9 13.2l1.6-2.7\"/>"};
+  var PINSVG = "<svg class=\"cic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 2.5a7 7 0 0 0-7 7c0 5.2 7 12 7 12s7-6.8 7-12a7 7 0 0 0-7-7zm0 9.6a2.6 2.6 0 1 1 0-5.2 2.6 2.6 0 0 1 0 5.2z\"/></svg>";
+  function tabIcon(k) { return '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + (TABICON[k] || "") + "</svg>"; }
   var TABS = [["weather", "Weather", "☀️", "weather"], ["radar", "Radar", "📡", "radar"], ["ocean", "Tides & waves", "🌊", "tides", "Tides"],
-              ["storms", "Hurricanes", "🌀", "hurricane"], ["traffic", "Traffic", "🚗", "traffic"], ["planes", "Planes", "✈️", "planes"], ["rockets", "Rockets", "🚀", "rockets"], ["ride", "Full Send", "🏍️", "ride"]];
+              ["storms", "Hurricanes", "🌀", "hurricane", "Storms"], ["traffic", "Traffic", "🚗", "traffic"], ["planes", "Planes", "✈️", "planes"], ["rockets", "Rockets", "🚀", "rockets"], ["ride", "Full Send", "🏍️", "ride"]];
   // Windows that open from the Weather tab instead of having a tab of their own
   var SUBS = { sky: ["Sun & moon", "weather"], why: ["Why it's raining", "weather"] };
   var OPTS = {
@@ -2726,8 +2740,7 @@ var ROUTES = S.routes;
   function tabLabel(t) { if (SUBS[t]) return SUBS[t][0]; for (var i = 0; i < TABS.length; i++) if (TABS[i][0] === t) return TABS[i][1]; return t; }
   function renderTabbar() {
     $("tabbar").innerHTML = tabList().filter(function (x) { return tabOn(x[0]); }).map(function (x) {
-      var vs = x[0] === "traffic" && vehSrc(), src = vs ? (/^data:/.test(vs) ? vs : vs + "?v=5") : "img/tab-" + x[3] + ".webp?v=5";
-      return '<button type="button" data-go="#/' + x[0] + '" data-tabbtn="' + x[0] + '"><img class="ic" alt="" draggable="false" width="46" height="30" decoding="async" src="' + src + '"><span class="tl">' + esc(x[4] || x[1]) + "</span></button>";
+      return '<button type="button" data-go="#/' + x[0] + '" data-tabbtn="' + x[0] + '">' + tabIcon(x[0]) + '<span class="tl">' + esc(x[4] || x[1]) + "</span></button>";
     }).join("");
     markTab();
   }
@@ -3601,7 +3614,7 @@ var ROUTES = S.routes;
 
   /* ---------------- Boot ---------------- */
   // Everything loads when the page opens. Tap the reload button (or reload the page) for new numbers.
-  function stamp() { $("stamp").textContent = "Updated " + fmtTime.format(new Date()) + " · " + fmtDay.format(new Date()); }
+  function stamp() { $("stamp").textContent = "Updated " + fmtTime.format(new Date()); $("stamp").title = fmtDay.format(new Date()); }
   function loadAll() { feedP = null; loadNow(); loadOM(); loadWind(); loadAlerts(); loadRadar(); loadWhy(); loadTides(); loadWaves(); loadWaterTemp(); loadSky(); loadRide(); renderTracks(); stamp(); }
 
   document.addEventListener("click", function (e) {
@@ -3644,10 +3657,20 @@ var ROUTES = S.routes;
     if (STORMS !== null) { STORMS = null; loadHurricanes(HURSTAT.year); }
     setTimeout(function () { FRESH = false; b.classList.remove("spin"); stamp(); }, 4000);
   });
+  // Fresh numbers every time the app is opened again: after a minute or more away, everything reloads on its own
+  var awayAt = 0;
+  function freshen() {
+    var a = document.activeElement;
+    if (document.querySelector(".tabbar.sorting") || (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.type !== "checkbox")) { setTimeout(freshen, 3000); return; }
+    FRESH = true; $("stamp").textContent = "Getting new numbers…";
+    loadAll(); if (STORMS !== null) { STORMS = null; loadHurricanes(HURSTAT.year); }
+    setTimeout(function () { FRESH = false; stamp(); }, 4000);
+  }
   document.addEventListener("visibilitychange", function () {
-    if (document.hidden) clearTimeout(timer);
-    else { gpsFollow(); if (route().v === "radar" && playing && on("loop")) setPlaying(true); }
+    if (document.hidden) { clearTimeout(timer); awayAt = Date.now(); }
+    else { gpsFollow(); if (route().v === "radar" && playing && on("loop")) setPlaying(true); if (awayAt && Date.now() - awayAt > 60000) freshen(); awayAt = 0; }
   });
+  window.addEventListener("pageshow", function (e) { if (e.persisted) freshen(); });
 })();
 </script>
 <script>
