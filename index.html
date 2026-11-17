@@ -156,6 +156,18 @@ body.mapfull .tabbar, body.mapfull .install { display: none; }
 .mapbtns { position: absolute; top: 10px; right: 10px; z-index: 1000; display: flex; flex-direction: column; gap: 8px; }
 .mapwrap.full .mapbtns { top: calc(env(safe-area-inset-top, 0px) + 10px); right: calc(env(safe-area-inset-right, 0px) + 10px); }
 .mapbtns .btn { width: 42px; height: 42px; min-height: 0; padding: 0; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+.mapbtns .btn.on { background: #1f6fa8; color: #fff; }
+.lyrmenu { position: absolute; top: 10px; right: 62px; z-index: 1001; width: min(260px, calc(100% - 80px)); background: #fff; color: #14202e; border-radius: 12px; box-shadow: 0 6px 20px rgba(0,0,0,0.3); padding: 6px 12px 8px; font-size: calc(14px * var(--fs)); }
+.mapwrap.full .lyrmenu { top: calc(env(safe-area-inset-top, 0px) + 10px); right: calc(env(safe-area-inset-right, 0px) + 62px); }
+.lyrmenu h4 { margin: 4px 0 2px; font-size: calc(12px * var(--fs)); font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: #5b6b7d; }
+.lyrmenu label { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0; border-top: 1px solid #e6ebf1; cursor: pointer; }
+.lyrmenu label:first-of-type { border-top: 0; }
+.lyrmenu label.off { opacity: 0.5; cursor: default; }
+.lyrmenu .ln { display: flex; align-items: center; gap: 9px; line-height: 1.2; }
+.lyrmenu .ln small { display: block; color: #5b6b7d; font-size: calc(11.5px * var(--fs)); }
+.lyrmenu .sq { width: 14px; height: 14px; border-radius: 3px; flex: none; }
+.lyrmenu input { width: 20px; height: 20px; accent-color: #1f6fa8; flex: none; }
+.lyrmenu .lnote { margin: 4px 0 0; font-size: calc(11.5px * var(--fs)); color: #5b6b7d; }
 .dock { position: absolute; left: 8px; right: 8px; bottom: 8px; z-index: 1000; }
 .mapwrap.full .dock { bottom: calc(env(safe-area-inset-bottom, 0px) + 10px); }
 .dock-inner {
@@ -790,10 +802,12 @@ body.hero .streetgap { display: block; }
     <section class="card">
       <div class="card-head"><h2>Live traffic</h2><span class="small" id="tSource"></span></div>
       <div class="mapwrap" id="trafficWrap">
-      <div class="mapbtns"><button class="btn" id="tFull" type="button" aria-label="Full screen" title="Full screen"><svg viewBox="0 0 24 24"><path d="M4 4h6v2H6v4H4zm10 0h6v6h-2V6h-4zM4 14h2v4h4v2H4zm14 0h2v6h-6v-2h4z"/></svg></button></div>
+      <div class="mapbtns"><button class="btn" id="tFull" type="button" aria-label="Full screen" title="Full screen"><svg viewBox="0 0 24 24"><path d="M4 4h6v2H6v4H4zm10 0h6v6h-2V6h-4zM4 14h2v4h4v2H4zm14 0h2v6h-6v-2h4z"/></svg></button><button class="btn" id="tLyrBtn" type="button" aria-label="Map layers" title="Map layers" aria-expanded="false"><svg viewBox="0 0 24 24"><path d="M12 3 2 8.5 12 14l10-5.5zm0 13.3L4.3 12 2 13.3 12 19l10-5.7-2.3-1.3z"/></svg></button></div>
+      <div class="lyrmenu" id="tLyr" hidden></div>
     </div>
       <div class="routeinfo" id="routeInfo"></div>
       <div class="tkey" id="tkey"></div>
+      <p class="small" id="tLyrMsg" hidden></p>
       <p class="small" id="tHow"></p>
       <div data-opt="trafficlinks">
         <h3>Why are the roads jammed?</h3>
@@ -1051,6 +1065,7 @@ var DEFAULT_PLACE = {
 // Optional: a free TomTom key turns the traffic map into green/yellow/red roads with crash icons.
 // Sign up yourself at developer.tomtom.com, then paste the key between the quotes.
 var TOMTOM_KEY = "";
+try { if (!TOMTOM_KEY) TOMTOM_KEY = localStorage.getItem("fullsend.tomtomKey") || ""; } catch (e) {}
 if (TOMTOM_KEY) document.addEventListener("DOMContentLoaded", function () { var b = document.getElementById("tSoon"); if (b) b.hidden = true; });
 
 var STORE_KEY = "weatherSettings.v1";
@@ -1913,32 +1928,105 @@ var ROUTES = S.routes;
       Array.prototype.forEach.call(rbox.querySelectorAll("button"), function (x) { x.classList.toggle("on", x === b); });
       pickRoute(+b.getAttribute("data-i"));
     });
-    if (TOMTOM_KEY) {
-      var div = document.createElement("div"); div.id = "tmap"; wrap.insertBefore(div, wrap.firstChild);
-      tmap = L.map("tmap", { zoomControl: false }).setView(HOME, 12);
-      L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
-        { maxZoom: 19, attribution: "Map &copy; Esri, HERE, Garmin, OpenStreetMap | Traffic &copy; TomTom" }).addTo(tmap);
-      tFlow = L.tileLayer("https://api.tomtom.com/traffic/map/4/tile/flow/relative0/{z}/{x}/{y}.png?key=" + encodeURIComponent(TOMTOM_KEY), { maxZoom: 18, opacity: 0.9, zIndex: 5 }).addTo(tmap);
-      tIncidents = L.layerGroup().addTo(tmap);
-      tmap.on("moveend", loadIncidents);
-      loadIncidents();
-      $("tSource").textContent = "Live from TomTom";
-      $("tkey").innerHTML = '<span><i style="background:#2ecc71"></i>Moving</span><span><i style="background:#f1c40f"></i>Slow</span><span><i style="background:#e67e22"></i>Heavy</span><span><i style="background:#c0392b"></i>Stopped</span><span>🚗💥 Crash (tap it)</span>';
-      $("tHow").textContent = "Tap a crash or warning icon to see what happened, how long the delay is, and which stretch of road it covers.";
-      touchMap(tmap, wrap);
-      fullToggle("tFull", "trafficWrap", function () { tmap.invalidateSize(); mapFull(tmap, wrap); });
-    } else {
-      var f = document.createElement("iframe");
-      f.className = "waze"; f.id = "wazeFrame"; f.title = "Live traffic map";
-      f.setAttribute("allowfullscreen", ""); f.loading = "lazy";
-      f.src = "https://embed.waze.com/iframe?zoom=12&lat=" + HOME[0] + "&lon=" + HOME[1] + "&ct=livemap";
-      wrap.insertBefore(f, wrap.firstChild);
-      shield(wrap);
-      $("tSource").textContent = "Live from Waze";
-      $("tkey").innerHTML = '<span><i style="background:#f1c40f"></i>Slow</span><span><i style="background:#e67e22"></i>Heavy</span><span><i style="background:#c0392b"></i>Stopped</span><span>Icons: crashes, hazards, police</span>';
-      $("tHow").textContent = "Colored lines are slowdowns; clear roads have no color. Tap a crash or hazard icon to see what drivers reported. Pinch to zoom.";
-      fullToggle("tFull", "trafficWrap");
+    $("tSoon").hidden = !!TOMTOM_KEY;
+    fullToggle("tFull", "trafficWrap", function () { if (tmap) { tmap.invalidateSize(); mapFull(tmap, wrap); } });
+    $("tLyrBtn").addEventListener("click", function () { var m = $("tLyr"), open = m.hidden; if (open) lyrMenu(); m.hidden = !open; this.classList.toggle("on", open); this.setAttribute("aria-expanded", open); });
+    $("tLyr").addEventListener("change", function (e) {
+      var x = e.target.closest("input[data-optk]"); if (!x) return;
+      var k = x.getAttribute("data-optk"); S.opt = S.opt || {}; S.opt[k] = x.checked;
+      if (!TOMTOM_KEY && x.checked) { if (k === "lyrflood") S.opt.lyrtraffic = false; if (k === "lyrtraffic") S.opt.lyrflood = false; }   // without a key the two can't share one map
+      saveS(S); setTrafficLayers(); lyrMenu();
+    });
+    setTrafficLayers();
+  }
+  // Map layers you can pick and choose: live traffic, flood warnings (NWS) and flooded or closed roads (TomTom).
+  // Without a traffic key, live traffic is the Waze map, which can't take extra layers, so flood areas get their own map.
+  var tFlood = null, tClosed = null, tWaze = null, floodAt = 0, ZONES = {};
+  function lyrMenu() {
+    var key = !!TOMTOM_KEY;
+    function row(k, name, sub, sq, off) {
+      return '<label' + (off ? ' class="off"' : "") + '><span class="ln">' + (sq ? '<i class="sq" style="background:' + sq + '"></i>' : "") + "<span>" + esc(name) + (sub ? "<small>" + esc(sub) + "</small>" : "") + "</span></span>" +
+        '<input type="checkbox" data-optk="' + k + '"' + (on(k) && !off ? " checked" : "") + (off ? " disabled" : "") + "></label>";
     }
+    $("tLyr").innerHTML = "<h4>Map layers</h4>" +
+      row("lyrtraffic", "Live traffic", key ? "TomTom" : "Waze", "", false) +
+      row("lyrflood", "Flood warnings", "Weather Service", "rgba(214,48,49,0.55)", false) +
+      row("lyrclosed", "Flooded and closed roads", key ? "TomTom" : "Needs the traffic key", "#8e44ad", !key) +
+      (key ? "" : '<p class="lnote">Without the traffic key, live traffic and flood warnings show one at a time.</p>');
+  }
+  function useLeaflet() { return !!TOMTOM_KEY || on("lyrflood"); }
+  function setTrafficLayers() {
+    var wrap = $("trafficWrap"), key = !!TOMTOM_KEY, sh = wrap.querySelector(".shield");
+    if (!key && on("lyrflood") && on("lyrtraffic")) { S.opt = S.opt || {}; S.opt.lyrtraffic = false; saveS(S); }
+    if (useLeaflet()) {
+      if (tWaze) tWaze.hidden = true;
+      if (sh) sh.hidden = true;
+      if (!tmap) {
+        var div = document.createElement("div"); div.id = "tmap"; wrap.insertBefore(div, wrap.firstChild);
+        tmap = L.map("tmap", { zoomControl: false }).setView(HOME, key ? 12 : 10);
+        L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+          { maxZoom: 19, attribution: "Map &copy; Esri, HERE, Garmin, OpenStreetMap" + (key ? " | Traffic &copy; TomTom" : "") + " | Floods: NWS" }).addTo(tmap);
+        tFlood = L.layerGroup().addTo(tmap);
+        if (key) {
+          tFlow = L.tileLayer("https://api.tomtom.com/traffic/map/4/tile/flow/relative0/{z}/{x}/{y}.png?key=" + encodeURIComponent(TOMTOM_KEY), { maxZoom: 18, opacity: 0.9, zIndex: 5 });
+          tIncidents = L.layerGroup().addTo(tmap); tClosed = L.layerGroup().addTo(tmap);
+          tmap.on("moveend", loadIncidents);
+        }
+        touchMap(tmap, wrap);
+      } else $("tmap").hidden = false;
+      if (tFlow) { if (on("lyrtraffic")) tFlow.addTo(tmap); else tmap.removeLayer(tFlow); }
+      setTimeout(function () { tmap.invalidateSize(); }, 30);
+      if (key) loadIncidents();
+      loadFloods();
+    } else {
+      if (tmap) $("tmap").hidden = true;
+      if (!tWaze) {
+        tWaze = document.createElement("iframe");
+        tWaze.className = "waze"; tWaze.id = "wazeFrame"; tWaze.title = "Live traffic map";
+        tWaze.setAttribute("allowfullscreen", ""); tWaze.loading = "lazy";
+        tWaze.src = "https://embed.waze.com/iframe?zoom=12&lat=" + HOME[0] + "&lon=" + HOME[1] + "&ct=livemap";
+        wrap.insertBefore(tWaze, wrap.firstChild);
+        shield(wrap);
+      }
+      tWaze.hidden = false; if (sh) sh.hidden = false;
+      $("tLyrMsg").hidden = true;
+    }
+    Array.prototype.forEach.call(document.querySelectorAll('input[data-optk^="lyr"]'), function (x) { if (!x.disabled) x.checked = on(x.getAttribute("data-optk")); });
+    var keyHtml = [];
+    if (on("lyrtraffic") && key) keyHtml.push('<span><i style="background:#2ecc71"></i>Moving</span><span><i style="background:#f1c40f"></i>Slow</span><span><i style="background:#e67e22"></i>Heavy</span><span><i style="background:#c0392b"></i>Stopped</span><span>🚗💥 Crash</span>');
+    if (!useLeaflet()) keyHtml.push('<span><i style="background:#f1c40f"></i>Slow</span><span><i style="background:#e67e22"></i>Heavy</span><span><i style="background:#c0392b"></i>Stopped</span><span>Icons: crashes, hazards, police</span>');
+    if (on("lyrflood")) keyHtml.push('<span><i style="background:#d63031"></i>Flood warning</span><span><i style="background:#e67e22"></i>Flood watch</span><span><i style="background:#f1c40f"></i>Flood advisory</span>');
+    if (on("lyrclosed") && key) keyHtml.push('<span><i style="background:#8e44ad"></i>Flooded or closed road</span>');
+    $("tkey").innerHTML = keyHtml.join("");
+    $("tSource").textContent = key ? "Live from TomTom" : useLeaflet() ? "Flood map from the Weather Service" : "Live from Waze";
+    $("tHow").textContent = useLeaflet() ? "Tap a shaded area or an icon for details. Pick what shows with the layers button on the map." :
+      "Colored lines are slowdowns; clear roads have no color. Tap a crash or hazard icon to see what drivers reported. The layers button on the map adds flood warnings.";
+  }
+  function floodColor(ev) { return /warning/i.test(ev) ? "#d63031" : /watch/i.test(ev) ? "#e67e22" : "#f1c40f"; }
+  function loadFloods() {
+    if (!tmap || !tFlood) return;
+    if (!on("lyrflood")) { tFlood.clearLayers(); $("tLyrMsg").hidden = true; return; }
+    if (tFlood.getLayers().length && Date.now() - floodAt < 5 * 60000) return;
+    var st = S.state || "FL", msg = $("tLyrMsg"); msg.hidden = false; msg.textContent = "Checking for flood warnings…";
+    nws("/alerts/active?area=" + encodeURIComponent(st)).then(function (d) {
+      var list = (d.features || []).filter(function (f) { return /flood/i.test(f.properties.event); });
+      tFlood.clearLayers(); floodAt = Date.now();
+      msg.textContent = list.length ? list.length + " flood " + (list.length > 1 ? "alerts" : "alert") + " active in " + st + ". Shaded areas may have flooded roads." : "No flood warnings, watches or advisories in " + st + " right now.";
+      var zl = 0;
+      list.forEach(function (f) {
+        var p = f.properties, until = p.ends || p.expires, c = floodColor(p.event);
+        var pop = "<b>" + esc(p.event) + "</b>" + (until ? "<br>Until " + esc(dayLabel(new Date(until)) + " " + fmtTime.format(new Date(until))) : "") +
+          (p.areaDesc ? '<br><span class="small">' + esc(p.areaDesc.length > 140 ? p.areaDesc.slice(0, 140) + "…" : p.areaDesc) + "</span>" : "");
+        function draw(g) { if (!g || !tmap || !on("lyrflood")) return; L.geoJSON(g, { style: { color: c, weight: 1.5, fillColor: c, fillOpacity: 0.28 } }).bindPopup(pop).addTo(tFlood); }
+        if (f.geometry) { draw(f.geometry); return; }
+        (p.affectedZones || []).forEach(function (z) {
+          if (zl++ > 60) return;   // keep it light on the Weather Service
+          if (ZONES[z]) { ZONES[z].then(draw); return; }
+          ZONES[z] = getJSON(z, { headers: { Accept: "application/geo+json" } }).then(function (zd) { return zd.geometry; }).catch(function () { delete ZONES[z]; return null; });
+          ZONES[z].then(draw);
+        });
+      });
+    }).catch(function () { msg.textContent = "Couldn't reach the Weather Service for flood warnings. Try again in a minute."; });
   }
   function routeButtons() {
     var rbox = $("routes");
@@ -2127,8 +2215,9 @@ var ROUTES = S.routes;
     });
   }
   function loadIncidents() {
-    if (!tmap) return;
-    tIncidents.clearLayers();
+    if (!tmap || !tIncidents) return;
+    tIncidents.clearLayers(); tClosed.clearLayers();
+    if (!on("lyrtraffic") && !on("lyrclosed")) return;
     if (tmap.getZoom() < 10) return;   // TomTom limits how big an area one lookup can cover
     var b = tmap.getBounds();
     var fields = "{incidents{type,geometry{type,coordinates},properties{iconCategory,magnitudeOfDelay,events{description},from,to,delay,roadNumbers}}}";
@@ -2140,14 +2229,16 @@ var ROUTES = S.routes;
         var g = inc.geometry, pr = inc.properties || {};
         var c = g.type === "Point" ? g.coordinates : g.coordinates[Math.floor(g.coordinates.length / 2)];
         if (!c) return;
-        var crash = pr.iconCategory === 1;
+        var crash = pr.iconCategory === 1, closed = pr.iconCategory === 8 || pr.iconCategory === 11;
         if (!crash && [3, 7, 8, 9, 11, 14].indexOf(pr.iconCategory) < 0) return;   // show crashes and real blockers, skip ordinary jams
+        if (closed ? !on("lyrclosed") : !on("lyrtraffic")) return;
         var html = '<div class="crash-ic' + (crash ? "" : " other") + '">' + (crash ? CRASH_SVG : WARN_SVG) + "</div>";
         var desc = (pr.events || []).map(function (e) { return e.description; }).join(", ");
         var pop = "<b>" + esc(ICON_NAMES[pr.iconCategory] || "Incident") + "</b>" + (pr.roadNumbers && pr.roadNumbers.length ? " on " + esc(pr.roadNumbers.join(", ")) : "") +
           (desc ? "<br>" + esc(desc) : "") + (pr.from ? "<br>From " + esc(pr.from) + (pr.to ? " to " + esc(pr.to) : "") : "") +
           (pr.delay ? "<br>Delay about " + Math.round(pr.delay / 60) + " min" : "");
-        L.marker([c[1], c[0]], { icon: L.divIcon({ className: "", html: html, iconSize: [30, 30], iconAnchor: [15, 15] }) }).bindPopup(pop).addTo(tIncidents);
+        if (closed && g.type === "LineString") L.polyline(g.coordinates.map(function (q) { return [q[1], q[0]]; }), { color: "#8e44ad", weight: 6, opacity: 0.85, dashArray: "8 6" }).bindPopup(pop).addTo(tClosed);
+        L.marker([c[1], c[0]], { icon: L.divIcon({ className: "", html: html, iconSize: [30, 30], iconAnchor: [15, 15] }) }).bindPopup(pop).addTo(closed ? tClosed : tIncidents);
       });
     }).catch(function () {});
   }
@@ -2700,7 +2791,7 @@ var ROUTES = S.routes;
     sky: [["sun", "Sun times", 1], ["moon", "Moon phase and times", 1], ["specialmoons", "Special moons and eclipses", 1], ["fullmoons", "Full moons ahead", 1]],
     why: [["keypoints", "What the forecasters say", 1], ["sfcmap", "Highs, lows and fronts map", 1], ["satellite", "Satellite loop", 1], ["videos", "Videos and links", 1]],
     storms: [["active", "Active storms", 1], ["outlook", "7-day outlook map", 1], ["season", "Season numbers", 1], ["stormlist", "Storms this season", 1], ["nhcvideos", "Hurricane Center videos", 1]],
-    traffic: [["trafficlinks", "Crash, camera and news links", 1]],
+    traffic: [["lyrtraffic", "Map layer: live traffic", 1], ["lyrflood", "Map layer: flood warnings from the Weather Service", 0], ["lyrclosed", "Map layer: flooded and closed roads (needs the traffic key)", 1], ["trafficlinks", "Crash, camera and news links", 1]],
     ride: [["ridescore", "Off-road conditions", 1], ["street", "Go-karts and street riding", 1], ["electric", "Electric ride notes (water, heat, cold)", 1], ["tracks", "Tracks and riding areas", 1]],
     planes: [["lowonly", "Only planes taking off or landing (below 6,000 feet)", 1], ["labels", "Flight numbers on the map", 0], ["atc", "Air traffic control audio link", 1], ["nearap", "Airports near you", 1], ["heli", "Heliports in the list", 1]],
     rockets: [["reminders", "Launch reminders", 1], ["world", "Launches around the world", 1]]
@@ -2809,7 +2900,9 @@ var ROUTES = S.routes;
     if (tab === "ocean") html += '<h3>Tide station</h3><div class="pick" id="pkTide"><span class="muted">Loading…</span></div>' +
       '<h3>Wave buoy</h3><div class="pick" id="pkBuoy"><span class="muted">Loading…</span></div>' +
       '<h3>Water temperature station</h3><div class="pick" id="pkWt"><span class="muted">Loading…</span></div>';
-    if (tab === "traffic") html += '<p>Add, edit and delete your routes right on the Traffic tab with the <b>+ Add route</b> button.</p>';
+    if (tab === "traffic") html += '<p>Add, edit and delete your routes right on the Traffic tab with the <b>+ Add route</b> button.</p>' +
+      '<h3>Traffic key</h3><form class="frow" id="ttForm"><input id="ttKey" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Paste your TomTom key" aria-label="TomTom traffic key" value="' + esc(TOMTOM_KEY) + '"><button class="btn" type="submit">Save</button></form>' +
+      '<p class="small">Turns on live traffic colors, crash icons and the flooded and closed roads layer. Saved on this phone only.</p>';
     if (tab === "planes") html += '<h3>Your airports</h3><div class="pick" id="apSel"></div>' +
       '<h3>Close by</h3><div class="pick" id="apNearBox"><span class="muted">Loading airports…</span></div>' +
       '<form class="frow" id="apForm"><input id="apQ" type="search" placeholder="Search any airport: name, city or code" aria-label="Search airports" enterkeyhint="search"><button class="btn" type="submit">Search</button></form>' +
@@ -2822,6 +2915,11 @@ var ROUTES = S.routes;
     };
     if (tab === "ocean") oceanPickers();
     if (tab === "planes") airportPicker();
+    if (tab === "traffic") $("ttForm").addEventListener("submit", function (e) {
+      e.preventDefault(); var v = $("ttKey").value.trim();
+      try { if (v) localStorage.setItem("fullsend.tomtomKey", v); else localStorage.removeItem("fullsend.tomtomKey"); } catch (x) {}
+      location.reload();
+    });
   }
   function optChanged(k) {
     applyOpts();
@@ -2830,6 +2928,7 @@ var ROUTES = S.routes;
     if (k === "future") loadRadar();
     if (k === "loop") setPlaying(on("loop"));
     if (k === "score") renderScore();
+    if (/^lyr/.test(k)) { if (!TOMTOM_KEY && on(k)) { if (k === "lyrflood") S.opt.lyrtraffic = false; if (k === "lyrtraffic") S.opt.lyrflood = false; saveS(S); } setTrafficLayers(); }
     if (k === "lowonly" || k === "labels") { if ($("planeFrame")) loadPlaneFrame(true); else planeChips(); }
   }
   function oceanPickers() {
@@ -3621,7 +3720,7 @@ var ROUTES = S.routes;
   /* ---------------- Boot ---------------- */
   // Everything loads when the page opens. Tap the reload button (or reload the page) for new numbers.
   function stamp() { $("stamp").textContent = "Updated " + fmtTime.format(new Date()); $("stamp").title = fmtDay.format(new Date()); }
-  function loadAll() { feedP = null; loadNow(); loadOM(); loadWind(); loadAlerts(); loadRadar(); loadWhy(); loadTides(); loadWaves(); loadWaterTemp(); loadSky(); loadRide(); renderTracks(); stamp(); }
+  function loadAll() { floodAt = 0; if (tmap && on("lyrflood")) loadFloods(); feedP = null; loadNow(); loadOM(); loadWind(); loadAlerts(); loadRadar(); loadWhy(); loadTides(); loadWaves(); loadWaterTemp(); loadSky(); loadRide(); renderTracks(); stamp(); }
 
   document.addEventListener("click", function (e) {
     var g = e.target.closest("[data-go]");
