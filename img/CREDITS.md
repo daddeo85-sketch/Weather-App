@@ -12,7 +12,7 @@ All photos come from Wikimedia Commons. They were shrunk, cut out and cropped fo
 | tab-traffic.webp | Tyler Reddick's #29 Ford F-150 race truck | Joetregembo | CC BY-SA 4.0 |
 | tab-planes.webp | Emirates Airbus A380 (A6-EDY) at JFK | Maarten Visser | CC BY-SA 2.0 |
 | tab-rockets.webp | Apollo 11 launch, July 16, 1969 | NASA | Public domain (NASA) |
-| ../icons/*.png (app icon photo) | Sunset over the water, Nov 2026 | Zac (the app owner) | Used with his permission |
+| ../icons/*.png (app icon photo) | Sunset over the water, Nov 2026 | The app owner | Their own photo |
 | ../icons/*.png (app icon lettering) | Kaushan Script and Barlow Condensed fonts | Google Fonts | SIL Open Font License |
 | veh/f150-*.webp | 2018 Ford F-150 XLT Crew Cab | Kevauto | CC BY-SA 4.0 |
 | veh/silverado-*.webp | 2022 Chevrolet Silverado 2500HD High Country | Elise240SX | CC BY-SA 4.0 |
