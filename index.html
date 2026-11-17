@@ -158,7 +158,7 @@ body.mapfull .tabbar, body.mapfull .install { display: none; }
 .mapbtns .btn { width: 42px; height: 42px; min-height: 0; padding: 0; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
 .mapbtns .btn.on { background: #1f6fa8; color: #fff; }
 .lyrmenu { position: absolute; top: 10px; right: 62px; z-index: 1001; width: min(260px, calc(100% - 80px)); background: #fff; color: #14202e; border-radius: 12px; box-shadow: 0 6px 20px rgba(0,0,0,0.3); padding: 6px 12px 8px; font-size: calc(14px * var(--fs)); }
-.mapwrap.full .lyrmenu { top: calc(env(safe-area-inset-top, 0px) + 10px); right: calc(env(safe-area-inset-right, 0px) + 62px); }
+.mapwrap.full .lyrmenu { top: calc(env(safe-area-inset-top, 0px) + 112px); right: calc(env(safe-area-inset-right, 0px) + 10px); }
 .lyrmenu h4 { margin: 4px 0 2px; font-size: calc(12px * var(--fs)); font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: #5b6b7d; }
 .lyrmenu label { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0; border-top: 1px solid #e6ebf1; cursor: pointer; }
 .lyrmenu label:first-of-type { border-top: 0; }
@@ -1931,6 +1931,10 @@ var ROUTES = S.routes;
     $("tSoon").hidden = !!TOMTOM_KEY;
     fullToggle("tFull", "trafficWrap", function () { if (tmap) { tmap.invalidateSize(); mapFull(tmap, wrap); } });
     $("tLyrBtn").addEventListener("click", function () { var m = $("tLyr"), open = m.hidden; if (open) lyrMenu(); m.hidden = !open; this.classList.toggle("on", open); this.setAttribute("aria-expanded", open); });
+    document.addEventListener("click", function (e) {   // tap anywhere else to close the layer menu
+      var m = $("tLyr"); if (m.hidden || e.target.closest("#tLyr, #tLyrBtn")) return;
+      m.hidden = true; $("tLyrBtn").classList.remove("on"); $("tLyrBtn").setAttribute("aria-expanded", "false");
+    });
     $("tLyr").addEventListener("change", function (e) {
       var x = e.target.closest("input[data-optk]"); if (!x) return;
       var k = x.getAttribute("data-optk"); S.opt = S.opt || {}; S.opt[k] = x.checked;
