@@ -3389,17 +3389,13 @@ var ROUTES = S.routes;
       if (!r[1]) { var b = $("vehCard"); b.insertAdjacentHTML("beforeend", '<p class="small">The AI cut-out couldn\'t run on this phone, so I cut around the edge colors. A photo on a plain background works best.</p>'); }
     }).catch(function () { say("vehMsg", "Couldn't open that photo. Try another one."); });
   }
-  // your photo parked on the street, in the right lane by the light
-  function drawMyRide(c) {
-    var ph = VPREV || (VIMG && vphoto()); if (!ph) return;
-    var im = VPREV ? (drawMyRide.im && drawMyRide.src === ph.src ? drawMyRide.im : (drawMyRide.src = ph.src, drawMyRide.im = Object.assign(new Image(), { src: ph.src }))) : VIMG;
-    if (!im || !im.complete || !im.width) return;
-    var z = ph.z || 13.5, p = pz(z), w = 4.4 * (ph.size || 1) * (ph.stretch || 1) * p, hh = 4.4 * (ph.size || 1) * p * im.height / im.width, x = gx(1.9, z), y = gy(z, ph.lift || 0);
-    c.fillStyle = "rgba(0,0,0,0.35)"; c.beginPath(); c.ellipse(x, gy(z), w * 0.5, Math.max(2, w * 0.05), 0, 0, Math.PI * 2); c.fill();
-    c.save(); c.translate(x, y); c.rotate((ph.turn || 0) * Math.PI / 180); c.scale(ph.flip ? -1 : 1, 1);
-    if (R.night && "filter" in c) c.filter = "brightness(0.55)";
-    c.drawImage(im, -w / 2, -hh, w, hh); c.restore();
+  // your photo parked on the street: hand the street scene the photo once it has loaded
+  function myRide() {
+    var ph = VPREV || (VIMG && vphoto()); if (!ph) return null;
+    var im = VPREV ? (myRide.im && myRide.src === ph.src ? myRide.im : (myRide.src = ph.src, myRide.im = Object.assign(new Image(), { src: ph.src }))) : VIMG;
+    return im && im.complete && im.width ? { ph: ph, im: im } : null;
   }
+  window.myRide = myRide;
   /* ---------------- Rockets (The Space Devs Launch Library, saved to the data branch) ---------------- */
   var LAUNCH = null, cdTimer = null;
   function loadLaunches() {
@@ -3968,6 +3964,16 @@ var ROUTES = S.routes;
     if (WX.kind === "rain" || WX.kind === "storm" || (WX.wet || 0) > 0) gutterFlow(c, t);
     drawSignal(c, t);
     drawMyRide(c);
+  }
+  // your photo parked on the street, in the right lane by the light
+  function drawMyRide(c) {
+    var m = window.myRide && window.myRide(); if (!m) return;
+    var ph = m.ph, im = m.im;
+    var z = ph.z || 13.5, p = pz(z), w = 4.4 * (ph.size || 1) * (ph.stretch || 1) * p, hh = 4.4 * (ph.size || 1) * p * im.height / im.width, x = gx(1.9, z), y = gy(z, ph.lift || 0);
+    c.fillStyle = "rgba(0,0,0,0.35)"; c.beginPath(); c.ellipse(x, gy(z), w * 0.5, Math.max(2, w * 0.05), 0, 0, Math.PI * 2); c.fill();
+    c.save(); c.translate(x, y); c.rotate((ph.turn || 0) * Math.PI / 180); c.scale(ph.flip ? -1 : 1, 1);
+    if (R.night && "filter" in c) c.filter = "brightness(0.55)";
+    c.drawImage(im, -w / 2, -hh, w, hh); c.restore();
   }
   // US flag on a pole by the sidewalk, in front of the house. It flies downwind and waves harder as the wind picks up.
   function drawFlag(c, t) {
