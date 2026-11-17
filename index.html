@@ -1279,19 +1279,30 @@ var ROUTES = S.routes;
 
   /* ---------------- Rain amounts ---------------- */
   // Inches of rain: the Open-Meteo forecast's hourly amounts, added up over each forecast period and over the day.
-  function inch(v) { return v < 0.095 ? v.toFixed(2) : v.toFixed(1); }
+  function rainIn(v) { return v < 0.095 ? v.toFixed(2) : v.toFixed(1); }
   function periodRain(x) {   // hourly amounts cover the hour before their time stamp
     var h = D.om && D.om.hourly; if (!h || !h.precipitation || !x.startTime) return null;
     var a = x.startTime.slice(0, 13), b = x.endTime.slice(0, 13), sum = 0, any = false;
     for (var k = 0; k < h.time.length; k++) { var t = h.time[k].slice(0, 13); if (t > a && t <= b) { sum += h.precipitation[k] || 0; any = true; } }
     return any ? sum : null;
   }
+  function periodHours(x) {   // hour-by-hour rain inside one forecast period, with a running total
+    var h = D.om && D.om.hourly; if (!h || !h.precipitation || !x.startTime) return "";
+    var a = x.startTime.slice(0, 13), b = x.endTime.slice(0, 13), now = hourKey(new Date()).slice(0, 13), run = 0, cells = [];
+    for (var k = 0; k < h.time.length; k++) {
+      var t = h.time[k].slice(0, 13); if (!(t > a && t <= b)) continue;
+      var v = h.precipitation[k] || 0; run += v; if (t < now) continue;
+      cells.push('<div class="rh' + (v >= 0.01 ? " wet" : "") + '"><div class="n">' + esc(hourLabel(h.time[k])) + '</div><div class="a">' + (v >= 0.01 ? rainIn(v) : "\u2013") + '</div><div class="c">' + Math.round((h.precipitation_probability || [])[k] || 0) + '%</div><div class="r">' + (run >= 0.01 ? rainIn(run) : "0") + "</div></div>");
+    }
+    if (!cells.length || run < 0.01) return "";
+    return '<h3>Rain hour by hour</h3><div class="rdrow"><div class="rh lbl"><div class="n">&nbsp;</div><div class="a">Inches</div><div class="c">Chance</div><div class="r">So far</div></div>' + cells.join("") + "</div>";
+  }
   function renderPeriods() {
     var per = D.periods; if (!per || !$("periods")) return;
     $("periods").innerHTML = per.slice(0, 8).map(function (x, i) {
       var pp = x.probabilityOfPrecipitation && x.probabilityOfPrecipitation.value, amt = periodRain(x);
       return '<div class="period tap" data-d="period:' + i + '"><div class="n">' + esc(x.name) + '</div><div class="t">' + esc(x.temperature) + '°</div>' +
-        '<div class="p">' + (pp ? "💧 " + esc(pp) + "%" : "&nbsp;") + (amt != null && amt >= 0.01 ? '<span class="amt"> · ' + inch(amt) + " in</span>" : "") + "</div>" +
+        '<div class="p">' + (pp ? "💧 " + esc(pp) + "%" : "&nbsp;") + (amt != null && amt >= 0.01 ? '<span class="amt"> · ' + rainIn(amt) + " in</span>" : "") + "</div>" +
         '<div class="s">' + esc(x.shortForecast) + '</div></div>';
     }).join("");
   }
@@ -1299,19 +1310,19 @@ var ROUTES = S.routes;
     var d = D.om, h = d && d.hourly; if (!h || !h.precipitation) return;
     var today = ymd(new Date()), tot = d.daily && d.daily.precipitation_sum ? d.daily.precipitation_sum[0] || 0 : 0;
     D.rainToday = tot;
-    if ($("popSub")) $("popSub").textContent = tot >= 0.01 ? inch(tot) + " in today" : "No rain today";
+    if ($("popSub")) $("popSub").textContent = tot >= 0.01 ? rainIn(tot) + " in today" : "No rain today";
     var now = hourKey(new Date()), run = 0, cells = [], left = 0;
     for (var k = 0; k < h.time.length; k++) {
       var t = h.time[k]; if (t.slice(0, 10) !== today || (t.slice(11, 13) === "00")) continue;
       var v = h.precipitation[k] || 0; run += v;
       if (t < now) continue;
       left += v;
-      cells.push('<div class="rh' + (v >= 0.01 ? " wet" : "") + '"><div class="n">' + esc(hourLabel(t)) + '</div><div class="a">' + (v >= 0.01 ? inch(v) : "\u2013") + '</div><div class="c">' + Math.round(h.precipitation_probability[k] || 0) + '%</div><div class="r">' + (run >= 0.01 ? inch(run) : "0") + "</div></div>");
+      cells.push('<div class="rh' + (v >= 0.01 ? " wet" : "") + '"><div class="n">' + esc(hourLabel(t)) + '</div><div class="a">' + (v >= 0.01 ? rainIn(v) : "\u2013") + '</div><div class="c">' + Math.round(h.precipitation_probability[k] || 0) + '%</div><div class="r">' + (run >= 0.01 ? rainIn(run) : "0") + "</div></div>");
     }
     var box = $("rainDay"); if (!box) return;
     box.hidden = !(left >= 0.01 && cells.length);
     if (box.hidden) return;
-    $("rainDayHead").innerHTML = "<h3>Rain today</h3><span>" + inch(tot) + " in expected</span>";
+    $("rainDayHead").innerHTML = "<h3>Rain today</h3><span>" + rainIn(tot) + " in expected</span>";
     $("rainDayRow").innerHTML = '<div class="rh lbl"><div class="n">&nbsp;</div><div class="a">Inches</div><div class="c">Chance</div><div class="r">So far</div></div>' + cells.join("");
   }
 
@@ -3106,9 +3117,9 @@ var ROUTES = S.routes;
     rain: function () {
       var per = D.periods || [];
       var h = D.om && D.om.hourly, run = 0;
-      return ["Rain", rows([["Today", D.rainToday != null ? (D.rainToday >= 0.01 ? inch(D.rainToday) + " in expected" : "No rain expected") : null], ["Next 8 hours", D.rain8 != null ? (D.rain8 >= 0.01 ? inch(D.rain8) + " in" : "None") : null]]) +
-        per.slice(0, 2).map(function (x) { var a = periodRain(x); return "<h3>" + esc(x.name) + (a != null && a >= 0.01 ? " · " + inch(a) + " in" : "") + "</h3><p>" + esc(x.detailedForecast) + "</p>"; }).join("") +
-        "<h3>Hour by hour</h3>" + hours("precipitation_probability", 24, function (v, k) { var a = h.precipitation[k] || 0; run += a; return Math.round(v) + '%<div class="s">' + (a >= 0.01 ? inch(a) + " in" : "\u2013") + '</div><div class="s">' + (run >= 0.01 ? inch(run) + " so far" : "") + "</div>"; }) +
+      return ["Rain", rows([["Today", D.rainToday != null ? (D.rainToday >= 0.01 ? rainIn(D.rainToday) + " in expected" : "No rain expected") : null], ["Next 8 hours", D.rain8 != null ? (D.rain8 >= 0.01 ? rainIn(D.rain8) + " in" : "None") : null]]) +
+        per.slice(0, 2).map(function (x) { var a = periodRain(x); return "<h3>" + esc(x.name) + (a != null && a >= 0.01 ? " · " + rainIn(a) + " in" : "") + "</h3><p>" + esc(x.detailedForecast) + "</p>"; }).join("") +
+        "<h3>Hour by hour</h3>" + hours("precipitation_probability", 24, function (v, k) { var a = h.precipitation[k] || 0; run += a; return Math.round(v) + '%<div class="s">' + (a >= 0.01 ? rainIn(a) + " in" : "\u2013") + '</div><div class="s">' + (run >= 0.01 ? rainIn(run) + " so far" : "") + "</div>"; }) +
         '<p class="small">Rain chance is the odds of at least a hundredth of an inch at your spot during that time.</p>'];
     },
     uv: function () {
@@ -3425,8 +3436,8 @@ var ROUTES = S.routes;
     var out;
     if (/^period:\d+$/.test(key)) { var x = (D.periods || [])[+key.split(":")[1]]; var xa = x && periodRain(x), xp = x && x.probabilityOfPrecipitation && x.probabilityOfPrecipitation.value;
       out = x ? [x.name, "<p><b>" + esc(x.temperature) + "°</b> · " + esc(x.shortForecast) + "</p>" +
-        ((xp || (xa != null && xa >= 0.01)) ? rows([["Rain chance", xp ? xp + "%" : null], ["Rain expected", xa != null ? (xa >= 0.01 ? inch(xa) + " in" : "None") : null]]) : "") +
-        "<p>" + esc(x.detailedForecast) + "</p>"] : ["Forecast", LOADING]; }
+        ((xp || (xa != null && xa >= 0.01)) ? rows([["Rain chance", xp ? xp + "%" : null], ["Rain expected", xa != null ? (xa >= 0.01 ? rainIn(xa) + " in" : "None") : null]]) : "") +
+        "<p>" + esc(x.detailedForecast) + "</p>" + periodHours(x)] : ["Forecast", LOADING]; }
     else if (/^track:\d+$/.test(key)) out = trackDetail(TRACKS[+key.split(":")[1]]);
     else if (/^otrack:\d+$/.test(key)) out = osmTrackDetail(OTR[+key.split(":")[1]]);
     else if (/^launch:\d+$/.test(key)) out = launchDetail((LAUNCH || [])[+key.split(":")[1]]);
