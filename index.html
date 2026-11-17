@@ -3732,10 +3732,14 @@ var ROUTES = S.routes;
     if ((c >= 51 && c <= 67) || (c >= 80 && c <= 82) || WX.wet > 0 || WX.radar >= 0.3 || /rain|drizzle|shower/.test(o)) k = "rain";
     if ((c >= 95) || /thunder|t-storm/.test(o)) k = "storm";
     WX.kind = k;
+    // How much of the sky the clouds hide: a full overcast deck hides the sun and moon completely
+    WX.overcast = k === "cloudy" && (WX.cover >= 85 || /overcast/.test(o) || (/cloudy/.test(o) && !/mostly|partly/.test(o)));
+    WX.veil = { clear: 0, partly: 0.1, cloudy: WX.overcast ? 1 : 0.7, fog: 0.9, rain: 1, storm: 1 }[k];
     WX.heavy = k === "storm" || c === 65 || c === 82 || (c === 63 && !/light/.test(o)) || WX.wet >= 2.5 || WX.radarHeavy || /heavy/.test(o);
   }
+  var SKYSHIFT = +((location.search.match(/skyshift=(-?\d+(?:\.\d+)?)/) || [])[1] || 0);   // preview only: move the scene's clock by N hours
   function update() {
-    var now = new Date(), sp = SunCalc.getPosition(now, HOME[0], HOME[1]), st = SunCalc.getTimes(now, HOME[0], HOME[1]);
+    var now = new Date(Date.now() + SKYSHIFT * 36e5), sp = SunCalc.getPosition(now, HOME[0], HOME[1]), st = SunCalc.getTimes(now, HOME[0], HOME[1]);
     var alt = sp.altitude * 180 / Math.PI, evening = now > st.solarNoon, night = alt < -6;
     var c = skyAt(alt, evening);
     // Moon up at night brightens the sky a little, more for a fuller, higher moon
@@ -3744,8 +3748,9 @@ var ROUTES = S.routes;
       var k = mi.fraction * Math.min(1, Math.sin(mp.altitude) * 1.6) * 0.75 * Math.min(1, (-4 - alt) / 8);
       c = c.map(function (x, i) { return mix(x, hex(MOONLIT[i]), k); });
     }
-    var dull = { clear: 0, partly: 0.15, cloudy: 0.55, fog: 0.6, rain: 0.7, storm: 0.8 }[WX.kind] || 0;
-    if (dull) c = c.map(function (x) { return mix(gray(x, dull), [0, 0, 0], dull * (WX.kind === "storm" ? 0.35 : 0.18)); });
+    // Real cloud cover on top of the real sun height: overcast is a flat gray that still brightens at sunrise
+    var dull = { clear: 0, partly: 0.15, cloudy: WX.overcast ? 0.85 : 0.55, fog: 0.6, rain: 0.7, storm: 0.8 }[WX.kind] || 0;
+    if (dull) c = c.map(function (x) { return mix(gray(x, dull), [0, 0, 0], dull * (WX.kind === "storm" ? 0.35 : WX.overcast ? 0.1 : 0.18)); });
     root.setProperty("--sky-top", css(c[0])); root.setProperty("--sky-mid", css(c[1])); root.setProperty("--sky-low", css(c[2]));
     var sea = alt > 0 ? mix(hex("#1f78b4"), c[2], 0.25) : mix(hex("#0b2340"), c[2], 0.2);
     root.setProperty("--sea1", css(gray(sea, dull * 0.6))); root.setProperty("--sea2", css(gray(mix(sea, [0, 0, 0], 0.3), dull * 0.6)));
@@ -3760,14 +3765,16 @@ var ROUTES = S.routes;
     if (horizon - trackTop < 60) trackTop = horizon - 60;
     if (now > st.sunrise && now < st.sunset) {
       var p = onV(now.getTime(), st.sunrise.getTime(), st.solarNoon.getTime(), st.sunset.getTime());
-      sunEl.hidden = false; sunEl.style.left = p.x + "%"; sunEl.style.top = (trackTop + (horizon - trackTop) * p.y) + "px";
-      sunEl.classList.toggle("low", p.y > 0.75);
-      sunEl.style.opacity = { clear: 1, partly: 0.9, cloudy: 0.5, fog: 0.45, rain: 0.42, storm: 0.3 }[WX.kind];
+      var veil = WX.veil || 0;
+      sunEl.hidden = veil >= 0.95; sunEl.style.left = p.x + "%"; sunEl.style.top = (trackTop + (horizon - trackTop) * p.y) + "px";   // no sun through a full overcast
+      sunEl.classList.toggle("low", p.y > 0.75 && veil < 0.5);
+      sunEl.style.opacity = String(Math.max(0, 1 - veil * 1.05));
       glint.style.left = p.x + "%"; glint.style.opacity = p.y > 0.6 && dull < 0.5 ? 0.9 * (p.y - 0.6) / 0.4 : 0;
     } else { sunEl.hidden = true; glint.style.opacity = 0; }
     // Moon, whenever it's above the horizon, day or night
     var arc = moonArc(now);
-    if (arc) {
+    if (arc && (WX.veil || 0) >= 0.95) moonEl.setAttribute("hidden", "");   // hidden behind a full overcast too
+    else if (arc) {
       var q = onV(now.getTime(), arc.rise, arc.peak, arc.set), day = alt > -2;
       moonEl.removeAttribute("hidden"); moonEl.innerHTML = moonPhoto(mi.phase, day);
       moonEl.classList.toggle("day", day);
