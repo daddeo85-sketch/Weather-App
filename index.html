@@ -349,33 +349,18 @@ label.sw:first-of-type { border-top: 0; }
 .flash { position: absolute; inset: 0; background: #fff; opacity: 0; }
 .sky.wx-storm .flash { animation: flash 9s infinite; }
 @keyframes flash { 0%, 91%, 93.5%, 100% { opacity: 0; } 92% { opacity: 0.55; } 93% { opacity: 0.1; } 93.2% { opacity: 0.45; } }
-/* sea and street along the bottom, just above the tab bar */
-.scene { position: absolute; left: 0; right: 0; bottom: var(--tabh); height: 150px; z-index: 1; }
-.sea { position: absolute; left: 0; right: 0; bottom: 56px; height: 64px; overflow: hidden; background: var(--sea2); transition: background 2s; }
-.sea svg { position: absolute; left: 0; width: 200%; height: 40px; animation: swell 14s linear infinite; }
-.sea svg.w1 { top: -10px; fill: var(--sea1); }
-.sea svg.w2 { top: 8px; fill: var(--sea2); animation-duration: 9s; animation-direction: reverse; opacity: 0.9; }
-.sea svg.w3 { top: 26px; fill: var(--sea1); animation-duration: 18s; opacity: 0.8; }
+/* the street, looking down it to the ocean, just above the tab bar */
+.scene { position: absolute; left: 0; right: 0; bottom: var(--tabh); height: clamp(210px, 34vh, 340px); z-index: 1; }
+#roadfx { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: calc(100% + 170px); }
+.sea { position: absolute; left: 0; right: 0; top: var(--seaTop, 40px); height: var(--seaH, 16px); overflow: hidden; background: var(--sea2); transition: background 2s; }
+.sea svg { position: absolute; left: 0; width: 200%; height: 70%; animation: swell 14s linear infinite; }
+.sea svg.w1 { top: -25%; fill: var(--sea1); }
+.sea svg.w2 { top: 10%; fill: var(--sea2); animation-duration: 9s; animation-direction: reverse; opacity: 0.9; }
+.sea svg.w3 { top: 45%; fill: var(--sea1); animation-duration: 18s; opacity: 0.8; }
 @keyframes swell { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 .glint { position: absolute; top: 0; bottom: 0; width: 70px; transform: translateX(-50%); opacity: 0;
-  background: repeating-linear-gradient(180deg, rgba(255,226,150,0.85) 0 3px, rgba(255,226,150,0) 3px 9px);
+  background: repeating-linear-gradient(180deg, rgba(255,226,150,0.85) 0 2px, rgba(255,226,150,0) 2px 5px);
   -webkit-mask: linear-gradient(90deg, transparent, #000 35%, #000 65%, transparent); mask: linear-gradient(90deg, transparent, #000 35%, #000 65%, transparent); transition: opacity 2s; }
-.street { position: absolute; left: 0; right: 0; bottom: 0; height: 56px; background: linear-gradient(180deg, #8d8f93 0 6px, #3b3e44 6px 100%); }
-.street::after { content: ""; position: absolute; left: 0; right: 0; top: 29px; height: 3px;
-  background: repeating-linear-gradient(90deg, #f2c94c 0 26px, transparent 26px 52px); opacity: 0.8; }
-.night .street { background: linear-gradient(180deg, #4a4c50 0 6px, #1d1f24 6px 100%); }
-.wet { position: absolute; left: 0; right: 0; bottom: 0; height: 50px; opacity: 0; transition: opacity 2s;
-  background: linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0)); }
-.sky.wx-rain .wet, .sky.wx-storm .wet { opacity: 1; }
-.lamp { position: absolute; right: 9%; bottom: 50px; width: 90px; height: 200px; }
-.lamp svg { position: absolute; inset: 0; }
-.cone { position: absolute; right: calc(9% + 47px); bottom: 2px; width: 240px; height: 230px; transform: translateX(50%); opacity: var(--glow);
-  background: radial-gradient(ellipse 50% 100% at 50% 0%, rgba(255,176,60,0.55), rgba(255,176,60,0.18) 55%, rgba(255,176,60,0) 75%);
-  -webkit-clip-path: polygon(46% 0, 54% 0, 100% 100%, 0 100%); clip-path: polygon(46% 0, 54% 0, 100% 100%, 0 100%); transition: opacity 2s; }
-.pool { position: absolute; right: calc(9% + 47px); bottom: 4px; width: 240px; height: 36px; transform: translateX(50%); border-radius: 50%; opacity: var(--glow);
-  background: radial-gradient(ellipse, rgba(255,178,70,0.55), rgba(255,178,70,0) 70%); transition: opacity 2s; }
-.sky.wx-rain .pool, .sky.wx-storm .pool { height: 56px; background: radial-gradient(ellipse 30% 100% at 50% 0%, rgba(255,186,80,0.75), rgba(255,178,70,0) 80%); }
-.bulb { transition: fill 2s; }
 @media (prefers-reduced-motion: reduce) { .cloud, .sea svg { animation: none; } .c1 { left: 10%; } .c3 { left: 55%; } .c4 { left: 30%; } .sky.wx-storm .flash { animation: none; } }
 /* readability over the moving sky */
 .top { text-shadow: 0 1px 8px rgba(0,0,0,0.5); }
@@ -410,12 +395,7 @@ label.sw:first-of-type { border-top: 0; }
       <svg class="w2" viewBox="0 0 1200 40" preserveAspectRatio="none"><path d="M0 20 Q50 6 100 20 T200 20 T300 20 T400 20 T500 20 T600 20 T700 20 T800 20 T900 20 T1000 20 T1100 20 T1200 20 V40 H0z"/></svg>
       <svg class="w3" viewBox="0 0 1200 40" preserveAspectRatio="none"><path d="M0 20 Q100 4 200 20 T400 20 T600 20 T800 20 T1000 20 T1200 20 V40 H0z"/></svg>
     </div>
-    <div class="street"><div class="wet"></div></div>
-    <div class="pool"></div>
-    <div class="cone"></div>
-    <div class="lamp"><svg viewBox="0 0 90 200"><rect x="74" y="20" width="6" height="180" fill="#2b2f36"/><rect x="70" y="190" width="14" height="10" fill="#2b2f36"/>
-      <path d="M77 22 Q77 8 60 8 L44 8" stroke="#2b2f36" stroke-width="5" fill="none"/><path d="M28 8 h30 l-4 8 h-22z" fill="#3a3f47"/>
-      <rect class="bulb" id="bulb" x="33" y="15" width="20" height="4" rx="2" fill="#777"/></svg></div>
+    <canvas id="roadfx"></canvas>
   </div>
 </div>
 </div>
@@ -2771,10 +2751,10 @@ var ROUTES = S.routes;
 (function () {
   "use strict";
   var sky = document.getElementById("skybg"), cv = document.getElementById("skyfx"), cx = cv.getContext && cv.getContext("2d");
-  var sunEl = document.getElementById("sunEl"), moonEl = document.getElementById("moonEl"), glint = document.getElementById("glint"), bulb = document.getElementById("bulb");
+  var sunEl = document.getElementById("sunEl"), moonEl = document.getElementById("moonEl"), glint = document.getElementById("glint");
   var root = document.documentElement.style, still = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   var WX = { kind: "clear", cover: 0, heavy: false, obsText: "", code: null, wet: 0, mph: 0, dir: null, radar: 0, radarHeavy: false };
-  var drops = [], stars = [], raf = 0, W = 0, H = 0, lampOn = false, lampX = 0, lampTop = 0;
+  var drops = [], stars = [], raf = 0, W = 0, H = 0, lampOn = false;
 
   function hex(h) { return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]; }
   function mix(a, b, t) { t = Math.max(0, Math.min(1, t)); return [0, 1, 2].map(function (i) { return a[i] + (b[i] - a[i]) * t; }); }
@@ -2851,7 +2831,7 @@ var ROUTES = S.routes;
     Array.prototype.forEach.call(sky.querySelectorAll(".cloud"), function (el, i) { el.style.animationDuration = Math.round([95, 120, 140, 110, 160, 130][i] * dur) + "s"; });
     var meta = document.querySelector('meta[name="theme-color"]'); if (meta) meta.setAttribute("content", css(c[0]));
     // Sun
-    var trackTop = 0.10 * H, horizon = H - (parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--tabh")) || 64) - 120;
+    var trackTop = 0.10 * H, horizon = R.k ? R.top + R.hy - 4 : H - 200;
     if (now > st.sunrise && now < st.sunset) {
       var p = onV(now.getTime(), st.sunrise.getTime(), st.solarNoon.getTime(), st.sunset.getTime());
       sunEl.hidden = false; sunEl.style.left = p.x + "%"; sunEl.style.top = (trackTop + (horizon - trackTop) * p.y) + "px";
@@ -2871,20 +2851,117 @@ var ROUTES = S.routes;
     } else moonEl.hidden = true;
     // Streetlight comes on after sunset, or on a dark stormy day
     lampOn = alt < 1 || (WX.kind === "storm" || (WX.kind === "rain" && WX.heavy));
-    root.setProperty("--glow", lampOn ? (night ? 1 : 0.6) : 0);
-    bulb.setAttribute("fill", lampOn ? "#ffcf73" : "#8a8a8a");
+    drawRoad({ night: alt < -3, wet: WX.kind === "rain" || WX.kind === "storm" || WX.wet > 0, dull: dull, low: c[2], glow: lampOn ? (alt < -6 ? 1 : 0.65) : 0 });
     // Stars on clear nights
     var starCount = night && (WX.kind === "clear" || WX.kind === "partly") ? Math.round(110 * (1 - mi.fraction * (mp.altitude > 0 ? 0.6 : 0))) : 0;
     if (stars.length !== starCount) { stars = []; for (var s = 0; s < starCount; s++) stars.push([Math.random(), Math.random() * 0.62, Math.random() * 1.2 + 0.3]); }
     setRain();
     draw();
   }
+  // ---- The street, seen from the middle of the road looking down it to the ocean ----
+  // Simple perspective: a point X meters to the side, Y meters up and Z meters ahead lands at
+  // x = cx + X*p(Z), y = hy + (camH - Y)*p(Z). Drawn once per update, not every frame.
+  var R = { cv: document.getElementById("roadfx"), lamps: [], lift: 170, half: 3.6, zb: 3, zFar: 46 };
+  R.cx = R.cv && R.cv.getContext && R.cv.getContext("2d");
+  var LAMPS = [[-1, 6], [1, 13], [-1, 20], [1, 27], [-1, 34], [1, 41]];
+  function roadSize() {
+    if (!R.cx) return;
+    var sc = sky.querySelector(".scene").getBoundingClientRect(), r = window.devicePixelRatio > 1 ? 1.5 : 1;
+    R.w = sc.width; R.h = sc.height + R.lift; R.top = sc.top - R.lift;
+    R.cv.width = R.w * r; R.cv.height = R.h * r;
+    R.cx.setTransform(r, 0, 0, r, 0, 0);
+    R.hy = R.lift + sc.height * 0.2;                        // horizon
+    var below = R.h - R.hy, wc = Math.min(R.w, 520);
+    R.camH = R.half * below / (0.42 * wc);                  // road edges just inside the screen at the bottom
+    R.k = below * R.zb / R.camH;
+    R.mid = R.w / 2;
+    var seaTop = R.hy - R.lift, seaH = Math.max(12, gy(R.zFar) - R.hy);
+    root.setProperty("--seaTop", seaTop + "px"); root.setProperty("--seaH", seaH + "px");
+  }
+  function pz(z) { return R.k / z; }
+  function gx(X, z) { return R.mid + X * pz(z); }
+  function gy(z, Y) { return R.hy + (R.camH - (Y || 0)) * pz(z); }
+  function quad(c, X1, X2, z1, z2) {     // a flat strip on the ground
+    c.beginPath(); c.moveTo(gx(X1, z1), gy(z1)); c.lineTo(gx(X2, z1), gy(z1)); c.lineTo(gx(X2, z2), gy(z2)); c.lineTo(gx(X1, z2), gy(z2)); c.closePath(); c.fill();
+  }
+  function rgba(c, a) { return "rgba(" + c.map(Math.round).join(",") + "," + a + ")"; }
+  function drawRoad(o) {
+    var c = R.cx; if (!c) return;
+    c.clearRect(0, 0, R.w, R.h);
+    var n = o.night, wet = o.wet, dull = o.dull, low = o.low, zn = 1.1, zf = R.zFar, H2 = R.half;
+    var dim = n ? 0.32 : 1 - dull * 0.35;
+    function shade(hx, extra) { return css(mix(hex(hx), [0, 0, 0], 1 - dim + (extra || 0))); }
+    // beach, grass, sidewalks, road
+    c.fillStyle = shade("#d9c48f"); quad(c, -60, 60, zf - 4, zf);
+    c.fillStyle = shade("#5f8a43"); quad(c, -60, 60, zn, zf - 4);
+    c.fillStyle = shade("#a7a59e"); quad(c, -H2 - 2.4, -H2, zn, zf - 4); quad(c, H2, H2 + 2.4, zn, zf - 4);
+    c.fillStyle = shade("#7d7b75", 0.1); quad(c, -H2 - 0.25, -H2, zn, zf - 4); quad(c, H2, H2 + 0.25, zn, zf - 4);   // curbs
+    c.fillStyle = shade(wet ? "#34373d" : "#4b4e54", wet ? 0.08 : 0); quad(c, -H2, H2, zn, zf - 4);
+    // wet road mirrors the sky toward the horizon
+    if (wet) {
+      var g = c.createLinearGradient(0, gy(zf - 4), 0, gy(8));
+      g.addColorStop(0, rgba(low, 0.55)); g.addColorStop(1, rgba(low, 0));
+      c.fillStyle = g; quad(c, -H2, H2, 8, zf - 4);
+    }
+    // lane lines: solid white edges, dashed yellow center
+    c.fillStyle = rgba([235, 235, 230], n ? 0.45 : 0.85); quad(c, -H2 + 0.25, -H2 + 0.4, zn, zf - 4); quad(c, H2 - 0.4, H2 - 0.25, zn, zf - 4);
+    c.fillStyle = rgba([242, 201, 76], n ? 0.55 : 0.9);
+    for (var z = 1; z < zf - 6; z += 9) quad(c, -0.09, 0.09, Math.max(zn, z), z + 3);
+    // light pools on the road (and their long reflections when it's wet)
+    R.lamps = [];
+    var glow = o.glow;
+    LAMPS.forEach(function (L) {
+      var side = L[0], z = L[1], hx = side * (H2 - 1.3), cxp = gx(hx, z), cyp = gy(z), rx = 3.3 * pz(z), ry = Math.max(2, (gy(z - 2.6) - gy(z + 2.6)) / 2);
+      R.lamps.push({ z: z, bx: gx(hx, z) , by: gy(z, 7.7) + R.top, px: cxp, py: cyp + R.top, rx: rx, ry: ry });
+      if (!glow) return;
+      c.save(); c.translate(cxp, cyp); c.scale(1, ry / rx);
+      var rg = c.createRadialGradient(0, 0, 0, 0, 0, rx);
+      rg.addColorStop(0, rgba([255, 184, 80], 0.6 * glow)); rg.addColorStop(0.55, rgba([255, 170, 60], 0.22 * glow)); rg.addColorStop(1, rgba([255, 170, 60], 0));
+      c.fillStyle = rg; c.beginPath(); c.arc(0, 0, rx, 0, Math.PI * 2); c.fill(); c.restore();
+      if (wet) {
+        var lg = c.createLinearGradient(0, cyp, 0, cyp + ry * 5);
+        lg.addColorStop(0, rgba([255, 190, 95], 0.5 * glow)); lg.addColorStop(1, rgba([255, 190, 95], 0));
+        c.fillStyle = lg; c.fillRect(cxp - rx * 0.16, cyp, rx * 0.32, ry * 5);
+      }
+    });
+    // haze: far things fade into the sky color, more in rain and fog
+    var hz = Math.min(0.9, 0.35 + dull * 0.5), hg = c.createLinearGradient(0, R.hy, 0, gy(9));
+    hg.addColorStop(0, rgba(low, hz)); hg.addColorStop(1, rgba(low, 0));
+    c.fillStyle = hg; c.fillRect(0, R.hy, R.w, gy(9) - R.hy);
+    // street lights, far to near
+    LAMPS.slice().reverse().forEach(function (L) {
+      var side = L[0], z = L[1], p = pz(z), xp = gx(side * (H2 + 0.9), z), x0 = gx(side * (H2 - 1.3), z);
+      var yb = gy(z), yt = gy(z, 8), fade = Math.min(0.85, z / zf * hz * 1.3);
+      var pole = css(mix(mix(hex("#2b2f36"), [0, 0, 0], n ? 0.3 : 0), low, fade));
+      c.fillStyle = "rgba(0,0,0," + (0.25 * (1 - fade)) + ")";       // soft shadow at the base
+      c.beginPath(); c.ellipse(xp, yb, 0.7 * p, 0.18 * p, 0, 0, Math.PI * 2); c.fill();
+      c.fillStyle = pole; c.fillRect(xp - 0.11 * p, yt, 0.22 * p, yb - yt);
+      c.strokeStyle = pole; c.lineWidth = Math.max(1, 0.14 * p); c.lineCap = "round";
+      c.beginPath(); c.moveTo(xp, yt + 0.1 * p); c.quadraticCurveTo(xp, yt - 0.5 * p, x0 + side * 0.4 * p, yt - 0.35 * p); c.stroke();
+      var hx0 = x0 - 0.5 * p, hw = 1.0 * p, hy0 = yt - 0.45 * p;
+      c.fillStyle = pole; c.beginPath(); c.moveTo(hx0, hy0); c.lineTo(hx0 + hw, hy0); c.lineTo(hx0 + hw - 0.12 * p, hy0 + 0.28 * p); c.lineTo(hx0 + 0.12 * p, hy0 + 0.28 * p); c.closePath(); c.fill();
+      if (glow) {
+        // cone of light from the lamp head down to its pool
+        var by = hy0 + 0.28 * p, py = yb, rx = 3.3 * p;
+        var cg = c.createLinearGradient(0, by, 0, py);
+        cg.addColorStop(0, rgba([255, 196, 100], 0.4 * glow * (1 - fade))); cg.addColorStop(1, rgba([255, 196, 100], 0.04 * glow));
+        c.fillStyle = cg; c.beginPath(); c.moveTo(x0 - 0.3 * p, by); c.lineTo(x0 + 0.3 * p, by); c.lineTo(x0 + rx, py); c.lineTo(x0 - rx, py); c.closePath(); c.fill();
+        var bg = c.createRadialGradient(x0, by, 0, x0, by, 2.2 * p);
+        bg.addColorStop(0, rgba([255, 230, 170], 0.95 * glow)); bg.addColorStop(0.25, rgba([255, 190, 90], 0.45 * glow)); bg.addColorStop(1, rgba([255, 180, 80], 0));
+        c.fillStyle = bg; c.beginPath(); c.arc(x0, by, 2.2 * p, 0, Math.PI * 2); c.fill();
+        c.fillStyle = "#ffe2a0"; c.fillRect(x0 - 0.35 * p, by - 0.06 * p, 0.7 * p, 0.1 * p);
+        var L2 = R.lamps.filter(function (q) { return q.z === z; })[0]; if (L2) { L2.bx = x0; L2.by = by + R.top; }
+      } else { c.fillStyle = "#8a8a8a"; c.fillRect(x0 - 0.35 * p, hy0 + 0.22 * p, 0.7 * p, 0.08 * p); }
+    });
+    // a little darker at the very bottom, so it reads as near
+    var vg = c.createLinearGradient(0, R.h - 40, 0, R.h); vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, "rgba(0,0,0," + (n ? 0.35 : 0.18) + ")");
+    c.fillStyle = vg; c.fillRect(0, R.h - 40, R.w, 40);
+  }
   function size() {
     var r = window.devicePixelRatio > 1 ? 1.5 : 1;
     W = window.innerWidth; H = window.innerHeight;
     cv.width = W * r; cv.height = H * r; if (cx) cx.setTransform(r, 0, 0, r, 0, 0);
-    var lr = sky.querySelector(".lamp").getBoundingClientRect();
-    lampX = lr.left + 43 * (lr.width / 90); lampTop = lr.top + 17 * (lr.height / 200);
+    roadSize();
   }
   // Sideways push on the rain: an east wind blows it toward the west (left). Calm falls straight down.
   function slant() {
@@ -2894,7 +2971,7 @@ var ROUTES = S.routes;
   function setRain() {
     var n = WX.kind === "rain" ? (WX.heavy ? 150 : 80) : WX.kind === "storm" ? 180 : 0;
     if (W < 500) n = Math.round(n * 0.7);
-    while (drops.length < n) drops.push({ x: Math.random() * W, y: Math.random() * H, v: 9 + Math.random() * 7, l: 10 + Math.random() * 12 });
+    while (drops.length < n) drops.push(newDrop(Math.random() * H));
     drops.length = n;
     if (n && !still && !raf && !document.hidden) raf = requestAnimationFrame(frame);
   }
@@ -2903,27 +2980,36 @@ var ROUTES = S.routes;
     cx.clearRect(0, 0, W, H);
     if (stars.length) { cx.fillStyle = "rgba(255,255,255,0.8)"; stars.forEach(function (s) { cx.fillRect(s[0] * W, s[1] * H, s[2], s[2]); }); }
     if (!drops.length) return;
-    var road = H - (parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--tabh")) || 64), wind = slant() * 10;
-    cx.lineWidth = 1.2; cx.lineCap = "round";
+    var wind = slant() * 10;
+    cx.lineCap = "round";
     drops.forEach(function (d) {
-      // A drop inside the streetlight's cone of light catches the amber glow
-      var inCone = lampOn && d.y > lampTop && Math.abs(d.x - lampX) < (d.y - lampTop) * 0.52 + 6;
-      cx.strokeStyle = inCone ? "rgba(255,190,90," + (0.85 - (d.y - lampTop) / (road - lampTop) * 0.4) + ")" : "rgba(200,215,235,0.45)";
+      // A drop passing through a street light's cone catches the amber glow
+      var lit = null;
+      if (lampOn) for (var i = 0; i < R.lamps.length; i++) {
+        var L = R.lamps[i]; if (Math.abs(d.z - L.z) > 5 || d.y < L.by || d.y > L.py) continue;
+        var t = (d.y - L.by) / (L.py - L.by); if (Math.abs(d.x - (L.bx + (L.px - L.bx) * t)) < 3 + L.rx * t) { lit = t; break; }
+      }
+      cx.lineWidth = 0.5 + d.s;
+      cx.strokeStyle = lit != null ? "rgba(255,190,90," + (0.9 - lit * 0.35) + ")" : "rgba(200,215,235," + (0.2 + 0.3 * d.s) + ")";
       cx.beginPath(); cx.moveTo(d.x, d.y); cx.lineTo(d.x + wind * d.l / 10, d.y + d.l); cx.stroke();
-      if (d.y + d.l > road - 2 && d.y + d.l < road + 30) {   // splash on the road
-        cx.strokeStyle = inCone ? "rgba(255,190,90,0.7)" : "rgba(200,215,235,0.35)";
-        cx.beginPath(); cx.ellipse(d.x, road - 8 + Math.random() * 6, 3, 1, 0, 0, Math.PI * 2); cx.stroke();
+      if (d.y + d.l > d.g - 4) {   // splash where it hits the road
+        cx.strokeStyle = lit != null ? "rgba(255,190,90,0.75)" : "rgba(200,215,235," + (0.15 + 0.3 * d.s) + ")";
+        cx.beginPath(); cx.ellipse(d.x, d.g, 1 + 3 * d.s, 0.4 + d.s, 0, 0, Math.PI * 2); cx.stroke();
       }
     });
+  }
+  // Each drop falls at some depth down the street and lands on the road there: far drops are short and faint.
+  function newDrop(y) {
+    var s = 0.065 + Math.pow(Math.random(), 1.4) * 0.935, z = R.zb / s;
+    return { x: Math.random() * (W + 60) - 30, y: y, s: s, z: z, g: R.k ? gy(z) + R.top : H, v: 4 + 11 * s, l: 5 + 15 * s };
   }
   var last = 0;
   function frame(t) {
     raf = 0;
     if (!drops.length || document.hidden) return;
     var dt = Math.min(50, t - (last || t)); last = t;
-    var road = H - (parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--tabh")) || 64);
     var sl = slant();
-    drops.forEach(function (d) { d.y += d.v * dt / 16; d.x += sl * d.v * dt / 16; if (d.y > road + 10) { d.y = -20 - Math.random() * 80; d.x = Math.random() * (W + 40); } });
+    drops.forEach(function (d, i) { d.y += d.v * dt / 16; d.x += sl * d.v * dt / 16; if (d.y + d.l > d.g + 2) drops[i] = newDrop(-20 - Math.random() * 120); });
     draw();
     raf = requestAnimationFrame(frame);
   }
@@ -2941,7 +3027,7 @@ var ROUTES = S.routes;
     set: function (kind) { WX.kind = kind; update(); }   // for testing: SKY.set("storm")
   };
   size(); update();
-  window.addEventListener("resize", function () { size(); update(); });
+  window.addEventListener("resize", function () { size(); drops = []; update(); });
   setInterval(update, 60000);
   document.addEventListener("visibilitychange", function () { if (!document.hidden) { update(); } });
 })();
