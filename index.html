@@ -3960,7 +3960,7 @@ var ROUTES = S.routes;
   }
   // US flag on a pole by the sidewalk, in front of the house. It flies downwind and waves harder as the wind picks up.
   function drawFlag(c, t) {
-    var X = -6.0, z = 6.7, p = pz(z), H = 5.8, dim = R.dimv || 1;
+    var X = -5.95, z = 12.2, p = pz(z), H = 6.0, dim = R.dimv || 1;
     var col = function (h) { return css(mix(hex(h), [0, 0, 0], 1 - dim)); };
     var xb = gx(X, z), yb = gy(z), yt = gy(z, H);
     c.fillStyle = "rgba(0,0,0,0.25)"; c.beginPath(); c.ellipse(xb, yb, 0.35 * p, 0.09 * p, 0, 0, Math.PI * 2); c.fill();
