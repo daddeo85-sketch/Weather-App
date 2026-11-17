@@ -351,21 +351,24 @@ label.sw:first-of-type { border-top: 0; }
 .sunEl.low { box-shadow: 0 0 80px 36px rgba(255,130,70,0.5); }
 .moonEl { width: clamp(56px, 17vw, 80px); height: clamp(56px, 17vw, 80px); filter: drop-shadow(0 0 20px rgba(230,240,255,0.55)); }
 .moonEl.day { opacity: 0.55; filter: none; }
-.cloud { position: absolute; width: 360px; height: 150px; margin-top: -60px; animation: drift linear infinite; transition: opacity 2s;
+.cloud { position: absolute; width: 380px; height: 150px; margin-top: -60px; animation: drift linear infinite; transition: opacity 2s;
   background:
-    radial-gradient(ellipse 46% 26% at 50% 80%, var(--cloud-shade) 0%, transparent 72%),
-    radial-gradient(ellipse 20% 34% at 30% 52%, var(--cloud) 0%, transparent 70%),
-    radial-gradient(ellipse 24% 44% at 47% 42%, var(--cloud) 0%, transparent 70%),
-    radial-gradient(ellipse 18% 32% at 64% 50%, var(--cloud) 0%, transparent 70%),
-    radial-gradient(ellipse 14% 24% at 78% 62%, var(--cloud) 0%, transparent 70%),
-    radial-gradient(ellipse 14% 22% at 18% 66%, var(--cloud) 0%, transparent 70%),
-    radial-gradient(ellipse 48% 22% at 50% 68%, var(--cloud) 0%, transparent 78%);
-  filter: blur(5px); }
-.cloud::before { content: ""; position: absolute; left: -12%; right: -12%; top: 54%; height: 28%;
-  background: radial-gradient(ellipse 50% 50% at 50% 50%, var(--cloud) 0%, transparent 70%); opacity: 0.5; filter: blur(6px); }
-.cloud::after { content: ""; position: absolute; left: 34%; top: 14%; width: 26%; height: 30%;
-  background: radial-gradient(ellipse 50% 50% at 50% 60%, rgba(255,255,255,0.55) 0%, transparent 70%); filter: blur(4px); }
-.sky.night .cloud::after, .sky.wx-rain .cloud::after, .sky.wx-storm .cloud::after { opacity: 0.25; }
+    radial-gradient(ellipse 46% 20% at 50% 80%, var(--cloud-shade) 0%, transparent 100%),
+    radial-gradient(ellipse 16% 26% at 24% 60%, var(--cloud) 0%, transparent 74%),
+    radial-gradient(ellipse 18% 34% at 36% 46%, var(--cloud) 0%, transparent 74%),
+    radial-gradient(ellipse 20% 40% at 50% 36%, var(--cloud) 0%, transparent 74%),
+    radial-gradient(ellipse 17% 32% at 63% 45%, var(--cloud) 0%, transparent 74%),
+    radial-gradient(ellipse 15% 26% at 75% 56%, var(--cloud) 0%, transparent 74%),
+    radial-gradient(ellipse 10% 16% at 87% 66%, var(--cloud) 0%, transparent 74%),
+    radial-gradient(ellipse 11% 18% at 13% 68%, var(--cloud) 0%, transparent 74%),
+    radial-gradient(ellipse 24% 26% at 43% 60%, var(--cloud) 0%, transparent 74%),
+    radial-gradient(ellipse 24% 24% at 59% 62%, var(--cloud) 0%, transparent 74%),
+    radial-gradient(ellipse 20% 16% at 30% 70%, var(--cloud) 0%, transparent 74%),
+    radial-gradient(ellipse 20% 16% at 70% 70%, var(--cloud) 0%, transparent 74%),
+    radial-gradient(ellipse 48% 18% at 50% 70%, var(--cloud) 20%, transparent 92%);
+  filter: blur(3.5px); }
+.cloud::before { content: ""; position: absolute; left: -16%; right: -16%; top: 58%; height: 26%;
+  background: radial-gradient(ellipse 50% 50% at 50% 50%, var(--cloud) 0%, transparent 72%); opacity: 0.45; filter: blur(7px); }
 .c1 { top: 6%;  transform: scale(1.1); animation-duration: 95s;  animation-delay: -10s; }
 .c2 { top: 20%; transform: scale(0.7, 0.6) scaleX(-1); animation-duration: 120s; animation-delay: -60s; }
 .c3 { top: 36%; transform: scale(1.3); animation-duration: 140s; animation-delay: -95s; }
@@ -378,7 +381,7 @@ label.sw:first-of-type { border-top: 0; }
 .sky.wx-clear .c1, .sky.wx-clear .c4 { opacity: 0.55; }
 .sky.wx-partly .c1, .sky.wx-partly .c3, .sky.wx-partly .c4 { opacity: 0.85; }
 .sky.wx-cloudy .cloud, .sky.wx-rain .cloud, .sky.wx-storm .cloud, .sky.wx-fog .cloud { opacity: 0.92; }
-.sky.wx-rain, .sky.wx-storm { --cloud: rgba(120,130,145,0.95); --cloud-shade: rgba(80,90,105,0.9); }
+.sky.wx-rain, .sky.wx-storm { --cloud: rgba(92,101,116,0.95); --cloud-shade: rgba(58,66,80,0.9); }
 .sky.night { --cloud: rgba(70,82,100,0.75); --cloud-shade: rgba(40,50,66,0.7); }
 .sky.night.wx-rain, .sky.night.wx-storm { --cloud: rgba(52,60,74,0.9); --cloud-shade: rgba(30,36,48,0.9); }
 .deck { position: absolute; left: 0; right: 0; top: 0; height: 70%; opacity: 0; transition: opacity 2s;
@@ -3832,8 +3835,8 @@ var ROUTES = S.routes;
     var lit = n ? "#ffcf7a" : null, glass = n ? "#ffcf7a" : shade("#5d7a92"), trim = shade("#f4f2ec"), wall = shade("#e3d3b0"), wallS = shade("#cdbb95", 0.04);
     var conc = shade("#bdb9b0"), concD = shade("#a9a59c");
     // driveway from the sidewalk, along the near side of the house
-    c.fillStyle = conc; quad(c, -(R.half + 2.1), -19, 7.4, 10.0);
-    c.fillStyle = concD; quad(c, -(R.half + 2.1), -19, 8.65, 8.72);
+    c.fillStyle = conc; quad(c, -(R.half + 2.1), -12.6, 7.6, 10.0);
+    c.fillStyle = concD; quad(c, -(R.half + 2.1), -12.6, 8.76, 8.84);
     // walkway from the porch steps to the sidewalk
     c.fillStyle = conc; quad(c, PX, -(R.half + 2.1), DZ - 0.55, DZ + 0.55);
     // side wall that faces the street
@@ -3896,7 +3899,7 @@ var ROUTES = S.routes;
     for (var i = 0; i < n; i++) {
       var z = 1.3 + Math.pow(rnd(), 1.6) * 26, side = rnd() < 0.5 ? -1 : 1, X = side * (R.half + 2.5 + rnd() * 7);
       if (X < -6.2 && z > 10.0 && z < 21.2) continue;   // the yard behind the picket fence is mowed
-      if (X < -5.6 && z > 7.2 && z < 10.1) continue;    // and nothing grows on the driveway
+      if (X < -5.6 && X > -12.8 && z > 7.4 && z < 10.1) continue;    // and nothing grows on the driveway
       FG.blades.push({ z: z, X: X, h: 0.45 + rnd() * 0.45, ph: rnd() * 6.28, k: rnd() < 0.5 });
     }
     FG.blades.sort(function (a, b) { return b.z - a.z; });
@@ -3963,7 +3966,7 @@ var ROUTES = S.routes;
     c.fillStyle = "rgba(0,0,0,0.25)"; c.beginPath(); c.ellipse(xb, yb, 0.35 * p, 0.09 * p, 0, 0, Math.PI * 2); c.fill();
     c.fillStyle = col("#cfd3d6"); c.fillRect(xb - 0.05 * p, yt, 0.1 * p, yb - yt);
     c.fillStyle = col("#d9b44a"); c.beginPath(); c.arc(xb, yt, Math.max(1.2, 0.09 * p), 0, Math.PI * 2); c.fill();
-    var mph = WX.mph || 0, w = Math.min(mph, 35) / 35, sl = slant(), dir = sl < -0.02 ? -1 : 1;
+    var mph = WX.mph || 0, w = Math.min(mph, 35) / 35, dir = 1;   // always flies out toward the street, clear of the house
     var L = 2.5 * p, Ht = 1.32 * p, N = 14, droop = (1 - Math.min(1, mph / 8)) * 1.1, amp = (0.06 + w * 0.12) * Ht, sp = 0.004 + w * 0.012;
     var pts = [];
     for (var i = 0; i <= N; i++) {
