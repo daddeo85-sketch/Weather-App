@@ -3736,6 +3736,7 @@ var ROUTES = S.routes;
     WX.veil = { clear: 0, partly: 0.1, cloudy: WX.overcast ? 1 : 0.7, fog: 0.9, rain: 1, storm: 1 }[k];
     WX.heavy = k === "storm" || c === 65 || c === 82 || (c === 63 && !/light/.test(o)) || WX.wet >= 2.5 || WX.radarHeavy || /heavy/.test(o);
   }
+  var WINDTEST = (location.search.match(/windtest=([\d.]+)(?:,(\d+))?/) || []);   // preview only: ?windtest=mph,direction
   var SKYSHIFT = +((location.search.match(/skyshift=(-?\d+(?:\.\d+)?)/) || [])[1] || 0);   // preview only: move the scene's clock by N hours
   function update() {
     var now = new Date(Date.now() + SKYSHIFT * 36e5), sp = SunCalc.getPosition(now, HOME[0], HOME[1]), st = SunCalc.getTimes(now, HOME[0], HOME[1]);
@@ -4090,7 +4091,7 @@ var ROUTES = S.routes;
     if (R.night && "filter" in c) c.filter = "brightness(0.55)";
     c.drawImage(im, -w / 2, -hh, w, hh); c.restore();
   }
-  // US flag on a pole by the sidewalk, in front of the house. It flies downwind and waves harder as the wind picks up.
+  // US flag on a pole by the sidewalk, in front of the house.
   function drawFlag(c, t) {
     var X = -5.95, z = 12.2, p = pz(z), H = 6.0, dim = R.dimv || 1;
     var col = function (h) { return css(mix(hex(h), [0, 0, 0], 1 - dim)); };
@@ -4098,12 +4099,19 @@ var ROUTES = S.routes;
     c.fillStyle = "rgba(0,0,0,0.25)"; c.beginPath(); c.ellipse(xb, yb, 0.35 * p, 0.09 * p, 0, 0, Math.PI * 2); c.fill();
     c.fillStyle = col("#cfd3d6"); c.fillRect(xb - 0.05 * p, yt, 0.1 * p, yb - yt);
     c.fillStyle = col("#d9b44a"); c.beginPath(); c.arc(xb, yt, Math.max(1.2, 0.09 * p), 0, Math.PI * 2); c.fill();
-    var mph = WX.mph || 0, w = Math.min(mph, 35) / 35, dir = 1;   // always flies out toward the street, clear of the house
-    var L = 2.5 * p, Ht = 1.32 * p, N = 14, droop = (1 - Math.min(1, mph / 8)) * 1.1, amp = (0.06 + w * 0.12) * Ht, sp = 0.004 + w * 0.012;
+    // Live wind (speed blended with gusts) sets how it flies: calm hangs limp down the pole, light wind droops and ripples slowly,
+    // strong wind flies it straight out with a fast ripple. It points downwind, left or right on screen, from the real wind direction.
+    var mph = WINDTEST[1] != null ? +WINDTEST[1] : (WX.mph || 0), wdir = WINDTEST[2] != null ? +WINDTEST[2] : WX.dir;
+    var w = Math.min(mph, 30) / 30, dx = wdir == null ? 1 : -Math.sin(wdir * Math.PI / 180);
+    var dir = dx < -0.05 ? -1 : 1, fs = wdir == null ? 1 : 0.45 + 0.55 * Math.abs(dx);   // wind toward or away from you shortens it
+    var lift = Math.pow(Math.max(0, Math.min(1, (mph - 2) / 16)), 0.8), droop = 1.45 * (1 - lift);
+    var L = 2.5 * p, Ht = 1.32 * p, N = 14, amp = (0.02 + w * 0.16) * Ht, sp = 0.0012 + w * 0.016;
+    var gath = 0.55 + 0.45 * Math.cos(droop);   // cloth bunches up as it hangs
     var pts = [];
     for (var i = 0; i <= N; i++) {
-      var f = i / N, ang = droop * f, wv = Math.sin(t * sp - f * 7) * amp * f;
-      pts.push([xb + dir * Math.cos(ang) * f * L, yt + 0.04 * p + Math.sin(ang) * f * L * 0.9 + wv, Math.cos(ang)]);
+      var f = i / N, ang = droop * f * (0.6 + 0.4 * f), wave = Math.sin(t * sp - f * 7) * amp * f;
+      var x = Math.cos(ang) * f * L * fs + Math.sin(ang) * f * Ht * 0.32 + wave * Math.sin(ang) * 0.6;
+      pts.push([xb + dir * x, yt + 0.04 * p + Math.sin(ang) * f * L * 0.9 + wave * Math.cos(ang), gath]);
     }
     for (var k = 0; k < N; k++) {
       var a = pts[k], b = pts[k + 1], sh = 0.85 + 0.15 * Math.cos(t * sp - k / N * 7);
