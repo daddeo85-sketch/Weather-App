@@ -86,6 +86,7 @@ p { margin: 6px 0; }
 .top h1 { margin: 0; font-size: calc(24px * var(--fs)); line-height: 1.1; }
 .top .sub { font-size: calc(12.5px * var(--fs)); opacity: 0.88; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ttl > div { min-width: 0; }
+@media (max-width: 420px) { .ttl { flex-direction: column; align-items: flex-start; gap: 4px; } .top .sub { font-size: calc(11.5px * var(--fs)); } }
 nav.jump {
   position: sticky; top: 0; z-index: 900;
   display: flex; gap: 6px; overflow-x: auto; padding: 8px 2px; margin: 0 -2px 6px;
@@ -1188,7 +1189,7 @@ var ROUTES = S.routes;
       if (ALERTS.length) {
         var warnAny = ALERTS.some(function (f) { return /warning/i.test(f.properties.event); });
         ban.classList.toggle("warning", warnAny);
-        ban.textContent = "⚠ " + ALERTS[0].properties.event + (ALERTS.length > 1 ? " + " + (ALERTS.length - 1) + " more" : "") + " · tap for details";
+        ban.textContent = "⚠ " + ALERTS[0].properties.event + (ALERTS.length > 1 ? " + " + (ALERTS.length - 1) + " more" : "");
       }
       ban.hidden = !ALERTS.length || route().v === "alerts";
     }).catch(function () { ALERTS = []; $("alertBanner").hidden = true; $("alerts").innerHTML = '<section class="card"><p class="err">Couldn\'t check for alerts right now.</p></section>'; });
