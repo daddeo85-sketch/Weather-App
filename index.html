@@ -4168,7 +4168,7 @@ var ROUTES = S.routes;
 (function () {
   "use strict";
   var KEY = "installSnooze.v2", box = document.getElementById("installBanner"), deferred = null;
-  var q = location.search, preview = (q.match(/installpreview=(ios|android|inapp)/) || [])[1];
+  var q = location.search, preview = (q.match(/installpreview=(ios|android|inappandroid|inapp|samsung|chrome)/) || [])[1];
   var standalone = (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || window.navigator.standalone === true;
   // Updates arrive on their own: check for a new version on open and whenever the app comes back to the front,
   // and when one takes over, reload once quietly so people always see the latest
@@ -4183,15 +4183,19 @@ var ROUTES = S.routes;
       reloaded = true; location.reload();
     });
   }
-  // A "Not now" hides it for 3 days, then it asks again
+  // A "Not now" hides it for 3 days, then it asks again. A first visit always sees it.
   function snoozed() { try { return Date.now() < (+localStorage.getItem(KEY) || 0); } catch (e) { return false; } }
   if (!box || (!preview && (standalone || snoozed()))) return;
-  var ua = navigator.userAgent, ios = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1), android = /Android/.test(ua);
-  var inApp = /FBAN|FBAV|Instagram|Line\/|Snapchat|Twitter|LinkedInApp|GSA\//.test(ua);
-  if (preview) { ios = preview !== "android"; android = preview === "android"; inApp = preview === "inapp"; }
-  if (!ios && !android) return;   // phones only
+  var ua = navigator.userAgent || "", touch = (navigator.maxTouchPoints || 0) > 0 && !!(window.matchMedia && matchMedia("(pointer: coarse)").matches);
+  var ios = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && touch);
+  var android = /Android/.test(ua) || (!ios && touch && /Linux|X11/.test(ua));          // also catches "Desktop site" mode on Android
+  var samsung = /SamsungBrowser/.test(ua), firefox = /Firefox|FxiOS/.test(ua), iosOther = ios && /CriOS|FxiOS|EdgiOS|OPiOS|DuckDuckGo/.test(ua);
+  var inApp = /FBAN|FBAV|FB_IAB|Instagram|Line\/|Snapchat|Twitter|LinkedInApp|GSA\/|TikTok|musical_ly|Pinterest/.test(ua) || (android && /; wv\)/.test(ua));
+  if (preview) { ios = preview === "ios" || preview === "inapp"; android = !ios; inApp = preview === "inapp" || preview === "inappandroid"; samsung = preview === "samsung"; iosOther = false; firefox = false; }
+  if (!ios && !android && !touch) return;   // phones and tablets only
   document.body.appendChild(box);   // sit above everything, clear of the page's own layers
   var shareIcon = '<span class="sh"><svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-label="Share"><path d="M12 2 7.5 6.5l1.4 1.4L11 5.8V15h2V5.8l2.1 2.1 1.4-1.4zM5 10v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V10h-3v2h1v8H7v-8h1v-2z"/></svg></span>';
+  var notNow = '<div class="go"><button class="no" type="button">Not now</button></div>', sub = '<span class="sub">Add it to your home screen. It opens like a regular app.</span>';
   function place() { var tb = document.querySelector(".tabbar"); box.style.setProperty("--instB", (tb && tb.offsetHeight ? tb.offsetHeight : 0) + "px"); }
   function hide(snooze) {
     box.classList.add("off"); setTimeout(function () { box.hidden = true; }, 300);
@@ -4201,30 +4205,35 @@ var ROUTES = S.routes;
     box.innerHTML = '<img src="icons/icon-192.png" alt=""><div class="t"><b class="h">Get Full Send Weather</b>' + body + (buttons || "") +
       '</div><button class="x" type="button" aria-label="Close">✕</button>';
     place(); box.hidden = false; box.classList.add("off");
-    requestAnimationFrame(function () { requestAnimationFrame(function () { box.classList.remove("off"); }); });
+    setTimeout(function () { box.classList.remove("off"); }, 30);
     box.querySelector(".x").addEventListener("click", function () { hide(true); });
     var no = box.querySelector(".no"); if (no) no.addEventListener("click", function () { hide(true); });
   }
+  function steps() {   // the right steps for this phone and browser, shown right away
+    if (inApp) return show('<span class="sub">This page opened inside another app. Open it in your phone\'s browser to install it.</span><ol><li>Tap the <b>⋮</b> or <b>⋯</b> menu at the top.</li><li>Tap <b>Open in ' +
+      (ios ? "Safari" : "Chrome") + '</b> (or <b>Open in browser</b>).</li></ol>', notNow);
+    if (ios && iosOther) return show(sub + '<ol><li>Tap ' + shareIcon + ' <b>Share</b> (top right or bottom of the screen).</li><li>Tap <b>Add to Home Screen</b>.</li></ol>' +
+      '<span class="sub">Don\'t see it? Open this page in <b>Safari</b> and do the same.</span>', notNow);
+    if (ios) return show(sub + '<ol><li>Tap ' + shareIcon + ' <b>Share</b> at the bottom of Safari.</li><li>Scroll down and tap <b>Add to Home Screen</b>.</li><li>Tap <b>Add</b>.</li></ol>', notNow);
+    if (samsung) return show(sub + '<ol><li>Tap the menu <b>≡</b> at the bottom right.</li><li>Tap <b>Add page to</b>, then <b>Home screen</b>.</li></ol>', notNow);
+    if (firefox) return show(sub + '<ol><li>Tap the menu <b>⋮</b>.</li><li>Tap <b>Install</b> or <b>Add to Home screen</b>.</li></ol>', notNow);
+    show(sub + '<ol><li>Tap the menu <b>⋮</b> at the top right.</li><li>Tap <b>Install app</b> or <b>Add to Home screen</b>.</li></ol>' +
+      '<span class="sub">No ⋮ menu? Tap <b>Open in Chrome</b> first.</span>', notNow);
+  }
   window.addEventListener("resize", place);
+  // When the phone offers a one-tap install, swap the steps for a real Install button
   window.addEventListener("beforeinstallprompt", function (e) {
-    e.preventDefault(); if (preview === "ios" || preview === "inapp") return; deferred = e;
+    e.preventDefault(); if (preview && preview !== "android") return; deferred = e;
     show('<span class="sub">Free. Installs in a second and opens like a regular app.</span>',
       '<div class="go"><button class="yes" type="button" id="doInstall">Install</button><button class="no" type="button">Not now</button></div>');
     document.getElementById("doInstall").addEventListener("click", function () {
+      if (!deferred) return steps();
       deferred.prompt();
-      deferred.userChoice.then(function (r) { hide(r.outcome !== "accepted"); deferred = null; });
+      deferred.userChoice.then(function (r) { hide(r.outcome !== "accepted"); deferred = null; }).catch(function () {});
     });
   });
   window.addEventListener("appinstalled", function () { hide(false); });
-  setTimeout(function () {
-    if (deferred || !box.hidden) return;
-    if (inApp) show('<span class="sub">To install it, open this page in your phone\'s browser first.</span><ol><li>Tap the <b>⋯</b> menu at the top.</li><li>Tap <b>Open in ' + (ios ? "Safari" : "browser") + '</b>.</li></ol>');
-    else if (ios) show('<span class="sub">Add it to your home screen. It opens like a regular app.</span><ol><li>Tap ' + shareIcon + ' <b>Share</b>' +
-      (/CriOS|FxiOS|EdgiOS/.test(ua) ? " (top right or bottom of the screen)" : " at the bottom of Safari") + '.</li>' +
-      '<li>Scroll down and tap <b>Add to Home Screen</b>.</li><li>Tap <b>Add</b>.</li></ol>', '<div class="go"><button class="no" type="button">Not now</button></div>');
-    else show('<span class="sub">Add it to your home screen. It opens like a regular app.</span><ol><li>Tap your browser\'s menu <b>⋮</b>.</li><li>Tap <b>Install app</b> or <b>Add to Home screen</b>.</li></ol>',
-      '<div class="go"><button class="no" type="button">Not now</button></div>');
-  }, preview === "android" ? 0 : 1800);
+  if (!deferred) steps();
   if (preview === "android") window.dispatchEvent(Object.assign(new Event("beforeinstallprompt"), { prompt: function () {}, userChoice: Promise.resolve({ outcome: "dismissed" }) }));
 })();
 </script>
