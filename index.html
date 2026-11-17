@@ -383,7 +383,7 @@ body.hero .scene { bottom: auto; top: var(--heroTop, 200px); }
 .streetgap { display: none; height: calc(clamp(210px, 34vh, 340px) * 1.05); }
 body.hero .streetgap { display: block; }
 #roadfx, #fgfx { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: calc(100% + 170px); }
-.sea { position: absolute; left: 0; right: 0; top: var(--seaTop, 40px); height: var(--seaH, 16px); overflow: hidden; background: var(--sea2); transition: background 2s; }
+.sea { display: none; position: absolute; left: 0; right: 0; top: var(--seaTop, 40px); height: var(--seaH, 16px); overflow: hidden; background: var(--sea2); transition: background 2s; }
 .sea svg { position: absolute; left: 0; width: 200%; height: 70%; animation: swell 14s linear infinite; }
 .sea svg.w1 { top: -25%; fill: var(--sea1); }
 .sea svg.w2 { top: 10%; fill: var(--sea2); animation-duration: 9s; animation-direction: reverse; opacity: 0.9; }
@@ -837,7 +837,7 @@ body.hero .streetgap { display: block; }
     <div class="content">
     <div class="streetgap" aria-hidden="true"></div>
     <section class="card">
-      <div class="card-head"><h2 id="padTitle">Launches near you</h2><span class="small" id="padSub">Within about 250 miles</span></div>
+      <div class="card-head"><h2 id="padTitle">Kennedy Space Center</h2><span class="small" id="padSub">Your launch pad</span></div>
       <div class="frow padpick"><label class="small" for="padPick">Launch pad</label><select id="padPick"><option value="near">Near me (250 miles)</option></select></div>
       <ul class="events" id="launchNear"><li><span class="muted">Loading launches…</span></li></ul>
     </section>
@@ -3399,31 +3399,33 @@ var ROUTES = S.routes;
       '<div class="small">' + esc(l.pad || "") + (l.loc ? ", " + esc(l.loc) : "") + (mi != null ? " · " + mi.toLocaleString() + " mi" : "") + "</div>" +
       '<div class="small">' + esc(dayLabel(new Date(t))) + " " + esc(fmtTime.format(new Date(t))) + ' · <span class="cdown" data-t="' + t + '">' + cdText(t - Date.now()) + "</span></div></div></li>";
   }
-  var KSC = "Kennedy Space Center, FL, USA";
+  var KSC = "Kennedy Space Center, FL, USA", STARBASE = "SpaceX Starbase, TX, USA";
+  function padName(p) { return p === STARBASE ? "Starbase, Texas" : p.split(",")[0]; }
+  function padKey(p) { return p.split(",")[0].replace(/^SpaceX /, "").toLowerCase(); }
   function lsGet(k, d) { try { var v = JSON.parse(localStorage.getItem(k) || "null"); return v == null ? d : v; } catch (e) { return d; } }
   function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
-  function padGet() { return lsGet("launchPad.v1", "near"); }
+  function padGet() { return lsGet("launchPad.v1", KSC); }
   function padOptions() {
     var sel = $("padPick"), cur = padGet(), locs = {};
-    locs[KSC] = 1; (LAUNCH || []).forEach(function (l) { if (l.loc) locs[l.loc] = 1; });
-    sel.innerHTML = '<option value="near">Near me (250 miles)</option>' + Object.keys(locs).sort().map(function (x) { return '<option value="' + esc(x) + '">' + esc(x.replace(/, USA$/, "")) + "</option>"; }).join("");
-    sel.value = cur; if (sel.value !== cur) sel.value = "near";
+    locs[KSC] = 1; locs[STARBASE] = 1; (LAUNCH || []).forEach(function (l) { if (l.loc && !/starbase/i.test(l.loc)) locs[l.loc] = 1; });
+    sel.innerHTML = '<option value="near">Near me (250 miles)</option>' + Object.keys(locs).sort().map(function (x) { return '<option value="' + esc(x) + '">' + esc(x === STARBASE ? "Starbase, Texas" : x.replace(/, USA$/, "")) + "</option>"; }).join("");
+    sel.value = cur; if (sel.value !== cur) sel.value = KSC;
   }
   function padList() {
     if (!LAUNCH) return [];
     var now = Date.now(), pad = padGet();
     return LAUNCH.map(function (l, i) { return [l, i]; }).filter(function (x) { return Date.parse(x[0].net) > now - 2 * 3600000; }).filter(function (x) {
-      return pad === "near" ? x[0].lat != null && miles(S.lat, S.lon, x[0].lat, x[0].lon) <= 250 : x[0].loc === pad;
+      return pad === "near" ? x[0].lat != null && miles(S.lat, S.lon, x[0].lat, x[0].lon) <= 250 : String(x[0].loc || "").toLowerCase().indexOf(padKey(pad)) >= 0;
     }).slice(0, 8);
   }
   function renderLaunches() {
     if (!LAUNCH) return;
     var now = Date.now(), live = LAUNCH.map(function (l, i) { return [l, i]; }).filter(function (x) { return Date.parse(x[0].net) > now - 2 * 3600000; });
     var pad = padGet(), near = padList();
-    $("padTitle").textContent = pad === "near" ? "Launches near you" : "Launches from " + pad.split(",")[0];
+    $("padTitle").textContent = pad === "near" ? "Launches near you" : padName(pad);
     $("padSub").textContent = pad === "near" ? "Within about 250 miles" : "Your launch pad";
     var world = live.filter(function (x) { return near.indexOf(x) < 0; }).slice(0, 8);
-    $("launchNear").innerHTML = near.length ? near.map(function (x) { return launchRow(x[0], x[1]); }).join("") : '<li><span class="muted">' + (pad === "near" ? "No launches scheduled within about 250 miles of " + esc(placeLabel()) : "No launches scheduled from " + esc(pad.split(",")[0])) + " right now.</span></li>";
+    $("launchNear").innerHTML = near.length ? near.map(function (x) { return launchRow(x[0], x[1]); }).join("") : '<li><span class="muted">' + (pad === "near" ? "No launches scheduled within about 250 miles of " + esc(placeLabel()) : "No launches scheduled from " + esc(padName(pad))) + " right now.</span></li>";
     $("launchWorld").innerHTML = world.map(function (x) { return launchRow(x[0], x[1]); }).join("");
   }
   function launchDetail(l) {
@@ -3695,9 +3697,8 @@ var ROUTES = S.routes;
     var dim = n ? 0.32 : 1 - dull * 0.35;
     function shade(hx, extra) { return css(mix(hex(hx), [0, 0, 0], 1 - dim + (extra || 0))); }
     // beach, grass, sidewalks, road
-    c.fillStyle = shade("#d9c48f"); quad(c, -60, 60, zf - 4, zf);
     var dry = groundDry(), soak = groundWet();
-    c.fillStyle = css(mix(mix(hex("#5f8a43"), hex("#a68a4e"), dry), [0, 0, 0], 1 - dim)); quad(c, -60, 60, zn, zf - 4);
+    c.fillStyle = css(mix(mix(hex("#5f8a43"), hex("#a68a4e"), dry), [0, 0, 0], 1 - dim)); quad(c, -60, 60, zn, zf);
     R.grass = css(mix(mix(hex("#4f7d34"), hex("#b0925a"), dry), [0, 0, 0], 1 - dim));
     R.grass2 = css(mix(mix(hex("#78a64e"), hex("#c9ad72"), dry), [0, 0, 0], 1 - dim));
     c.fillStyle = shade(wet ? "#34373d" : "#4b4e54", wet ? 0.08 : 0); quad(c, -H2, H2, zn, zf - 4);
