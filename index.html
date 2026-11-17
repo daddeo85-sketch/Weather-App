@@ -3816,19 +3816,19 @@ var ROUTES = S.routes;
   // A little house on the left side: siding, a gable roof, a front porch and a white picket fence
   function drawHouse(c, n, shade) {
     // A bigger house set back from the sidewalk, with a deep front porch, two chairs and a driveway beside it
-    var W = -10.8, B = -18.4, RX = -14.6, Z1 = 10.6, Z2 = 19.6, WH = 3.6, RH = 6.3, DZ = 15.1, PX = W + 3.0;
+    var W = -10.8, B = -18.4, RX = -14.6, Z1 = 11.2, Z2 = 20.2, WH = 3.6, RH = 6.3, DZ = 15.7, PX = W + 3.0;
     function P(X, z, Y) { return [gx(X, z), gy(z, Y)]; }
     function poly(pts, col) { c.fillStyle = col; c.beginPath(); pts.forEach(function (q, i) { var a = P(q[0], q[1], q[2]); if (i) c.lineTo(a[0], a[1]); else c.moveTo(a[0], a[1]); }); c.closePath(); c.fill(); }
     var lit = n ? "#ffcf7a" : null, glass = n ? "#ffcf7a" : shade("#5d7a92"), trim = shade("#f4f2ec"), wall = shade("#e3d3b0"), wallS = shade("#cdbb95", 0.04);
     var conc = shade("#bdb9b0"), concD = shade("#a9a59c");
-    // driveway from the street, past the fence, up beside the house
-    c.fillStyle = conc; quad(c, -(R.half + 2.1), -17.6, 20.5, 23.6);
-    c.fillStyle = concD; quad(c, -(R.half + 2.1), -17.6, 22.0, 22.1);
+    // driveway from the sidewalk, along the near side of the house
+    c.fillStyle = conc; quad(c, -(R.half + 2.1), -19, 7.4, 10.0);
+    c.fillStyle = concD; quad(c, -(R.half + 2.1), -19, 8.65, 8.72);
     // walkway from the porch steps to the sidewalk
     c.fillStyle = conc; quad(c, PX, -(R.half + 2.1), DZ - 0.55, DZ + 0.55);
     // side wall that faces the street
     poly([[W, Z1, 0], [W, Z2, 0], [W, Z2, WH], [W, Z1, WH]], wallS);
-    [[11.6, 12.9], [17.4, 18.7]].forEach(function (w) {
+    [[12.2, 13.5], [18.0, 19.3]].forEach(function (w) {
       poly([[W, w[0] - 0.08, 1.05], [W, w[1] + 0.08, 1.05], [W, w[1] + 0.08, 2.6], [W, w[0] - 0.08, 2.6]], trim);
       poly([[W, w[0], 1.15], [W, w[1], 1.15], [W, w[1], 2.5], [W, w[0], 2.5]], glass);
     });
@@ -3844,11 +3844,11 @@ var ROUTES = S.routes;
     var rf = shade("#4a4744", 0.05), ov = 0.5, th = 0.36;
     poly([[B - ov, Z1 - 0.3, WH - ov * kL], [RX, Z1 - 0.3, RH + 0.02], [W + ov, Z1 - 0.3, WH + ov * kR], [W + ov, Z1 - 0.3, WH + ov * kR - th], [RX, Z1 - 0.3, RH - th], [B - ov, Z1 - 0.3, WH - ov * kL - th]], rf);
     // deep front porch: slab, front edge, chairs, posts, railing and a roof
-    var PZ1 = 12.6, PZ2 = 17.6, PH = 0.4;
+    var PZ1 = 13.2, PZ2 = 18.2, PH = 0.4;
     poly([[W, PZ1, PH], [PX, PZ1, PH], [PX, PZ2, PH], [W, PZ2, PH]], shade("#b9b2a5"));
     poly([[PX, PZ1, 0], [PX, PZ2, 0], [PX, PZ2, PH], [PX, PZ1, PH]], shade("#9d978b", 0.08));
     poly([[W, PZ1, 0], [PX, PZ1, 0], [PX, PZ1, PH], [W, PZ1, PH]], shade("#a8a296", 0.05));
-    var chairC = shade("#2f5d46"), chairD = shade("#244a37", 0.05);
+    var chairC = n ? shade("#e9e2d2") : "#f1ece0", chairD = n ? shade("#cfc6b2") : "#d6cdb8";
     function chair(X, z0) {   // a little porch chair, seen from the street side, facing the yard
       var Y = PH, d = 0.75, cx = X;
       poly([[cx - 0.35, z0, Y], [cx - 0.35, z0 + d, Y], [cx - 0.35, z0 + d, Y + 0.5], [cx - 0.35, z0, Y + 0.5]], chairD);
@@ -3856,7 +3856,7 @@ var ROUTES = S.routes;
       poly([[cx - 0.75, z0, Y + 0.45], [cx - 0.95, z0, Y + 1.35], [cx - 0.95, z0 + d, Y + 1.35], [cx - 0.75, z0 + d, Y + 0.45]], chairC);
       poly([[cx + 0.15, z0, Y], [cx + 0.15, z0 + d, Y], [cx + 0.15, z0 + d, Y + 0.5], [cx + 0.15, z0, Y + 0.5]], chairD);
     }
-    chair(W + 1.3, 13.2); chair(W + 1.3, 16.4);
+    chair(W + 1.3, 13.8); chair(W + 1.3, 17.0);
     [PZ1 + 0.1, DZ - 0.75, DZ + 0.75, PZ2 - 0.1].forEach(function (z) { var q = P(PX - 0.1, z, PH), r = P(PX - 0.1, z, 3.15), pp = pz(z); c.fillStyle = trim; c.fillRect(q[0] - 0.08 * pp, r[1], 0.16 * pp, q[1] - r[1]); });
     c.strokeStyle = trim; c.lineWidth = Math.max(1, 0.06 * pz(15)); c.beginPath();
     [[PZ1 + 0.1, DZ - 0.75], [DZ + 0.75, PZ2 - 0.1]].forEach(function (s2) { [1.1, 1.45].forEach(function (Y) { var a = P(PX - 0.1, s2[0], Y), b2 = P(PX - 0.1, s2[1], Y); c.moveTo(a[0], a[1]); c.lineTo(b2[0], b2[1]); }); });
@@ -3869,11 +3869,11 @@ var ROUTES = S.routes;
     function picket(X, z) { var pp = pz(z), w = 0.07 * pp, bt = P(X, z, 0), tp = P(X, z, FH); c.fillStyle = white; c.beginPath(); c.moveTo(bt[0] - w, bt[1]); c.lineTo(bt[0] - w, tp[1] + w); c.lineTo(tp[0], tp[1]); c.lineTo(bt[0] + w, tp[1] + w); c.lineTo(bt[0] + w, bt[1]); c.closePath(); c.fill(); }
     function rail(X1, z1, X2, z2) { c.strokeStyle = white; c.lineWidth = Math.max(1, 0.05 * pz(Math.min(z1, z2))); c.beginPath(); [0.3, 0.7].forEach(function (Y) { var q = P(X1, z1, Y), r = P(X2, z2, Y); c.moveTo(q[0], q[1]); c.lineTo(r[0], r[1]); }); c.stroke(); }
     var z, g1 = DZ - 0.55, g2 = DZ + 0.55;
-    for (z = 20.2; z >= g2; z -= 0.32) picket(FX, z);
-    for (z = g1; z >= 8.6; z -= 0.32) picket(FX, z);
-    rail(FX, g2, FX, 20.2); rail(FX, 8.6, FX, g1);
-    rail(FX, 8.6, -19, 8.6);
-    for (var X = FX - 0.32; X >= -19; X -= 0.32) picket(X, 8.6);
+    for (z = 21.0; z >= g2; z -= 0.32) picket(FX, z);
+    for (z = g1; z >= 10.2; z -= 0.32) picket(FX, z);
+    rail(FX, g2, FX, 21.0); rail(FX, 10.2, FX, g1);
+    rail(FX, 10.2, -19, 10.2);
+    for (var X = FX - 0.32; X >= -19; X -= 0.32) picket(X, 10.2);
   }
   // ---- Foreground: long grass that sways with the real wind, and a signal mast arm ----
   var FG = { cv: document.getElementById("fgfx"), raf: 0, last: 0, blades: [] };
@@ -3885,8 +3885,8 @@ var ROUTES = S.routes;
     var rnd = seeded(11), n = R.w < 500 ? 230 : 340; FG.blades = [];
     for (var i = 0; i < n; i++) {
       var z = 1.3 + Math.pow(rnd(), 1.6) * 26, side = rnd() < 0.5 ? -1 : 1, X = side * (R.half + 2.5 + rnd() * 7);
-      if (X < -6.2 && z > 8.4 && z < 20.4) continue;   // the yard behind the picket fence is mowed
-      if (X < -5.6 && z > 20.3 && z < 23.8) continue;   // and nothing grows on the driveway
+      if (X < -6.2 && z > 10.0 && z < 21.2) continue;   // the yard behind the picket fence is mowed
+      if (X < -5.6 && z > 7.2 && z < 10.1) continue;    // and nothing grows on the driveway
       FG.blades.push({ z: z, X: X, h: 0.45 + rnd() * 0.45, ph: rnd() * 6.28, k: rnd() < 0.5 });
     }
     FG.blades.sort(function (a, b) { return b.z - a.z; });
@@ -3947,7 +3947,7 @@ var ROUTES = S.routes;
   }
   // US flag on a pole by the sidewalk, in front of the house. It flies downwind and waves harder as the wind picks up.
   function drawFlag(c, t) {
-    var X = -6.0, z = 9.2, p = pz(z), H = 5.6, dim = R.dimv || 1;
+    var X = -6.0, z = 6.7, p = pz(z), H = 5.8, dim = R.dimv || 1;
     var col = function (h) { return css(mix(hex(h), [0, 0, 0], 1 - dim)); };
     var xb = gx(X, z), yb = gy(z), yt = gy(z, H);
     c.fillStyle = "rgba(0,0,0,0.25)"; c.beginPath(); c.ellipse(xb, yb, 0.35 * p, 0.09 * p, 0, 0, Math.PI * 2); c.fill();
