@@ -6,7 +6,7 @@ All photos come from Wikimedia Commons. They were shrunk, cut out and cropped fo
 |---|---|---|---|
 | sun.webp, tab-weather.webp | The Sun, 19 Aug 2010 | NASA/SDO (AIA), Solar Dynamics Observatory | Public domain (NASA) |
 | moon.webp | The Moon's near side | NASA/GSFC/Arizona State University (Lunar Reconnaissance Orbiter) | Public domain (NASA) |
-| tab-hurricane.webp | Hurricane Isabel from the International Space Station, 2003 | Mike Trenchard, Earth Sciences & Image Analysis Laboratory, NASA Johnson Space Center | Public domain (NASA) |
+| tab-hurricane.webp | Hurricane Katrina from space, Aug 28 2005 (Terra MODIS, top-down) | Jeff Schmaltz, MODIS Rapid Response Team, NASA GSFC | Public domain (NASA) |
 | tab-radar.webp | Fort Dix WSR-88D NEXRAD radar (KDIX), New Jersey | Famartin | CC BY-SA 4.0 |
 | tab-tides.webp | Waves in Pacifica, California | Brocken Inaglory | CC BY-SA 4.0 |
 | tab-traffic.webp | Tyler Reddick's #29 Ford F-150 race truck | Joetregembo | CC BY-SA 4.0 |
@@ -26,7 +26,7 @@ All photos come from Wikimedia Commons. They were shrunk, cut out and cropped fo
 Sources:
 - https://commons.wikimedia.org/wiki/File:The_Sun_by_the_Atmospheric_Imaging_Assembly_of_NASA%27s_Solar_Dynamics_Observatory_-_20100819.jpg
 - https://commons.wikimedia.org/wiki/File:Moon_nearside_LRO.jpg
-- https://commons.wikimedia.org/wiki/File:Hurricane_Isabel_from_ISS.jpg
+- https://commons.wikimedia.org/wiki/File:Hurricane_Katrina_August_28_2005_NASA.jpg
 - https://commons.wikimedia.org/wiki/File:2025-03-04_15_58_38_The_Fort_Dix_WSR-88D_NEXRAD_radar_(KDIX)_at_Joint_Base_McGuire%E2%80%93Dix%E2%80%93Lakehurst_in_Manchester_Township,_Ocean_County,_New_Jersey.jpg
 - https://commons.wikimedia.org/wiki/File:Waves_in_pacifica_1.jpg
 - https://commons.wikimedia.org/wiki/File:Tyler_Reddick%27s_-29_Cooper-Standard_%22Career_For_Veterans%22_200_Ford_F-150.jpg

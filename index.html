@@ -342,10 +342,10 @@ label.sw:first-of-type { border-top: 0; }
 }
 #skyfx { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2; }
 .sunEl, .moonEl { position: absolute; z-index: 2; transform: translate(-50%, -50%); transition: left 1s, top 1s, opacity 1s; }
-.sunEl { width: 46px; height: 46px; border-radius: 50%; background: url(img/sun.webp) center / 100% no-repeat;
-  box-shadow: 0 0 40px 18px rgba(255,190,90,0.5); }
-.sunEl.low { box-shadow: 0 0 60px 28px rgba(255,130,70,0.5); }
-.moonEl { width: 46px; height: 46px; filter: drop-shadow(0 0 14px rgba(230,240,255,0.55)); }
+.sunEl { width: 96px; height: 96px; border-radius: 50%; background: url(img/sun.webp) center / 100% no-repeat;
+  box-shadow: 0 0 80px 36px rgba(255,190,90,0.5); }
+.sunEl.low { box-shadow: 0 0 110px 50px rgba(255,130,70,0.5); }
+.moonEl { width: 96px; height: 96px; filter: drop-shadow(0 0 26px rgba(230,240,255,0.55)); }
 .moonEl.day { opacity: 0.55; filter: none; }
 .cloud { position: absolute; width: 260px; height: 80px; border-radius: 80px; background: var(--cloud);
   box-shadow: 0 18px 0 -6px var(--cloud-shade); filter: blur(1.5px); animation: drift linear infinite; transition: background 2s, opacity 2s; }
@@ -406,6 +406,19 @@ body.hero .streetgap { display: block; }
 .install .t { flex: 1; font-size: calc(14px * var(--fs)); }
 .install .x { position: absolute; top: 4px; right: 4px; min-height: 34px; width: 34px; padding: 0; border: 0; background: transparent; font-size: 20px; }
 .install ol { margin: 4px 0 0; padding-left: 20px; }
+.sugg { display: flex; flex-direction: column; gap: 4px; margin: 2px 0 4px; }
+.sugg button { text-align: left; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line, rgba(0,0,0,.12)); background: var(--card2, rgba(255,255,255,.7)); color: inherit; font: inherit; font-size: calc(14px * var(--fs)); }
+.sugg button .small { display: block; }
+.peekwrap { height: 190px; border-radius: 12px; overflow: hidden; margin: 4px 0; }
+.peekwrap > div { height: 100%; }
+.rtwx { margin: 6px 0; }
+.rtwx li { margin: 2px 0; }
+.vehedit img { display: block; margin: 6px auto; max-width: 100%; max-height: 150px; }
+.vehedit label { display: block; font-size: calc(13px * var(--fs)); margin-top: 6px; }
+.vehedit input[type=range] { width: 100%; }
+.padpick select, .remrow select { font: inherit; padding: 6px 8px; border-radius: 10px; }
+.remrow { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.rain8 { font-weight: 600; margin: 8px 0 2px; }
 </style>
 </head>
 <body>
@@ -473,7 +486,7 @@ body.hero .streetgap { display: block; }
         <div class="tile tap" data-d="feels" data-opt="feels"><div class="k">Feels like</div><div class="v" id="hi">--</div><div class="s" id="hiSub"></div></div>
         <div class="tile tap" data-d="humidity" data-opt="humidity"><div class="k">Humidity</div><div class="v" id="rh">--</div></div>
         <div class="tile tap" data-d="dew" data-opt="dew"><div class="k">Dew point</div><div class="v" id="dew">--</div><div class="s" id="dewSub"></div></div>
-        <div class="tile tap" data-d="rain" data-opt="rain"><div class="k">Rain chance</div><div class="v" id="pop">--</div></div>
+        <div class="tile tap" data-d="rain" data-opt="rain"><div class="k">Rain chance</div><div class="v" id="pop">--</div><div class="s" id="popSub"></div></div>
         <div class="tile tap" data-d="uv" data-opt="uv"><div class="k">UV index</div><div class="v" id="uvNow">--</div><div class="s" id="uvSub"></div></div>
       </div>
       <div data-opt="wind">
@@ -519,6 +532,7 @@ body.hero .streetgap { display: block; }
         <div class="legend"><span>Light</span><span class="bar" id="lgBar"></span><span>Heavy</span></div>
       </div></div>
     </div>
+    <p class="rain8" id="rain8"></p>
     <p class="small" id="rMsg">The last two hours of rain, then the next three hours from the forecast model, looping. Drag the slider to stop on a frame.</p>
       <p class="small" id="ltgKey" data-opt="lightning">⚡ Lightning shows as yellow, orange and red patches where strikes hit in the last 15 minutes (NOAA, updated about every 15 minutes).</p>
     </section>
@@ -715,15 +729,20 @@ body.hero .streetgap { display: block; }
         <label class="small" for="rtName">Name</label><input id="rtName" placeholder="Like Home to work" maxlength="40" autocomplete="off">
         <label class="small" for="rtFrom">Start (point A)</label>
         <div class="frow"><input id="rtFrom" placeholder="Address or place" autocomplete="off"><button class="btn" id="rtHere" type="button">📍 My location</button></div>
+        <div class="sugg" id="sgFrom"></div>
         <label class="small" for="rtTo">End (point B)</label><input id="rtTo" placeholder="Address or place" autocomplete="off">
+        <div class="sugg" id="sgTo"></div>
+        <div id="peekBox" hidden><p class="small" id="peekLbl"></p><div class="peekwrap" id="peekWrap"><div id="peekMap" aria-label="Map of the picked address"></div></div></div>
         <div class="frow"><button class="btn primary" type="submit" id="rtSave">Save route</button><button class="btn" type="button" id="rtCancel">Cancel</button></div>
         <p class="small" id="rtMsg" role="status"></p>
       </form>
       <div class="routes" id="routes"></div>
       <div id="routeCard" hidden>
         <div class="routeinfo" id="rtTime"></div>
+        <div class="rtwx small" id="rtWx"></div>
         <div class="mapwrap rmapwrap" id="rmapWrap"><div id="rmap" aria-label="Route map"></div></div>
         <div class="frow"><a class="btn primary" id="rtG" target="_blank" rel="noopener">Google Maps (live traffic)</a><a class="btn primary" id="rtW" target="_blank" rel="noopener">Waze</a></div>
+        <div class="frow"><button class="btn" type="button" id="rtZA">📍 A</button><button class="btn" type="button" id="rtZB">📍 B</button></div>
         <div class="frow"><button class="btn" type="button" id="rtEdit">Edit</button><button class="btn" type="button" id="rtDel">Delete</button></div>
         <p class="small" id="rtNote"></p>
       </div>
@@ -788,12 +807,12 @@ body.hero .streetgap { display: block; }
     <div class="content">
     <div class="streetgap" aria-hidden="true"></div>
     <section class="card" data-opt="ridescore">
-      <div class="card-head"><h2>Off-road riding weather</h2><span class="small">Dirt bikes and ATVs</span></div>
+      <div class="card-head"><h2>Off-road conditions</h2><span class="small">Dirt bikes and ATVs</span></div>
       <div id="rideBody"><p class="muted">Loading…</p></div>
       <p class="small">Tap a day for the details.</p>
     </section>
     <section class="card" data-opt="street">
-      <div class="card-head"><h2>Street conditions</h2><span class="small">Now and the next 3 hours</span></div>
+      <div class="card-head"><h2>Go-karts and street riding</h2><span class="small">Pavement and sidewalks, now and the next 3 hours</span></div>
       <div id="streetBody"><p class="muted">Loading…</p></div>
     </section>
     <section class="card" data-opt="tracks">
@@ -1601,8 +1620,10 @@ var ROUTES = S.routes;
   }
 
   /* ---------------- Tides ---------------- */
-  function tideApi() {
-    return "https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?product=predictions&datum=MLLW&units=english&time_zone=lst_ldt&format=json&application=WeatherApp&station=" + encodeURIComponent(S.tide.id);
+  var TOFF = null;   // feet to subtract from the low-water numbers to get height above mean sea level
+  function tin(v) { if (TOFF == null) return (+v).toFixed(1) + " ft"; var i = Math.round((+v) * 12); return Math.abs(i) + "\u2033 " + (i >= 0 ? "above" : "below") + " MSL"; }
+  function tideApi(datum) {
+    return "https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?product=predictions&datum=" + (datum || "MLLW") + "&units=english&time_zone=lst_ldt&format=json&application=WeatherApp&station=" + encodeURIComponent(S.tide.id);
   }
   function loadTides() {
     if (!S.tide) {
@@ -1611,9 +1632,13 @@ var ROUTES = S.routes;
       return;
     }
     var today = new Date(), t = ymd(today);
-    getJSON(tideApi() + "&interval=hilo&begin_date=" + compact(ymd(addDays(today, -1))) + "&end_date=" + compact(ymd(addDays(today, 30)))).then(function (d) {
-      var all = d.predictions || [];
+    var rng = "&interval=hilo&begin_date=" + compact(ymd(addDays(today, -1))) + "&end_date=" + compact(ymd(addDays(today, 30)));
+    Promise.all([getJSON(tideApi() + rng), getJSON(tideApi("MSL") + rng).catch(function () { return null; })]).then(function (dd) {
+      var d = dd[0], m = dd[1] && dd[1].predictions, all = d.predictions || [];
       if (!all.length) throw new Error("none");
+      TOFF = null;
+      if (m && m.length) { var n = 0, sm = 0; all.forEach(function (x, k) { if (m[k] && m[k].t === x.t) { sm += x.v - m[k].v; n++; } }); if (n) TOFF = sm / n; }
+      if (TOFF != null) all.forEach(function (x) { x.v = String(+x.v - TOFF); });
       D.tideAll = all.filter(function (x) { return x.t.split(" ")[0] >= t; }); redrawDetail();
       var p = all.filter(function (x) { return x.t.split(" ")[0] >= t; });
       var nowStr = t + " " + new Intl.DateTimeFormat("en-GB", { timeZone: TZ, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(today);
@@ -1622,11 +1647,11 @@ var ROUTES = S.routes;
       $("tideList").innerHTML = near.map(function (x) {
         var past = x.t < nowStr;
         return '<div class="tide ' + x.type + (past ? " past" : "") + '"><div class="ty">' + (x.type === "H" ? "High tide" : "Low tide") + '</div>' +
-          '<div class="tm">' + esc(hm(x.t)) + '</div><div class="small">' + esc(x.t.split(" ")[0] === t ? "Today" : "Tomorrow") + " · " + (+x.v).toFixed(1) + ' ft</div></div>';
+          '<div class="tm">' + esc(hm(x.t)) + '</div><div class="small">' + esc(x.t.split(" ")[0] === t ? "Today" : "Tomorrow") + " · " + tin(x.v) + '</div></div>';
       }).join("");
       var highs = p.filter(function (x) { return x.type === "H"; }).sort(function (a, b) { return b.v - a.v; }).slice(0, 5);
       $("tideTop").innerHTML = highs.map(function (x) {
-        return '<li><span class="tag high">High</span><div><b>' + esc(dayOf(x.t)) + " at " + esc(hm(x.t)) + "</b><div class=\"small\">" + (+x.v).toFixed(2) + " ft above average low water</div></div></li>";
+        return '<li><span class="tag high">High</span><div><b>' + esc(dayOf(x.t)) + " at " + esc(hm(x.t)) + "</b><div class=\"small\">" + (TOFF == null ? (+x.v).toFixed(2) + " ft above average low water" : tin(x.v)) + "</div></div></li>";
       }).join("");
       drawTideChart(all);
     }).catch(function () { $("tideList").innerHTML = '<div class="err">Couldn\'t load NOAA tide times right now.</div>'; });
@@ -1659,12 +1684,12 @@ var ROUTES = S.routes;
     else if (nextEv) line = (nextEv.type === "H" ? "Rising now. " : "Falling now. ");
     if (nextEv) {
       var after = ev.filter(function (e) { return e.m > now + 30; })[0] || nextEv;
-      line += "Next " + (after.type === "H" ? "high" : "low") + " tide at " + hm(after.t) + (after.t.split(" ")[0] !== ymd(new Date()) ? " tomorrow" : "") + " (" + after.v.toFixed(1) + " ft).";
+      line += "Next " + (after.type === "H" ? "high" : "low") + " tide at " + hm(after.t) + (after.t.split(" ")[0] !== ymd(new Date()) ? " tomorrow" : "") + " (" + tin(after.v) + ").";
     }
     $("tideNow").textContent = line;
     var base = all[0] ? all[0].t.split(" ")[0] : ymd(new Date());
     getJSON(tideApi() + "&interval=h&begin_date=" + compact(ymd(addDays(new Date(), -1))) + "&range=72").then(function (d) {
-      var pts = (d.predictions || []).map(function (x) { return { m: fake(x.t), v: +x.v }; }).filter(function (p) { return p.m >= m0 - 60 && p.m <= m1 + 60; });
+      var pts = (d.predictions || []).map(function (x) { return { m: fake(x.t), v: +x.v - (TOFF || 0) }; }).filter(function (p) { return p.m >= m0 - 60 && p.m <= m1 + 60; });
       if (pts.length < 6) throw new Error("none");
       return pts;
     }).catch(function () {
@@ -1686,7 +1711,7 @@ var ROUTES = S.routes;
       var fg = dark ? "#e6eef4" : "#10222e", mut = dark ? "#94a8b6" : "#536674", acc = dark ? "#58aee8" : "#1f6fa8", grid = dark ? "rgba(230,238,244,0.12)" : "rgba(16,34,46,0.10)";
       var svg = "";
       for (var v = lo; v <= hi; v++) svg += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(v).toFixed(1) + '" y2="' + Y(v).toFixed(1) + '" stroke="' + grid + '"/>' +
-        '<text x="' + (L - 4) + '" y="' + (Y(v) + 3.5).toFixed(1) + '" font-size="10" text-anchor="end" fill="' + mut + '">' + v + " ft</text>";
+        '<text x="' + (L - 4) + '" y="' + (Y(v) + 3.5).toFixed(1) + '" font-size="10" text-anchor="end" fill="' + mut + '">' + (TOFF == null ? v + " ft" : (v > 0 ? "+" : "") + v * 12 + "\u2033") + "</text>";
       var clip = pts.filter(function (p) { return p.m >= m0 && p.m <= m1; });
       var path = clip.map(function (p, i) { return (i ? "L" : "M") + X(p.m).toFixed(1) + " " + Y(p.v).toFixed(1); }).join(" ");
       svg += '<path d="' + path + " L" + X(clip[clip.length - 1].m).toFixed(1) + " " + (H - B) + " L" + X(clip[0].m).toFixed(1) + " " + (H - B) + 'Z" fill="' + acc + '" opacity="0.18"/>' +
@@ -1706,7 +1731,7 @@ var ROUTES = S.routes;
         var x = X(e.m), up = e.type === "H", anchor = x < L + 40 ? "start" : x > W - R - 40 ? "end" : "middle";
         svg += '<circle cx="' + x.toFixed(1) + '" cy="' + Y(e.v).toFixed(1) + '" r="4" fill="' + acc + '" stroke="#fff" stroke-width="1.5"/>' +
           '<text x="' + x.toFixed(1) + '" y="' + (Y(e.v) + (up ? -16 : 15)).toFixed(1) + '" font-size="10" font-weight="700" text-anchor="' + anchor + '" fill="' + fg + '">' + (up ? "High " : "Low ") + esc(hm(e.t)) + "</text>" +
-          '<text x="' + x.toFixed(1) + '" y="' + (Y(e.v) + (up ? -6 : 25)).toFixed(1) + '" font-size="9.5" text-anchor="' + anchor + '" fill="' + mut + '">' + e.v.toFixed(1) + " ft</text>";
+          '<text x="' + x.toFixed(1) + '" y="' + (Y(e.v) + (up ? -6 : 25)).toFixed(1) + '" font-size="9.5" text-anchor="' + anchor + '" fill="' + mut + '">' + (TOFF == null ? e.v.toFixed(1) + " ft" : (e.v >= 0 ? "+" : "\u2212") + Math.abs(Math.round(e.v * 12)) + "\u2033") + "</text>";
       });
       svg += '<line x1="' + X(now).toFixed(1) + '" x2="' + X(now).toFixed(1) + '" y1="' + (T - 10) + '" y2="' + (H - B) + '" stroke="#e24a3b" stroke-width="1.5" stroke-dasharray="3 3"/>' +
         '<text x="' + X(now).toFixed(1) + '" y="' + (T - 13) + '" font-size="10" font-weight="700" text-anchor="middle" fill="#e24a3b">Now</text>';
@@ -1809,6 +1834,7 @@ var ROUTES = S.routes;
     $("rtW").href = "https://www.waze.com/ul?ll=" + b.lat + "," + b.lon + "&navigate=yes";
     $("rtNote").textContent = "Drive time here is typical, from the road map without live traffic. Google Maps and Waze show the live time. Waze always starts from where you are. The live map below is zoomed to this route and shows crashes, closures and construction drivers have reported.";
     $("rtTime").textContent = r.name + ": finding the route…";
+    $("rtZA").textContent = "📍 A: " + a.label.split(",")[0]; $("rtZB").textContent = "📍 B: " + b.label.split(",")[0]; $("rtWx").innerHTML = "";
     if (!rmap) {
       rmap = L.map("rmap", { zoomControl: false, attributionControl: true });
       L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19, attribution: "Map &copy; Esri, OpenStreetMap | Route &copy; OSRM" }).addTo(rmap);
@@ -1828,14 +1854,84 @@ var ROUTES = S.routes;
       $("rtTime").textContent = r.name + ": about " + (m >= 60 ? Math.floor(m / 60) + " hr " + (m % 60) + " min" : m + " min") + ", " + mi.toFixed(mi < 10 ? 1 : 0) + " miles (typical, without live traffic)";
       var f = $("wazeFrame"), bb = rLine.getBounds(), c = bb.getCenter();
       if (f) setFrame(f, "https://embed.waze.com/iframe?zoom=" + routeZoom(r) + "&lat=" + c.lat.toFixed(4) + "&lon=" + c.lng.toFixed(4) + "&ct=livemap");
+      routeWx(r, rt.geometry.coordinates || []);
     }).catch(function () { $("rtTime").textContent = r.name + ": couldn't get the route right now. The Google Maps and Waze buttons still work."; });
+  }
+  // Weather at 4 spots along the route right now: start, a third of the way, two thirds, and the end
+  function routeWx(r, co) {
+    if (co.length < 2) return;
+    var pts = [0, 1 / 3, 2 / 3, 1].map(function (f) { return co[Math.min(co.length - 1, Math.round(f * (co.length - 1)))]; });
+    var names = ["Start", "A third of the way", "Two thirds of the way", "End"];
+    $("rtWx").innerHTML = '<span class="muted">Checking the weather along the route…</span>';
+    getJSON("https://api.open-meteo.com/v1/forecast?latitude=" + pts.map(function (q) { return q[1].toFixed(3); }).join(",") + "&longitude=" + pts.map(function (q) { return q[0].toFixed(3); }).join(",") +
+      "&current=temperature_2m,precipitation,weather_code,wind_speed_10m,wind_gusts_10m,visibility,snowfall&hourly=precipitation&past_hours=3&forecast_hours=1&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto").then(function (dd) {
+      if (ROUTES[curRoute] !== r) return;
+      dd = Array.isArray(dd) ? dd : [dd];
+      var bad = 0, rows = dd.map(function (d, i) {
+        var c = d.current || {}, code = c.weather_code || 0, p3 = ((d.hourly || {}).precipitation || []).slice(0, 3).reduce(function (x, y) { return x + (y || 0); }, 0);
+        var vis = c.visibility == null ? 99999 : (/ft/.test((d.current_units || {}).visibility || "") ? c.visibility * 0.3048 : c.visibility);
+        var w = [];
+        if ((c.snowfall || 0) > 0 || (code >= 71 && code <= 77) || code === 85 || code === 86) w.push("snow");
+        else if (code >= 95) w.push("thunderstorms");
+        else if ((c.precipitation || 0) >= 0.1 || code === 65 || code === 82) w.push("heavy rain");
+        else if ((c.precipitation || 0) > 0 || (code >= 51 && code <= 67) || (code >= 80 && code <= 82)) w.push("rain");
+        else if (p3 >= 0.01) w.push("wet roads");
+        if (code === 45 || code === 48 || vis < 1000) w.push("fog" + (vis < 400 ? ", low visibility" : ""));
+        if ((c.wind_gusts_10m || 0) >= 30) w.push("gusty wind to " + Math.round(c.wind_gusts_10m) + " mph");
+        if (w.length) bad++;
+        return "<li><b>" + names[i] + ":</b> " + (w.length ? w.join(", ") : "dry") + ", " + Math.round(c.temperature_2m) + "°</li>";
+      });
+      $("rtWx").innerHTML = "<b>Along the route now: " + (bad ? "watch the weather in spots" : "dry the whole way") + "</b><ul>" + rows.join("") + "</ul>" +
+        '<span class="muted">Traffic jams and crashes: use the Google Maps or Waze button, or the live map below.</span>';
+    }).catch(function () { if (ROUTES[curRoute] === r) $("rtWx").innerHTML = '<span class="muted">Couldn\'t get the weather along this route right now.</span>'; });
+  }
+  // Address suggestions as you type (Photon, built on OpenStreetMap), and a little map to confirm the spot
+  var peekMap = null, peekPin = null, sgT = {};
+  function addrLabel(pr) {
+    var a = [pr.housenumber ? pr.housenumber + " " + (pr.street || "") : (pr.name || pr.street || ""), pr.city || pr.town || pr.village || pr.county || "", pr.state || ""];
+    if (pr.name && pr.housenumber && pr.name !== pr.street) a[0] = pr.name + ", " + a[0];
+    return a.filter(function (x) { return x && x.trim(); }).join(", ");
+  }
+  function showPeek(x) {
+    var box = $("peekBox"); box.hidden = false; $("peekLbl").textContent = "📍 " + x.label + ". Check the pin is the right spot.";
+    if (!window.L) return;
+    if (!peekMap) {
+      peekMap = L.map("peekMap", { zoomControl: false, attributionControl: true });
+      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "&copy; OpenStreetMap" }).addTo(peekMap);
+      touchMap(peekMap, $("peekWrap"));
+    }
+    setTimeout(function () { peekMap.invalidateSize(); peekMap.setView([x.lat, x.lon], 17); }, 30);
+    if (peekPin) peekMap.removeLayer(peekPin);
+    peekPin = L.circleMarker([x.lat, x.lon], { radius: 8, color: "#fff", weight: 2, fillColor: "#c0392b", fillOpacity: 1 }).addTo(peekMap);
+  }
+  function addrSuggest(inp, box, key) {
+    var f = $("rtForm");
+    $(inp).addEventListener("input", function () {
+      f[key] = null; clearTimeout(sgT[inp]);
+      var q = this.value.trim();
+      if (q.length < 3 || q === "My location") { $(box).innerHTML = ""; return; }
+      sgT[inp] = setTimeout(function () {
+        getJSON("https://photon.komoot.io/api/?q=" + encodeURIComponent(q) + "&limit=5&lang=en&lat=" + HOME[0] + "&lon=" + HOME[1]).then(function (d) {
+          if ($(inp).value.trim() !== q) return;
+          var list = (d.features || []).map(function (ft) { var c = ft.geometry.coordinates; return { label: addrLabel(ft.properties || {}), lat: +c[1].toFixed(5), lon: +c[0].toFixed(5) }; }).filter(function (x) { return x.label; });
+          $(box)._list = list;
+          $(box).innerHTML = list.map(function (x, i) { return '<button type="button" data-sg="' + i + '">' + esc(x.label) + "</button>"; }).join("");
+        }).catch(function () { $(box).innerHTML = ""; });
+      }, 450);
+    });
+    $(box).addEventListener("click", function (e) {
+      var b = e.target.closest("[data-sg]"); if (!b) return;
+      var x = this._list[+b.getAttribute("data-sg")]; if (!x) return;
+      $(inp).value = x.label; f[key] = x; if (key === "_fromPick") f._here = null; this.innerHTML = ""; showPeek(x);
+    });
   }
   function routeForm(open, idx) {
     var f = $("rtForm"); f.hidden = !open; $("addRouteBtn").hidden = open; editIdx = idx == null ? -1 : idx;
     var r = ROUTES[editIdx];
     $("rtName").value = r ? r.name : ""; $("rtFrom").value = r ? r.from.label : ""; $("rtTo").value = r ? r.to.label : "";
     $("rtSave").textContent = r ? "Save changes" : "Save route"; say("rtMsg", "");
-    f._here = r && r.from.here ? r.from : null;
+    f._here = r && r.from.here ? r.from : null; f._fromPick = f._toPick = null;
+    $("sgFrom").innerHTML = $("sgTo").innerHTML = ""; $("peekBox").hidden = true;
     if (open) $("rtName").focus();
   }
   function initRoutes() {
@@ -1849,12 +1945,14 @@ var ROUTES = S.routes;
       $("routes").insertAdjacentHTML("beforeend", '<p class="small" style="width:100%;margin:4px 0 0">Deleted ' + esc(gone) + ".</p>");
     });
     $("rtFrom").addEventListener("input", function () { $("rtForm")._here = null; });
+    addrSuggest("rtFrom", "sgFrom", "_fromPick"); addrSuggest("rtTo", "sgTo", "_toPick");
+    ["rtZA", "rtZB"].forEach(function (id, k) { $(id).addEventListener("click", function () { var r = ROUTES[curRoute]; if (!r || !rmap) return; var x = k ? r.to : r.from; rmap.setView([x.lat, x.lon], 17); $("rmapWrap").scrollIntoView({ block: "center", behavior: "smooth" }); }); });
     $("rtHere").addEventListener("click", function () {
       if (!navigator.geolocation) { say("rtMsg", "This browser can't share its location. Type the start instead."); return; }
       say("rtMsg", "Finding you…");
       navigator.geolocation.getCurrentPosition(function (p) {
         $("rtForm")._here = { label: "My location", lat: +p.coords.latitude.toFixed(5), lon: +p.coords.longitude.toFixed(5), here: true };
-        $("rtFrom").value = "My location"; say("rtMsg", "Start set to where you are now.");
+        $("rtFrom").value = "My location"; $("sgFrom").innerHTML = ""; say("rtMsg", "Start set to where you are now."); showPeek($("rtForm")._here);
       }, function (e) { say("rtMsg", locError(e)); }, { timeout: 15000 });
     });
     $("rtForm").addEventListener("submit", function (e) {
@@ -1864,8 +1962,9 @@ var ROUTES = S.routes;
       if (!name) name = (f._here ? "Here" : from.split(",")[0]) + " to " + to.split(",")[0];
       say("rtMsg", "Finding those places…");
       var a;
-      var getA = f._here ? Promise.resolve(f._here) : old && from === old.from.label ? Promise.resolve(old.from) : geocode(from).then(function (x) { return new Promise(function (ok) { setTimeout(function () { ok(x); }, 1100); }); });
-      getA.then(function (x) { a = x; return old && to === old.to.label ? old.to : geocode(to); }).then(function (b) {
+      var pA = f._fromPick && from === f._fromPick.label ? f._fromPick : null, pB = f._toPick && to === f._toPick.label ? f._toPick : null;
+      var getA = f._here ? Promise.resolve(f._here) : pA ? Promise.resolve(pA) : old && from === old.from.label ? Promise.resolve(old.from) : geocode(from).then(function (x) { return new Promise(function (ok) { setTimeout(function () { ok(x); }, 1100); }); });
+      getA.then(function (x) { a = x; return pB ? pB : old && to === old.to.label ? old.to : geocode(to); }).then(function (b) {
         var r = { name: name, from: { label: a.here ? "My location" : a.label, lat: a.lat, lon: a.lon, here: !!a.here }, to: { label: b.label, lat: b.lat, lon: b.lon } };
         var i = editIdx >= 0 ? editIdx : ROUTES.length;
         ROUTES[i] = r; S.routes = ROUTES;
@@ -1913,9 +2012,9 @@ var ROUTES = S.routes;
   function loadOM() {
     getJSON("https://api.open-meteo.com/v1/forecast?latitude=" + S.lat + "&longitude=" + S.lon +
       "&current=temperature_2m,apparent_temperature,uv_index,is_day,weather_code,cloud_cover,precipitation,rain,showers,wind_speed_10m,wind_gusts_10m,wind_direction_10m" +
-      "&hourly=temperature_2m,apparent_temperature,relative_humidity_2m,dew_point_2m,precipitation_probability,uv_index,wind_speed_10m,wind_gusts_10m,wind_direction_10m" +
-      "&daily=uv_index_max&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=" + encodeURIComponent(TZ) + "&forecast_days=2").then(function (d) {
-      D.om = d; redrawDetail();
+      "&hourly=temperature_2m,apparent_temperature,relative_humidity_2m,dew_point_2m,precipitation_probability,precipitation,uv_index,wind_speed_10m,wind_gusts_10m,wind_direction_10m" +
+      "&daily=uv_index_max&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=" + encodeURIComponent(TZ) + "&forecast_days=3").then(function (d) {
+      D.om = d; rainAhead(); redrawDetail(); homeLinks();
       var u = (d.current && d.current.uv_index) || 0, h = d.hourly || {}, today = ymd(new Date()), best = -1, bt = "";
       (h.time || []).forEach(function (t, i) { if (t.slice(0, 10) === today && h.uv_index[i] != null && h.uv_index[i] > best) { best = h.uv_index[i]; bt = t; } });
       var mx = d.daily && d.daily.uv_index_max ? d.daily.uv_index_max[0] : best;
@@ -1924,6 +2023,39 @@ var ROUTES = S.routes;
       $("uvSub").textContent = mx != null ? "Top today: " + Math.round(mx) + (bt ? " at " + hourLabel(bt) : "") : "";
       if (window.SKY) window.SKY.weather(d.current);
     }).catch(function () { $("uvNow").textContent = "--"; $("uvSub").textContent = "UV unavailable right now"; });
+  }
+  // Rain in the next 8 hours and when the rain should quit, from the Open-Meteo hourly forecast
+  function rainAhead() {
+    var d = D.om, h = d && d.hourly; if (!h || !h.precipitation) return;
+    var nowKey = new Intl.DateTimeFormat("sv-SE", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", hourCycle: "h23" }).format(new Date()).replace(" ", "T").slice(0, 13) + ":00";
+    var i = h.time.indexOf(nowKey); if (i < 0) i = 0;
+    var s8 = 0; for (var j = i; j < i + 8 && j < h.time.length; j++) s8 += h.precipitation[j] || 0;
+    var c = d.current || {}, wetNow = (c.precipitation || 0) + (c.rain || 0) + (c.showers || 0) > 0 || isRainCodeW(c.weather_code) || (h.precipitation[i] || 0) >= 0.01;
+    var end = null;
+    if (wetNow) for (var k = i + 1; k < h.time.length; k++) if ((h.precipitation[k] || 0) < 0.01 && (h.precipitation_probability[k] || 0) < 40) { end = h.time[k]; break; }
+    D.rain8 = s8; D.rainNow = wetNow; D.rainEnd = end; D.rainLast = h.time[h.time.length - 1];
+    var t8 = s8 < 0.01 ? "No rain expected in the next 8 hours." : "🌧 Rain expected in the next 8 hours: " + (s8 < 0.1 ? s8.toFixed(2) : s8.toFixed(2)) + " in";
+    if ($("rain8")) $("rain8").textContent = t8;
+    if ($("popSub")) $("popSub").textContent = s8 < 0.01 ? "None next 8 hrs" : s8.toFixed(2) + " in next 8 hrs";
+  }
+  function isRainCodeW(code) { return (code >= 51 && code <= 67) || (code >= 80 && code <= 82) || code >= 95; }
+  var SUP = [
+    "Get used to it, it's here till {t}. Suck it up, buttercup.",
+    "Not going anywhere till {t}. Deal with it.",
+    "Hope you like wet socks. It's sticking around till {t}.",
+    "Cancel the car wash. The rain's camping out till {t}.",
+    "Quit whining and grab a towel, this lasts till {t}.",
+    "Mother Nature's not done with you. Till {t}, at least.",
+    "Water's wet, the sky's leaking, and it's staying till {t}. Get over it.",
+    "Toughen up, cupcake. It rains till {t}."
+  ];
+  var SUP_SOON = ["Relax, tough guy. It quits around {t}.", "Hang tight, it's done around {t}. Stop crying.", "Almost over. Dries up around {t}, so chill."];
+  var SUP_LONG = ["No end in sight. It's still raining in the forecast past {t}. Build an ark.", "Settle in. Rain all the way past {t}. Suck it up, buttercup."];
+  function supLine() {
+    var pick = function (a) { return a[Math.floor(Math.random() * a.length)]; };
+    if (!D.rainEnd) return pick(SUP_LONG).replace("{t}", hourLabel(D.rainLast || ""));
+    var mins = (Date.parse(D.rainEnd) - Date.now()) / 60000;
+    return pick(mins < 75 ? SUP_SOON : SUP).replace("{t}", hourLabel(D.rainEnd));
   }
   function loadWaterTemp() {
     var list = [], jobs = [];
@@ -2004,7 +2136,7 @@ var ROUTES = S.routes;
     var st = SunCalc.getTimes(new Date(), HOME[0], HOME[1]), now = new Date(), il = moonState(now);
     var sunLine = now < st.sunrise ? "Sunrise " + fmtTime.format(st.sunrise) : now < st.sunset ? "Sunset " + fmtTime.format(st.sunset) : "Sunrise " + fmtTime.format(SunCalc.getTimes(addDays(now, 1), HOME[0], HOME[1]).sunrise);
     var items = [
-      ["whytile", "#/why", "❓ Why it's raining", D.why || "What the forecasters say is driving the weather"],
+      D.rainNow ? ["whytile", "#/why", "😤 Sup with all this rain?", supLine()] : ["whytile", "#/why", "❓ What's driving the weather", D.why || "What the forecasters say is driving the weather"],
       ["skytile", "#/sky", "🌙 Sun & moon", sunLine + " · " + phaseName(il.phase) + ", " + Math.round(il.fraction * 100) + "% lit"]
     ];
     box.innerHTML = items.map(function (x) {
@@ -2414,7 +2546,7 @@ var ROUTES = S.routes;
     why: [["keypoints", "What the forecasters say", 1], ["sfcmap", "Highs, lows and fronts map", 1], ["satellite", "Satellite loop", 1], ["videos", "Videos and links", 1]],
     storms: [["active", "Active storms", 1], ["outlook", "7-day outlook map", 1], ["season", "Season numbers", 1], ["stormlist", "Storms this season", 1], ["nhcvideos", "Hurricane Center videos", 1]],
     traffic: [["trafficlinks", "Crash, camera and news links", 1]],
-    ride: [["ridescore", "Off-road riding weather", 1], ["street", "Street conditions", 1], ["electric", "Electric ride notes (water, heat, cold)", 1], ["tracks", "Tracks and riding areas", 1]],
+    ride: [["ridescore", "Off-road conditions", 1], ["street", "Go-karts and street riding", 1], ["electric", "Electric ride notes (water, heat, cold)", 1], ["tracks", "Tracks and riding areas", 1]],
     planes: [["lowonly", "Only planes taking off or landing (below 6,000 feet)", 1], ["labels", "Flight numbers on the map", 0], ["atc", "Air traffic control audio link", 1], ["nearap", "Airports near you", 1], ["heli", "Heliports in the list", 1]],
     rockets: [["world", "Launches around the world", 1]]
   };
@@ -2426,7 +2558,7 @@ var ROUTES = S.routes;
   function tabLabel(t) { if (SUBS[t]) return SUBS[t][0]; for (var i = 0; i < TABS.length; i++) if (TABS[i][0] === t) return TABS[i][1]; return t; }
   function renderTabbar() {
     $("tabbar").innerHTML = TABS.filter(function (x) { return tabOn(x[0]); }).map(function (x) {
-      var src = (x[0] === "traffic" && vehSrc() ? vehSrc() : "img/tab-" + x[3] + ".webp") + "?v=4";
+      var src = (x[0] === "traffic" && vehSrc() ? vehSrc() : "img/tab-" + x[3] + ".webp") + "?v=5";
       return '<button type="button" data-go="#/' + x[0] + '" data-tabbtn="' + x[0] + '"><img class="ic" alt="" width="46" height="30" decoding="async" src="' + src + '"><span class="tl">' + esc(x[4] || x[1]) + "</span></button>";
     }).join("");
     markTab();
@@ -2682,7 +2814,7 @@ var ROUTES = S.routes;
       var byDay = {}, order = [];
       p.forEach(function (x) { var d = x.t.split(" ")[0]; if (!byDay[d]) { byDay[d] = []; order.push(d); } byDay[d].push(x); });
       return ["Tides at " + S.tide.name, order.slice(0, 7).map(function (d) {
-        return "<h3>" + esc(dayOf(d + " 12:00")) + "</h3>" + rows(byDay[d].map(function (x) { return [x.type === "H" ? "High" : "Low", esc(hm(x.t)) + " · " + (+x.v).toFixed(1) + " ft"]; }));
+        return "<h3>" + esc(dayOf(d + " 12:00")) + "</h3>" + rows(byDay[d].map(function (x) { return [x.type === "H" ? "High" : "Low", esc(hm(x.t)) + " · " + tin(x.v)]; }));
       }).join("") + '<p class="small">NOAA predictions. Wind and rain can push the water higher than this.</p>'];
     },
     sun: function () {
@@ -2832,7 +2964,7 @@ var ROUTES = S.routes;
     var raining = nowP > 0 || isRainCode(c.weather_code) || radar >= 0.3;
     var heavy = nowP >= 0.1 || c.weather_code >= 63 && c.weather_code <= 67 || c.weather_code === 81 || c.weather_code === 82 || D.radarHeavy;
     var l3 = sumP(i - 2, i), l6 = sumP(i - 5, i);
-    var road = raining ? [heavy ? 2 : 1, "Wet", "wet roads"] : l3 >= 0.1 ? [1, "Wet, puddles likely", "wet roads, puddles likely"] : l3 > 0.01 ? [1, "Damp in spots", "damp roads"] : l6 >= 0.25 ? [1, "Drying, puddles in low spots", "puddles in low spots"] : [0, "Dry", "dry roads"];
+    var road = raining ? [heavy ? 2 : 1, "Wet and slick", "pavement and sidewalks wet and slick"] : l3 >= 0.1 ? [1, "Wet, puddles on the sidewalks", "wet pavement, puddles on the sidewalks"] : l3 > 0.01 ? [1, "Damp, slick in spots", "damp pavement, slick in spots"] : l6 >= 0.25 ? [1, "Drying, puddles in low spots", "puddles in low spots"] : [0, "Dry", "dry pavement"];
     var storm = isStorm(c.weather_code), gust = Math.round(c.wind_gusts_10m || 0), ws = Math.round(c.wind_speed_10m || 0);
     var vis = vmi(h.visibility[i]), feel = Math.round(c.apparent_temperature), temp = Math.round(c.temperature_2m);
     var st0 = SunCalc.getTimes(new Date(), HOME[0], HOME[1]), now = Date.now(), ss = st0.sunset.getTime(), sr = st0.sunrise.getTime(), dark = now >= ss || now < sr;
@@ -2853,13 +2985,13 @@ var ROUTES = S.routes;
     if (nst) nextR.push([2, "thunderstorms possible"]);
     var rl = np >= 60 || nsum >= 0.05 ? 2 : np >= 30 || nsum >= 0.01 ? 1 : 0;
     nextR.push([rl, rl === 2 ? (np >= 60 ? np + "% rain chance" : "showers expected (" + nsum.toFixed(2) + " in)") : rl === 1 ? (np >= 30 ? np + "% rain chance" : "a few sprinkles") : "low rain chance (" + np + "%)"]);
-    if (road[0] && !raining && rl === 0) nextR.push([1, "roads should keep drying"]);
+    if (road[0] && !raining && rl === 0) nextR.push([1, "pavement should keep drying"]);
     if (ng >= 25) nextR.push([ng >= 40 ? 2 : 1, "gusts to " + ng + " mph"]);
     if (nv < 3) nextR.push([nv < 0.5 ? 2 : 1, "fog, visibility down to " + nv.toFixed(1) + " mi"]);
     if (darkSoon) nextR.push([1, "dark at " + fmtTime.format(new Date(ss))]);
     var lvNow = worst(nowR), lvNext = worst(nextR);
     var whyNow = nowR.filter(function (x) { return x[0] > 0; }).sort(function (a, b) { return b[0] - a[0]; }).map(function (x) { return x[2]; });
-    var lineNow = LV[lvNow][1] + " for the street now: " + (lvNow ? whyNow.slice(0, 4).join(", ") : "dry roads, " + windWord(ws) + ", " + temp + "°") + ".";
+    var lineNow = LV[lvNow][1] + " for go-karts now: " + (lvNow ? whyNow.slice(0, 4).join(", ") : "pavement and sidewalks dry, " + windWord(ws) + ", " + temp + "°") + ".";
     var nextShow = lvNext ? nextR.filter(function (x) { return x[0] > 0; }) : nextR;
     var lineNext = "Next 3 hours: " + LV[lvNext][1] + ", " + nextShow.map(function (x) { return x[1]; }).join(", ") + ".";
     // Electric ride notes
@@ -2923,14 +3055,14 @@ var ROUTES = S.routes;
       '<p class="small">Open or closed here comes only from the hours the place posts. Weather, races and holidays can change them, so check before you go.</p>'];
   }
   DET.street = function () {
-    if (!D.ride) return ["Street conditions", LOADING];
+    if (!D.ride) return ["Go-karts and street riding", LOADING];
     var s = street(), h = D.ride.hourly, out = [];
     for (var j = s.i; j <= s.i + 6 && j < h.time.length; j++)
       out.push([j === s.i ? "Now" : hourLabel(h.time[j]), (h.precipitation_probability[j] || 0) + "% rain · gusts " + Math.round(h.wind_gusts_10m[j] || 0) + " mph · feels " + Math.round(h.apparent_temperature[j]) + "°" + (isStorm(h.weather_code[j]) ? " · storms" : "")]);
-    return ["Street conditions", '<div class="score ' + LV[s.lvNow][0] + '">' + LV[s.lvNow][1] + "</div><p>" + esc(s.lineNow) + "</p><p>" + esc(s.lineNext) + "</p>" +
+    return ["Go-karts and street riding", '<div class="score ' + LV[s.lvNow][0] + '">' + LV[s.lvNow][1] + "</div><p>" + esc(s.lineNow) + "</p><p>" + esc(s.lineNext) + "</p>" +
       rows([["Rain, last 3 hours", inch(s.l3)], ["Rain, last 6 hours", inch(s.l6)]]) + "<h3>Hour by hour</h3>" + rows(out) +
       (on("electric") ? s.ev.map(function (x) { return "<p>⚡ " + esc(x[1]) + "</p>"; }).join("") : "") +
-      '<p class="small">Good means dry roads, calm wind and clear air. OK means damp roads, gusts over 25 mph, haze or dark. Bad means rain, lightning, gusts over 40 mph, fog under half a mile or a heat index over 105°. Wet or dry is an estimate.</p>'];
+      '<p class="small">Good means dry pavement, calm wind and clear air. OK means damp pavement, gusts over 25 mph, haze or dark. Bad means rain, lightning, gusts over 40 mph, fog under half a mile or a heat index over 105°. Wet or dry is an estimate.</p>'];
   };
   function rideDayDetail(k) {
     if (!D.ride) return ["Riding weather", LOADING];
@@ -3400,7 +3532,7 @@ var ROUTES = S.routes;
       c.fillStyle = g; quad(c, -H2, H2, 8, zf - 4);
     }
     // mud along the grass edges and puddles on the road after real rain
-    if (soak > 0.05) {
+    if (soak > 0.05 || wet) {
       var rnd = seeded(7), mud = css(mix(hex("#5a4330"), [0, 0, 0], 1 - dim));
       for (var mI = 0; mI < 14; mI++) {
         var mz = 3 + rnd() * 24, ms = rnd() < 0.5 ? -1 : 1, mx = ms * (H2 + 2.8 + rnd() * 3), mw = 0.4 + rnd() * 0.8;
@@ -3408,9 +3540,10 @@ var ROUTES = S.routes;
         c.fillStyle = mud; c.globalAlpha = 0.45; c.beginPath(); c.ellipse(gx(mx, mz), gy(mz), mw * pz(mz), mw * pz(mz) * 0.3, 0, 0, Math.PI * 2); c.fill();
       }
       c.globalAlpha = 1;
-      var nP = Math.round(3 + soak * 5);
+      var sk = Math.max(soak, wet ? 0.35 : 0), G = GROUND || {}, grow = Math.min(2.4, 0.7 + (G.r24 || 0) * 1.3 + (G.r72 || 0) * 0.25 + (wet ? 0.2 : 0));
+      var nP = Math.round(5 + sk * 11), prn = seeded(23);
       for (var pI = 0; pI < nP; pI++) {
-        var pzz = 3 + rnd() * 20, px = (rnd() < 0.5 ? -1 : 1) * (0.6 + rnd() * (H2 - 1.4)), pw = 0.35 + rnd() * 0.6 * (0.5 + soak);
+        var pzz = 2.6 + prn() * 22, px = (prn() < 0.5 ? -1 : 1) * (0.5 + prn() * (H2 - 1.1)), pw = (0.45 + prn() * 0.75) * grow;
         var cxp = gx(px, pzz), cyp = gy(pzz), rx = pw * pz(pzz), ry = Math.max(1, rx * 0.22);
         var pg = c.createLinearGradient(0, cyp - ry, 0, cyp + ry);
         pg.addColorStop(0, rgba(mix(low, [255, 255, 255], 0.25), n ? 0.45 : 0.55)); pg.addColorStop(1, rgba(mix(low, [0, 0, 0], 0.35), n ? 0.4 : 0.5));
@@ -3445,6 +3578,7 @@ var ROUTES = S.routes;
       rg.addColorStop(0, rgba([255, 184, 80], 0.6 * glow)); rg.addColorStop(0.55, rgba([255, 170, 60], 0.22 * glow)); rg.addColorStop(1, rgba([255, 170, 60], 0));
       c.fillStyle = rg; c.beginPath(); c.arc(0, 0, rx, 0, Math.PI * 2); c.fill(); c.restore();
     });
+    drawHouse(c, n, shade);
     // haze: far things fade into the sky color, more in rain and fog
     var hz = Math.min(0.9, 0.35 + dull * 0.5), hg = c.createLinearGradient(0, R.hy, 0, gy(9));
     hg.addColorStop(0, rgba(low, hz)); hg.addColorStop(1, rgba(low, 0));
@@ -3478,6 +3612,53 @@ var ROUTES = S.routes;
     var vg = c.createLinearGradient(0, R.h - 40, 0, R.h); vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, "rgba(0,0,0," + (n ? 0.35 : 0.18) + ")");
     c.fillStyle = vg; c.fillRect(0, R.h - 40, R.w, 40);
   }
+  // A little house on the left side: siding, a gable roof, a front porch and a white picket fence
+  function drawHouse(c, n, shade) {
+    var W = -8.6, B = -15, RX = -11.8, Z1 = 9.6, Z2 = 17, WH = 3.1, RH = 5.4;
+    function P(X, z, Y) { return [gx(X, z), gy(z, Y)]; }
+    function poly(pts, col) { c.fillStyle = col; c.beginPath(); pts.forEach(function (q, i) { var a = P(q[0], q[1], q[2]); if (i) c.lineTo(a[0], a[1]); else c.moveTo(a[0], a[1]); }); c.closePath(); c.fill(); }
+    var lit = n ? "#ffcf7a" : null, glass = n ? "#ffcf7a" : shade("#5d7a92"), trim = shade("#f4f2ec"), wall = shade("#e3d3b0"), wallS = shade("#cdbb95", 0.04);
+    // walkway from the porch to the sidewalk
+    c.fillStyle = shade("#bdb9b0"); quad(c, W, -(R.half + 2.1), 13.1, 13.9);
+    // side wall that faces the street
+    poly([[W, Z1, 0], [W, Z2, 0], [W, Z2, WH], [W, Z1, WH]], wallS);
+    // windows and the front door on that wall
+    [[10.4, 11.6], [15.3, 16.4]].forEach(function (w) {
+      poly([[W, w[0] - 0.08, 0.95], [W, w[1] + 0.08, 0.95], [W, w[1] + 0.08, 2.3], [W, w[0] - 0.08, 2.3]], trim);
+      poly([[W, w[0], 1.05], [W, w[1], 1.05], [W, w[1], 2.2], [W, w[0], 2.2]], glass);
+    });
+    poly([[W, 13.0, 0.3], [W, 14.0, 0.3], [W, 14.0, 2.45], [W, 13.0, 2.45]], trim);
+    poly([[W, 13.1, 0.3], [W, 13.9, 0.3], [W, 13.9, 2.35], [W, 13.1, 2.35]], shade("#9e2b25"));
+    // roof slope toward the street, with a little overhang
+    poly([[W + 0.45, Z1 - 0.35, WH - 0.25], [W + 0.45, Z2 + 0.35, WH - 0.25], [RX, Z2 + 0.35, RH], [RX, Z1 - 0.35, RH]], shade("#4a4744", 0.05));
+    // gable end facing us
+    poly([[B, Z1, 0], [W, Z1, 0], [W, Z1, WH], [RX, Z1, RH], [B, Z1, WH]], wall);
+    poly([[-13.0, Z1, 1.0], [-10.6, Z1, 1.0], [-10.6, Z1, 2.3], [-13.0, Z1, 2.3]], trim);
+    poly([[-12.9, Z1, 1.1], [-10.7, Z1, 1.1], [-10.7, Z1, 2.2], [-12.9, Z1, 2.2]], glass);
+    if (lit) { c.save(); c.globalAlpha = 0.35; c.fillStyle = lit; var gw = P(-11.8, Z1, 1.6); c.beginPath(); c.arc(gw[0], gw[1], 1.6 * pz(Z1), 0, Math.PI * 2); c.fill(); c.restore(); }
+    c.strokeStyle = trim; c.lineWidth = Math.max(1, 0.1 * pz(Z1)); c.beginPath();                          // fascia trim on the gable
+    var a = P(B - 0.3, Z1 - 0.35, WH - 0.2), b = P(RX, Z1 - 0.35, RH + 0.05), d = P(W + 0.45, Z1 - 0.35, WH - 0.25);
+    c.moveTo(a[0], a[1]); c.lineTo(b[0], b[1]); c.lineTo(d[0], d[1]); c.stroke();
+    // front porch: slab, steps, posts and a little roof
+    poly([[W, 12.3, 0.35], [W + 1.5, 12.3, 0.35], [W + 1.5, 14.7, 0.35], [W, 14.7, 0.35]], shade("#b9b2a5"));
+    poly([[W + 1.5, 12.3, 0], [W + 1.5, 14.7, 0], [W + 1.5, 14.7, 0.35], [W + 1.5, 12.3, 0.35]], shade("#9d978b", 0.08));
+    [12.4, 14.6].forEach(function (z) { var q = P(W + 1.45, z, 0.35), r = P(W + 1.45, z, 2.6), pp = pz(z); c.fillStyle = trim; c.fillRect(q[0] - 0.07 * pp, r[1], 0.14 * pp, q[1] - r[1]); });
+    poly([[W, 12.2, 2.95], [W + 1.7, 12.2, 2.6], [W + 1.7, 14.8, 2.6], [W, 14.8, 2.95]], shade("#55514d", 0.03));
+    c.strokeStyle = trim; c.lineWidth = Math.max(1, 0.05 * pz(14)); c.beginPath();                          // porch railing
+    var r1 = P(W + 1.45, 12.4, 1.2), r2 = P(W + 1.45, 13.1, 1.2), r3 = P(W + 1.45, 13.9, 1.2), r4 = P(W + 1.45, 14.6, 1.2);
+    c.moveTo(r1[0], r1[1]); c.lineTo(r2[0], r2[1]); c.moveTo(r3[0], r3[1]); c.lineTo(r4[0], r4[1]); c.stroke();
+    if (lit) { var pl = P(W + 0.3, 13.5, 2.5); c.save(); c.globalAlpha = 0.5; var rg = c.createRadialGradient(pl[0], pl[1], 0, pl[0], pl[1], 1.4 * pz(13.5)); rg.addColorStop(0, "rgba(255,200,110,0.9)"); rg.addColorStop(1, "rgba(255,200,110,0)"); c.fillStyle = rg; c.beginPath(); c.arc(pl[0], pl[1], 1.4 * pz(13.5), 0, Math.PI * 2); c.fill(); c.restore(); }
+    // white picket fence: along the sidewalk with a gate gap at the walk, and across the front yard
+    var white = n ? shade("#d8d8d0") : "#f7f7f2", FX = -6.3, FH = 0.95;
+    function picket(X, z) { var pp = pz(z), w = 0.07 * pp, bt = P(X, z, 0), tp = P(X, z, FH); c.fillStyle = white; c.beginPath(); c.moveTo(bt[0] - w, bt[1]); c.lineTo(bt[0] - w, tp[1] + w); c.lineTo(tp[0], tp[1]); c.lineTo(bt[0] + w, tp[1] + w); c.lineTo(bt[0] + w, bt[1]); c.closePath(); c.fill(); }
+    function rail(X1, z1, X2, z2) { c.strokeStyle = white; c.lineWidth = Math.max(1, 0.05 * pz(Math.min(z1, z2))); c.beginPath(); [0.3, 0.7].forEach(function (Y) { var q = P(X1, z1, Y), r = P(X2, z2, Y); c.moveTo(q[0], q[1]); c.lineTo(r[0], r[1]); }); c.stroke(); }
+    var z;
+    for (z = 18.4; z >= 13.9; z -= 0.32) picket(FX, z);
+    for (z = 13.1; z >= 8.6; z -= 0.32) picket(FX, z);
+    rail(FX, 13.9, FX, 18.4); rail(FX, 8.6, FX, 13.1);
+    rail(FX, 8.6, -16, 8.6);
+    for (var X = FX - 0.32; X >= -16; X -= 0.32) picket(X, 8.6);
+  }
   // ---- Foreground: long grass that sways with the real wind, and a signal mast arm ----
   var FG = { cv: document.getElementById("fgfx"), raf: 0, last: 0, blades: [] };
   FG.cx = FG.cv && FG.cv.getContext && FG.cv.getContext("2d");
@@ -3488,6 +3669,7 @@ var ROUTES = S.routes;
     var rnd = seeded(11), n = R.w < 500 ? 230 : 340; FG.blades = [];
     for (var i = 0; i < n; i++) {
       var z = 1.3 + Math.pow(rnd(), 1.6) * 26, side = rnd() < 0.5 ? -1 : 1, X = side * (R.half + 2.5 + rnd() * 7);
+      if (X < -6.2 && z > 8.4 && z < 18.6) continue;   // the yard behind the picket fence is mowed
       FG.blades.push({ z: z, X: X, h: 0.45 + rnd() * 0.45, ph: rnd() * 6.28, k: rnd() < 0.5 });
     }
     FG.blades.sort(function (a, b) { return b.z - a.z; });
@@ -3541,7 +3723,7 @@ var ROUTES = S.routes;
       });
       c.lineWidth = 1.1; c.stroke();
     }
-    if (WX.kind === "rain" || WX.kind === "storm") gutterFlow(c, t);
+    if (WX.kind === "rain" || WX.kind === "storm" || (WX.wet || 0) > 0) gutterFlow(c, t);
     drawSignal(c, t);
   }
   // Rainwater running along both gutters and dropping into the next storm drain
@@ -3551,18 +3733,20 @@ var ROUTES = S.routes;
     DRAINS.forEach(function (d, i) {
       var sd = d[0], z1 = d[1], prev = 1.4;
       DRAINS.forEach(function (q) { if (q[0] === sd && q[1] < z1 && q[1] + 1 > prev) prev = q[1] + 1; });
-      var len = z1 - prev, e = sd * H2, n = Math.round(len * 0.9 * heavy);
+      var len = z1 - prev, e = sd * H2, n = Math.round(len * 1.6 * heavy);
+      c.fillStyle = rgba(mix(low, [190, 215, 240], 0.5), 0.42); quad(c, e - sd * 0.42, e, prev, z1);           // the stream itself, hugging the curb
+      c.fillStyle = rgba([235, 244, 255], 0.22 + 0.08 * Math.sin(t * 0.004 + i)); quad(c, e - sd * 0.2, e - sd * 0.08, prev, z1);
       for (var k = 0; k < n; k++) {
         var f = ((t * 0.00045 * heavy + k / n + i * 0.37) % 1), z = prev + f * len, p = pz(z);
         if (p < 3) continue;
-        var x = e - sd * (0.06 + ((k * 7) % 5) * 0.045), dz = Math.min(0.45, len * 0.05);
-        c.strokeStyle = rgba([170, 196, 220], 0.32 * (1 - Math.abs(f - 0.5)) + 0.12);
-        c.lineWidth = Math.max(0.6, 0.03 * p);
+        var x = e - sd * (0.05 + ((k * 7) % 5) * 0.075), dz = Math.min(0.8, len * 0.08);
+        c.strokeStyle = rgba([225, 238, 252], 0.5 * (1 - Math.abs(f - 0.5)) + 0.3);
+        c.lineWidth = Math.max(1.2, 0.06 * p);
         c.beginPath(); c.moveTo(gx(x, z), gy(z)); c.lineTo(gx(x, Math.min(z1, z + dz)), gy(Math.min(z1, z + dz))); c.stroke();
       }
       var pz1 = pz(z1), s = (t * 0.004 + i) % 1;                                                         // little splash at the grate
-      c.strokeStyle = rgba([230, 238, 248], 0.45 * (1 - s)); c.lineWidth = Math.max(0.7, 0.03 * pz1);
-      c.beginPath(); c.ellipse(gx(e - sd * 0.29, z1 + 0.2), gy(z1 + 0.2), (0.12 + s * 0.25) * pz1, (0.05 + s * 0.1) * pz1 * R.camH / (z1 + 0.2), 0, 0, Math.PI * 2); c.stroke();
+      c.strokeStyle = rgba([240, 246, 255], 0.75 * (1 - s)); c.lineWidth = Math.max(1.2, 0.05 * pz1);
+      c.beginPath(); c.ellipse(gx(e - sd * 0.29, z1 + 0.2), gy(z1 + 0.2), (0.18 + s * 0.4) * pz1, (0.05 + s * 0.1) * pz1 * R.camH / (z1 + 0.2), 0, 0, Math.PI * 2); c.stroke();
     });
   }
   function fgFrame(t) {

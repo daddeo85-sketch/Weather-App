@@ -158,10 +158,10 @@ def launches(out):
     prev = load(path)
     if prev and prev.get("updated"):
         age = NOW - datetime.datetime.strptime(prev["updated"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=datetime.timezone.utc)
-        if age < datetime.timedelta(minutes=25):
+        if age < datetime.timedelta(minutes=25) and "vid" in (prev.get("launches") or [{}])[0]:
             print("launches: still fresh")
             return
-    d = json.loads(get("https://ll.thespacedevs.com/2.3.0/launches/upcoming/?limit=60&mode=normal"))
+    d = json.loads(get("https://ll.thespacedevs.com/2.3.0/launches/upcoming/?limit=60&mode=detailed"))
     rows = []
     for l in d.get("results", []):
         pad = l.get("pad") or {}
@@ -177,7 +177,9 @@ def launches(out):
             plat, plon = float(pad.get("latitude")), float(pad.get("longitude"))
         except (TypeError, ValueError):
             plat = plon = None
-        rows.append({"name": l.get("name"), "net": l.get("net"), "ws": l.get("window_start"), "we": l.get("window_end"),
+        vids = sorted(l.get("vid_urls") or l.get("vidURLs") or [], key=lambda v: v.get("priority") or 99)
+        vid = next((v.get("url") for v in vids if str(v.get("url") or "").startswith("https://")), None)
+        rows.append({"vid": vid, "name": l.get("name"), "net": l.get("net"), "ws": l.get("window_start"), "we": l.get("window_end"),
                      "st": st.get("abbrev"), "stn": st.get("name"), "prov": lsp.get("name"),
                      "rocket": rk.get("full_name") or rk.get("name"), "pad": pad.get("name"), "loc": loc.get("name"),
                      "lat": plat, "lon": plon, "mission": ms.get("name"), "desc": (ms.get("description") or "")[:400],
