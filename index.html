@@ -3645,7 +3645,7 @@ var ROUTES = S.routes;
       moonEl.removeAttribute("hidden"); moonEl.innerHTML = moonPhoto(mi.phase, day);
       moonEl.classList.toggle("day", day);
       moonEl.style.left = q.x + "%"; moonEl.style.top = (trackTop + (horizon - trackTop) * q.y) + "px";
-      moonEl.style.opacity = day ? 0.55 : ({ partly: 0.9, cloudy: 0.7, fog: 0.6, rain: 0.62, storm: 0.5 }[WX.kind] || 1);
+      moonEl.style.opacity = day ? 0.6 : ({ partly: 0.95, cloudy: 0.88, fog: 0.8, rain: 0.88, storm: 0.78 }[WX.kind] || 1);
       if (!day && !glint.style.opacity || (!day && +glint.style.opacity === 0 && q.y > 0.5 && dull < 0.5)) { glint.style.left = q.x + "%"; glint.style.opacity = 0.35 * mi.fraction; }
     } else moonEl.setAttribute("hidden", "");
     // Streetlight comes on after sunset, or on a dark stormy day
@@ -3698,7 +3698,7 @@ var ROUTES = S.routes;
     function shade(hx, extra) { return css(mix(hex(hx), [0, 0, 0], 1 - dim + (extra || 0))); }
     // beach, grass, sidewalks, road
     var dry = groundDry(), soak = groundWet();
-    c.fillStyle = css(mix(mix(hex("#5f8a43"), hex("#a68a4e"), dry), [0, 0, 0], 1 - dim)); quad(c, -60, 60, zn, zf);
+    c.fillStyle = css(mix(mix(hex("#5f8a43"), hex("#a68a4e"), dry), [0, 0, 0], 1 - dim)); quad(c, -600, 600, zn, zf);
     R.grass = css(mix(mix(hex("#4f7d34"), hex("#b0925a"), dry), [0, 0, 0], 1 - dim));
     R.grass2 = css(mix(mix(hex("#78a64e"), hex("#c9ad72"), dry), [0, 0, 0], 1 - dim));
     c.fillStyle = shade(wet ? "#34373d" : "#4b4e54", wet ? 0.08 : 0); quad(c, -H2, H2, zn, zf - 4);
@@ -3777,9 +3777,9 @@ var ROUTES = S.routes;
     hg.addColorStop(0, rgba(low, hz)); hg.addColorStop(1, rgba(low, 0));
     c.fillStyle = hg; c.fillRect(0, R.hy, R.w, gy(9) - R.hy);
     // soften the sea horizon so it doesn't read as a hard line across the sky
-    var sg = c.createLinearGradient(0, R.hy - 16, 0, R.hy + 6);
-    sg.addColorStop(0, rgba(low, 0)); sg.addColorStop(0.75, rgba(low, Math.min(0.85, hz + 0.1))); sg.addColorStop(1, rgba(low, hz));
-    c.fillStyle = sg; c.fillRect(0, R.hy - 16, R.w, 22);
+    var fadeH = Math.max(14, (gy(16) - R.hy) * 0.6), sg = c.createLinearGradient(0, R.hy - 1, 0, R.hy + fadeH);
+    sg.addColorStop(0, "rgba(0,0,0,1)"); sg.addColorStop(1, "rgba(0,0,0,0)");
+    c.save(); c.globalCompositeOperation = "destination-out"; c.fillStyle = sg; c.fillRect(0, R.hy - 1, R.w, fadeH + 1); c.restore();
     drawHouse(c, n, shade);   // after the haze, so the horizon never cuts a line across the house
     // street lights, far to near
     LAMPS.slice().reverse().forEach(function (L) {
@@ -3828,7 +3828,7 @@ var ROUTES = S.routes;
     poly([[W, 13.0, 0.3], [W, 14.0, 0.3], [W, 14.0, 2.45], [W, 13.0, 2.45]], trim);
     poly([[W, 13.1, 0.3], [W, 13.9, 0.3], [W, 13.9, 2.35], [W, 13.1, 2.35]], shade("#9e2b25"));
     // roof slope toward the street, with a little overhang
-    poly([[W + 0.45, Z1 - 0.3, WH - 0.45 * (RH - WH) / (W - RX)], [W + 0.45, Z2 + 0.35, WH - 0.45 * (RH - WH) / (W - RX)], [RX, Z2 + 0.35, RH], [RX, Z1 - 0.3, RH]], shade("#4a4744", 0.05));
+    poly([[W + 0.45, Z1 - 0.3, WH - 0.45 * (RH - WH) / (W - RX)], [W + 0.45, Z2 + 0.35, WH - 0.45 * (RH - WH) / (W - RX)], [RX, Z2 + 0.35, RH + 0.02], [RX, Z1 - 0.3, RH + 0.02]], shade("#4a4744", 0.05));
     // gable end facing us
     poly([[B, Z1, 0], [W, Z1, 0], [W, Z1, WH], [RX, Z1, RH], [B, Z1, WH]], wall);
     poly([[-13.0, Z1, 1.0], [-10.6, Z1, 1.0], [-10.6, Z1, 2.3], [-13.0, Z1, 2.3]], trim);
@@ -3836,9 +3836,6 @@ var ROUTES = S.routes;
     // roof edge over the gable: an even overhang on both sides meeting in one sharp peak
     var rf = shade("#4a4744", 0.05), ov = 0.45, th = 0.32, kL = (RH - WH) / (RX - B), kR = (RH - WH) / (W - RX);
     poly([[B - ov, Z1 - 0.3, WH - ov * kL], [RX, Z1 - 0.3, RH + 0.02], [W + ov, Z1 - 0.3, WH + ov * kR], [W + ov, Z1 - 0.3, WH + ov * kR - th], [RX, Z1 - 0.3, RH - th], [B - ov, Z1 - 0.3, WH - ov * kL - th]], rf);
-    c.strokeStyle = trim; c.lineWidth = Math.max(1, 0.06 * pz(Z1)); c.lineJoin = "miter"; c.beginPath();
-    var a = P(B - ov, Z1 - 0.3, WH - ov * kL - th), b = P(RX, Z1 - 0.3, RH - th), d = P(W + ov, Z1 - 0.3, WH + ov * kR - th);
-    c.moveTo(a[0], a[1]); c.lineTo(b[0], b[1]); c.lineTo(d[0], d[1]); c.stroke();
     // front porch: slab, steps, posts and a little roof
     poly([[W, 12.3, 0.35], [W + 1.5, 12.3, 0.35], [W + 1.5, 14.7, 0.35], [W, 14.7, 0.35]], shade("#b9b2a5"));
     poly([[W + 1.5, 12.3, 0], [W + 1.5, 14.7, 0], [W + 1.5, 14.7, 0.35], [W + 1.5, 12.3, 0.35]], shade("#9d978b", 0.08));
