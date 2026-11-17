@@ -341,7 +341,7 @@ label.sw:first-of-type { border-top: 0; }
   transition: background 2s;
 }
 #skyfx { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2; }
-.sunEl, .moonEl { position: absolute; transform: translate(-50%, -50%); transition: left 1s, top 1s, opacity 1s; }
+.sunEl, .moonEl { position: absolute; z-index: 1; transform: translate(-50%, -50%); transition: left 1s, top 1s, opacity 1s; }
 .sunEl { width: 46px; height: 46px; border-radius: 50%; background: url(img/sun.webp) center / 100% no-repeat;
   box-shadow: 0 0 40px 18px rgba(255,190,90,0.5); }
 .sunEl.low { box-shadow: 0 0 60px 28px rgba(255,130,70,0.5); }
@@ -3320,7 +3320,7 @@ var ROUTES = S.routes;
       moonEl.hidden = false; moonEl.innerHTML = moonPhoto(mi.phase, day);
       moonEl.classList.toggle("day", day);
       moonEl.style.left = q.x + "%"; moonEl.style.top = (trackTop + (horizon - trackTop) * q.y) + "px";
-      moonEl.style.opacity = day ? 0.55 : ({ partly: 0.85, cloudy: 0.5, fog: 0.45, rain: 0.45, storm: 0.32 }[WX.kind] || 1);
+      moonEl.style.opacity = day ? 0.55 : ({ partly: 0.9, cloudy: 0.7, fog: 0.6, rain: 0.62, storm: 0.5 }[WX.kind] || 1);
       if (!day && !glint.style.opacity || (!day && +glint.style.opacity === 0 && q.y > 0.5 && dull < 0.5)) { glint.style.left = q.x + "%"; glint.style.opacity = 0.35 * mi.fraction; }
     } else moonEl.hidden = true;
     // Streetlight comes on after sunset, or on a dark stormy day
