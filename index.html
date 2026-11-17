@@ -213,6 +213,10 @@ input[type=range] { width: 100%; accent-color: var(--accent); height: 26px; marg
 .crash-ic.other { background: #e67e22; }
 .crash-ic svg { width: 20px; height: 20px; fill: #fff; }
 .routeinfo { font-weight: 600; margin-top: 6px; }
+.rmapwrap { height: 34vh; min-height: 220px; margin: 8px 0; }
+#rmap { position: absolute; inset: 0; background: var(--panel-solid); }
+.routeform input { width: 100%; }
+a.btn { text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
 
 /* ---------- Hurricanes ---------- */
 .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(calc(140px * var(--fs)), 1fr)); gap: 8px; margin: 8px 0; }
@@ -245,6 +249,7 @@ input[type=range] { width: 100%; accent-color: var(--accent); height: 26px; marg
 .shield { position: absolute; inset: 0; z-index: 900; display: flex; align-items: flex-end; justify-content: center; padding: 0 0 14px; background: transparent; border: 0; cursor: pointer; }
 .shield span { background: rgba(0,0,0,0.65); color: #fff; padding: 8px 12px; border-radius: 999px; font: 600 calc(13px * var(--fs)) var(--font); }
 .mapwrap.full .shield { display: none; }
+.mapbtns .btn.fullback { width: auto; padding: 0 14px 0 8px; gap: 2px; font-weight: 600; }
 /* ---------- Tabs, back button, options ---------- */
 [hidden] { display: none !important; }
 .page { padding-bottom: calc(env(safe-area-inset-bottom, 0px) + calc(84px * var(--fs))); }
@@ -675,8 +680,26 @@ label.sw:first-of-type { border-top: 0; }
     <section class="card detail" hidden></section>
     <div class="content">
     <section class="card" id="traffic">
-      <div class="card-head"><h2>Traffic</h2><span class="small" id="tSource"></span></div>
+      <div class="card-head"><h2>Your routes</h2><button class="btn primary" id="addRouteBtn" type="button">+ Add route</button></div>
+      <form class="fstack routeform" id="rtForm" hidden>
+        <label class="small" for="rtName">Name</label><input id="rtName" placeholder="Like Home to work" maxlength="40" autocomplete="off">
+        <label class="small" for="rtFrom">Start (point A)</label>
+        <div class="frow"><input id="rtFrom" placeholder="Address or place" autocomplete="off"><button class="btn" id="rtHere" type="button">📍 My location</button></div>
+        <label class="small" for="rtTo">End (point B)</label><input id="rtTo" placeholder="Address or place" autocomplete="off">
+        <div class="frow"><button class="btn primary" type="submit" id="rtSave">Save route</button><button class="btn" type="button" id="rtCancel">Cancel</button></div>
+        <p class="small" id="rtMsg" role="status"></p>
+      </form>
       <div class="routes" id="routes"></div>
+      <div id="routeCard" hidden>
+        <div class="routeinfo" id="rtTime"></div>
+        <div class="mapwrap rmapwrap" id="rmapWrap"><div id="rmap" aria-label="Route map"></div></div>
+        <div class="frow"><a class="btn primary" id="rtG" target="_blank" rel="noopener">Google Maps (live traffic)</a><a class="btn primary" id="rtW" target="_blank" rel="noopener">Waze</a></div>
+        <div class="frow"><button class="btn" type="button" id="rtEdit">Edit</button><button class="btn" type="button" id="rtDel">Delete</button></div>
+        <p class="small" id="rtNote"></p>
+      </div>
+    </section>
+    <section class="card">
+      <div class="card-head"><h2>Live traffic</h2><span class="small" id="tSource"></span></div>
       <div class="mapwrap" id="trafficWrap">
       <div class="mapbtns"><button class="btn" id="tFull" type="button" aria-label="Full screen" title="Full screen"><svg viewBox="0 0 24 24"><path d="M4 4h6v2H6v4H4zm10 0h6v6h-2V6h-4zM4 14h2v4h4v2H4zm14 0h2v6h-6v-2h4z"/></svg></button></div>
     </div>
@@ -1268,18 +1291,42 @@ var ROUTES = S.routes;
   // Full screen. The cards' glass blur and the page layer would trap a fixed map inside its card,
   // so while a map is full screen the body gets "mapfull", which switches those off.
   var fullNow = null;
+  /* Full screen gets its own history step, so the phone's back gesture or Android back button
+     closes it instead of leaving the tab. */
+  var BACK_ICO = '<svg viewBox="0 0 24 24"><path d="M15.4 7.4 14 6l-6 6 6 6 1.4-1.4L10.8 12z"/></svg>';
   function setFull(w, onIt, after) {
     if (onIt === w.classList.contains("full")) return;
     w.classList.toggle("full", onIt); document.body.classList.toggle("mapfull", onIt);
     fullNow = onIt ? w : null;
     document.body.style.overflow = onIt ? "hidden" : "";
-    var b = w.querySelector(".mapbtns .btn"); if (b) b.setAttribute("aria-label", onIt ? "Close full screen" : "Full screen");
+    var b = w.querySelector(".mapbtns .btn");
+    if (b) {
+      if (!b._ico) b._ico = b.innerHTML;
+      b.innerHTML = onIt ? BACK_ICO + "Back" : b._ico; b.classList.toggle("fullback", onIt);
+      b.setAttribute("aria-label", onIt ? "Back: close full screen" : "Full screen"); b.title = onIt ? "Back" : "Full screen";
+    }
+    if (onIt && !(history.state && history.state.full)) try { history.pushState({ full: 1 }, "", location.href); } catch (e) {}
     setTimeout(after || function () {}, 60);
   }
   function fullToggle(btnId, wrapId, after) {
-    $(btnId).addEventListener("click", function () { var w = $(wrapId); setFull(w, !w.classList.contains("full"), after); w._after = after; });
+    $(btnId).addEventListener("click", function () {
+      var w = $(wrapId); w._after = after;
+      if (w.classList.contains("full")) closeFull(); else setFull(w, true, after);
+    });
+  }
+  function closeFull() {
+    if (!fullNow) return;
+    if (history.state && history.state.full) history.back();   // popstate below closes it
+    else setFull(fullNow, false, fullNow._after);
   }
   function exitFull() { if (fullNow) setFull(fullNow, false, fullNow._after); }
+  window.addEventListener("popstate", function (e) { if (fullNow && !(e.state && e.state.full)) exitFull(); });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape" && fullNow) closeFull(); });
+  // Change an embedded map without adding a history step (a plain src change would make Back step the map instead).
+  function setFrame(f, url) {
+    if (!f.getAttribute("src")) { f.src = url; return f; }
+    var n = f.cloneNode(false); n.src = url; f.parentNode.replaceChild(n, f); return n;
+  }
 
   /* ---------------- Why it's raining ---------------- */
   function section(text, name) {
@@ -1589,7 +1636,7 @@ var ROUTES = S.routes;
   function initTraffic() {
     var wrap = $("trafficWrap");
     var rbox = $("routes");
-    routeButtons();
+    routeButtons(); initRoutes();
     rbox.addEventListener("click", function (e) {
       var b = e.target.closest("button[data-i]"); if (!b) return;
       Array.prototype.forEach.call(rbox.querySelectorAll("button"), function (x) { x.classList.toggle("on", x === b); });
@@ -1624,7 +1671,7 @@ var ROUTES = S.routes;
   }
   function routeButtons() {
     var rbox = $("routes");
-    if (!ROUTES.length) rbox.innerHTML = '<p class="small" style="margin:0">Showing the ' + esc(S.name) + ' area. Add your own routes in Traffic options, and each one gets a button here.</p>';
+    if (!ROUTES.length) rbox.innerHTML = '<p class="small" style="margin:0">No routes yet. Tap <b>+ Add route</b> to save a drive from point A to point B, like home to work.</p>';
     else rbox.innerHTML = '<button class="btn' + (curRoute < 0 ? " on" : "") + '" type="button" data-i="-1">Around town</button>' +
       ROUTES.map(function (r, i) { return '<button class="btn' + (curRoute === i ? " on" : "") + '" type="button" data-i="' + i + '">' + esc(r.name) + "</button>"; }).join("");
     if (curRoute >= ROUTES.length) pickRoute(-1);
@@ -1650,9 +1697,89 @@ var ROUTES = S.routes;
         $("routeInfo").textContent = r.name + ": " + mins + " min right now" + (delay > 0 ? ", " + delay + " min of that is traffic" : ", no traffic delay");
       }).catch(function () { $("routeInfo").textContent = "Couldn't get drive time for this route."; });
     } else {
+      showRoute(r);
       var f = $("wazeFrame"), c = r ? routeCenter(r) : HOME;
-      f.src = "https://embed.waze.com/iframe?zoom=" + (r ? routeZoom(r) : 12) + "&lat=" + c[0].toFixed(4) + "&lon=" + c[1].toFixed(4) + "&ct=livemap";
+      setFrame(f, "https://embed.waze.com/iframe?zoom=" + (r ? routeZoom(r) : 12) + "&lat=" + c[0].toFixed(4) + "&lon=" + c[1].toFixed(4) + "&ct=livemap");
     }
+  }
+
+  /* Saved routes: point A to point B. The line and typical drive time come from the free OSRM router
+     (OpenStreetMap roads, no live traffic). Live traffic is the Waze map below and the Google Maps and Waze buttons. */
+  var rmap = null, rLine = null, rPins = null, editIdx = -1;
+  function showRoute(r) {
+    var card = $("routeCard"); card.hidden = !r; if (!r) return;
+    var a = r.from, b = r.to;
+    $("rtG").href = gmapsDir(r);
+    $("rtW").href = "https://www.waze.com/ul?ll=" + b.lat + "," + b.lon + "&navigate=yes";
+    $("rtNote").textContent = "Drive time here is typical, from the road map without live traffic. Google Maps and Waze show the live time. Waze always starts from where you are. The live map below is zoomed to this route and shows crashes, closures and construction drivers have reported.";
+    $("rtTime").textContent = r.name + ": finding the route…";
+    if (!rmap) {
+      rmap = L.map("rmap", { zoomControl: false, attributionControl: true });
+      L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19, attribution: "Map &copy; Esri, OpenStreetMap | Route &copy; OSRM" }).addTo(rmap);
+      rPins = L.layerGroup().addTo(rmap);
+      touchMap(rmap, $("rmapWrap"));
+    }
+    setTimeout(function () { rmap.invalidateSize(); }, 30);
+    rPins.clearLayers(); if (rLine) { rmap.removeLayer(rLine); rLine = null; }
+    L.circleMarker([a.lat, a.lon], { radius: 7, color: "#fff", weight: 2, fillColor: "#27ae60", fillOpacity: 1 }).bindTooltip("A: " + a.label).addTo(rPins);
+    L.circleMarker([b.lat, b.lon], { radius: 7, color: "#fff", weight: 2, fillColor: "#c0392b", fillOpacity: 1 }).bindTooltip("B: " + b.label).addTo(rPins);
+    rmap.fitBounds([[a.lat, a.lon], [b.lat, b.lon]], { padding: [30, 30] });
+    getJSON("https://router.project-osrm.org/route/v1/driving/" + a.lon + "," + a.lat + ";" + b.lon + "," + b.lat + "?overview=full&geometries=geojson").then(function (d) {
+      var rt = d.routes && d.routes[0]; if (!rt || ROUTES[curRoute] !== r) return;
+      rLine = L.geoJSON(rt.geometry, { style: { color: "#1f6fa8", weight: 6, opacity: 0.85 } }).addTo(rmap);
+      rmap.fitBounds(rLine.getBounds(), { padding: [24, 24] });
+      var m = Math.round(rt.duration / 60), mi = rt.distance / 1609.34;
+      $("rtTime").textContent = r.name + ": about " + (m >= 60 ? Math.floor(m / 60) + " hr " + (m % 60) + " min" : m + " min") + ", " + mi.toFixed(mi < 10 ? 1 : 0) + " miles (typical, without live traffic)";
+      var f = $("wazeFrame"), bb = rLine.getBounds(), c = bb.getCenter();
+      if (f) setFrame(f, "https://embed.waze.com/iframe?zoom=" + routeZoom(r) + "&lat=" + c.lat.toFixed(4) + "&lon=" + c.lng.toFixed(4) + "&ct=livemap");
+    }).catch(function () { $("rtTime").textContent = r.name + ": couldn't get the route right now. The Google Maps and Waze buttons still work."; });
+  }
+  function routeForm(open, idx) {
+    var f = $("rtForm"); f.hidden = !open; $("addRouteBtn").hidden = open; editIdx = idx == null ? -1 : idx;
+    var r = ROUTES[editIdx];
+    $("rtName").value = r ? r.name : ""; $("rtFrom").value = r ? r.from.label : ""; $("rtTo").value = r ? r.to.label : "";
+    $("rtSave").textContent = r ? "Save changes" : "Save route"; say("rtMsg", "");
+    f._here = r && r.from.here ? r.from : null;
+    if (open) $("rtName").focus();
+  }
+  function initRoutes() {
+    $("addRouteBtn").addEventListener("click", function () { routeForm(true); });
+    $("rtCancel").addEventListener("click", function () { routeForm(false); });
+    $("rtEdit").addEventListener("click", function () { if (curRoute >= 0) routeForm(true, curRoute); });
+    $("rtDel").addEventListener("click", function () {
+      if (curRoute < 0) return;
+      var gone = ROUTES[curRoute].name;
+      ROUTES.splice(curRoute, 1); S.routes = ROUTES; saveS(S); curRoute = -1; routeButtons(); pickRoute(-1);
+      $("routes").insertAdjacentHTML("beforeend", '<p class="small" style="width:100%;margin:4px 0 0">Deleted ' + esc(gone) + ".</p>");
+    });
+    $("rtFrom").addEventListener("input", function () { $("rtForm")._here = null; });
+    $("rtHere").addEventListener("click", function () {
+      if (!navigator.geolocation) { say("rtMsg", "This browser can't share its location. Type the start instead."); return; }
+      say("rtMsg", "Finding you…");
+      navigator.geolocation.getCurrentPosition(function (p) {
+        $("rtForm")._here = { label: "My location", lat: +p.coords.latitude.toFixed(5), lon: +p.coords.longitude.toFixed(5), here: true };
+        $("rtFrom").value = "My location"; say("rtMsg", "Start set to where you are now.");
+      }, function (e) { say("rtMsg", locError(e)); }, { timeout: 15000 });
+    });
+    $("rtForm").addEventListener("submit", function (e) {
+      e.preventDefault();
+      var f = this, name = $("rtName").value.trim(), from = $("rtFrom").value.trim(), to = $("rtTo").value.trim(), old = ROUTES[editIdx];
+      if (!from || !to) { say("rtMsg", "Fill in a start and an end."); return; }
+      if (!name) name = (f._here ? "Here" : from.split(",")[0]) + " to " + to.split(",")[0];
+      say("rtMsg", "Finding those places…");
+      var a;
+      var getA = f._here ? Promise.resolve(f._here) : old && from === old.from.label ? Promise.resolve(old.from) : geocode(from).then(function (x) { return new Promise(function (ok) { setTimeout(function () { ok(x); }, 1100); }); });
+      getA.then(function (x) { a = x; return old && to === old.to.label ? old.to : geocode(to); }).then(function (b) {
+        var r = { name: name, from: { label: a.here ? "My location" : a.label, lat: a.lat, lon: a.lon, here: !!a.here }, to: { label: b.label, lat: b.lat, lon: b.lon } };
+        var i = editIdx >= 0 ? editIdx : ROUTES.length;
+        ROUTES[i] = r; S.routes = ROUTES;
+        if (!saveS(S)) { if (editIdx < 0) ROUTES.pop(); say("rtMsg", "This browser won't let the page save routes."); return; }
+        routeForm(false); curRoute = i; routeButtons(); pickRoute(i);
+      }).catch(function (err) {
+        var m = String(err.message).match(/^notfound:(.*)$/);
+        say("rtMsg", m ? "Couldn't find “" + m[1] + "”. Try adding the city, like 123 Main St, Stuart." : "Couldn't look those places up right now. Try again in a minute.");
+      });
+    });
   }
   function loadIncidents() {
     if (!tmap) return;
@@ -1971,7 +2098,7 @@ var ROUTES = S.routes;
       f.className = "waze"; f.id = "planeFrame"; f.title = "Live map of planes"; f.setAttribute("allowfullscreen", "");
       $("planeWrap").insertBefore(f, $("planeWrap").firstChild);
     }
-    f.src = planeUrl(true);
+    setFrame(f, planeUrl(true));
     planeChips();
   }
   function initPlanes() {
@@ -2224,10 +2351,7 @@ var ROUTES = S.routes;
     if (tab === "ocean") html += '<h3>Tide station</h3><div class="pick" id="pkTide"><span class="muted">Loading…</span></div>' +
       '<h3>Wave buoy</h3><div class="pick" id="pkBuoy"><span class="muted">Loading…</span></div>' +
       '<h3>Water temperature station</h3><div class="pick" id="pkWt"><span class="muted">Loading…</span></div>';
-    if (tab === "traffic") html += '<h3>Your routes</h3><ul class="events" id="routeList"></ul>' +
-      '<form class="fstack" id="routeForm"><input id="rName" placeholder="Route name, like Home to work" maxlength="40" aria-label="Route name">' +
-      '<input id="rFrom" placeholder="Start: address or place" aria-label="Start address or place"><input id="rTo" placeholder="End: address or place" aria-label="End address or place">' +
-      '<button class="btn primary" type="submit">Add route</button></form><p class="small" id="routeMsg" role="status"></p>';
+    if (tab === "traffic") html += '<p>Add, edit and delete your routes right on the Traffic tab with the <b>+ Add route</b> button.</p>';
     if (tab === "planes") html += '<h3>Your airports</h3><div class="pick" id="apSel"></div>' +
       '<h3>Close by</h3><div class="pick" id="apNearBox"><span class="muted">Loading airports…</span></div>' +
       '<form class="frow" id="apForm"><input id="apQ" type="search" placeholder="Search any airport: name, city or code" aria-label="Search airports" enterkeyhint="search"><button class="btn" type="submit">Search</button></form>' +
@@ -2239,7 +2363,6 @@ var ROUTES = S.routes;
       var k = x.getAttribute("data-optk"); S.opt = S.opt || {}; S.opt[k] = x.checked; saveS(S); optChanged(k);
     };
     if (tab === "ocean") oceanPickers();
-    if (tab === "traffic") routeEditor();
     if (tab === "planes") airportPicker();
   }
   function optChanged(k) {
