@@ -117,37 +117,83 @@ def airports(out):
     import io
     import re
     path = os.path.join(out, "airports.json")
-    if fresh(path, 7):
+    if fresh(path, 7) and os.path.isdir(os.path.join(out, "ap")):
         print("airports: still fresh")
         return
     txt = get("https://davidmegginson.github.io/ourairports-data/airports.csv")
-    rows = []
-    kinds = {"large_airport": "L", "medium_airport": "M", "small_airport": "S"}
+    rows, tiles = [], {}
+    kinds = {"large_airport": "L", "medium_airport": "M", "small_airport": "S", "heliport": "H", "seaplane_base": "W"}
     for r in csv.DictReader(io.StringIO(txt)):
         k = kinds.get(r.get("type"))
         if not k or r.get("iso_country") not in ("US", "PR", "VI", "GU"):
             continue
         code = (r.get("icao_code") or r.get("gps_code") or r.get("ident") or "").strip()
-        if k == "S" and not re.match(r"^K[A-Z0-9]{3}$", code):
-            continue
         try:
             lat, lon = round(float(r["latitude_deg"]), 4), round(float(r["longitude_deg"]), 4)
         except (TypeError, ValueError):
             continue
-        rows.append([code, r.get("name", ""), lat, lon, k, (r.get("iata_code") or "").strip(),
-                     (r.get("municipality") or "").strip(), (r.get("iso_region") or "").replace("US-", "")])
+        row = [code, r.get("name", ""), lat, lon, k, (r.get("iata_code") or "").strip(),
+               (r.get("municipality") or "").strip(), (r.get("iso_region") or "").replace("US-", "")]
+        # every field, private strip and heliport goes into 2-degree tiles for "Airports near you"
+        tiles.setdefault("%d_%d" % (int(lat // 2) * 2, int(lon // 2) * 2), []).append(row)
+        if k in "HW" or (k == "S" and not re.match(r"^K[A-Z0-9]{3}$", code)):
+            continue
+        rows.append(row)
     if len(rows) < 1000:
         raise SystemExit("Airport list looks short; keeping the old file.")
+    os.makedirs(os.path.join(out, "ap"), exist_ok=True)
+    for key, t in tiles.items():
+        with open(os.path.join(out, "ap", key + ".json"), "w") as f:
+            json.dump(t, f, separators=(",", ":"))
+    print("airport tiles:", len(tiles))
     with open(path, "w") as f:
         json.dump({"updated": NOW.strftime("%Y-%m-%dT%H:%M:%SZ"), "airports": rows}, f, separators=(",", ":"))
     print("airports:", len(rows))
+
+
+def launches(out):
+    """Upcoming rocket launches from The Space Devs Launch Library 2 (free tier,
+    about 15 calls an hour), refreshed at most every 25 minutes."""
+    path = os.path.join(out, "launches.json")
+    prev = load(path)
+    if prev and prev.get("updated"):
+        age = NOW - datetime.datetime.strptime(prev["updated"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=datetime.timezone.utc)
+        if age < datetime.timedelta(minutes=25):
+            print("launches: still fresh")
+            return
+    d = json.loads(get("https://ll.thespacedevs.com/2.3.0/launches/upcoming/?limit=60&mode=normal"))
+    rows = []
+    for l in d.get("results", []):
+        pad = l.get("pad") or {}
+        loc = pad.get("location") or {}
+        st = l.get("status") or {}
+        lsp = l.get("launch_service_provider") or {}
+        rk = ((l.get("rocket") or {}).get("configuration") or {})
+        ms = l.get("mission") or {}
+        img = l.get("image")
+        if isinstance(img, dict):
+            img = img.get("thumbnail_url") or img.get("image_url")
+        try:
+            plat, plon = float(pad.get("latitude")), float(pad.get("longitude"))
+        except (TypeError, ValueError):
+            plat = plon = None
+        rows.append({"name": l.get("name"), "net": l.get("net"), "ws": l.get("window_start"), "we": l.get("window_end"),
+                     "st": st.get("abbrev"), "stn": st.get("name"), "prov": lsp.get("name"),
+                     "rocket": rk.get("full_name") or rk.get("name"), "pad": pad.get("name"), "loc": loc.get("name"),
+                     "lat": plat, "lon": plon, "mission": ms.get("name"), "desc": (ms.get("description") or "")[:400],
+                     "orbit": (ms.get("orbit") or {}).get("name"), "img": img})
+    if not rows:
+        raise SystemExit("No launches came back; keeping the old file.")
+    with open(path, "w") as f:
+        json.dump({"updated": NOW.strftime("%Y-%m-%dT%H:%M:%SZ"), "launches": rows}, f, separators=(",", ":"))
+    print("launches:", len(rows))
 
 
 if __name__ == "__main__":
     out = sys.argv[1] if len(sys.argv) > 1 else "out"
     os.makedirs(out, exist_ok=True)
     errors = []
-    for job in (buoys, tides, airports):
+    for job in (buoys, tides, airports, launches):
         try:
             job(out)
         except BaseException as e:  # keep going so one bad feed doesn't stop the other

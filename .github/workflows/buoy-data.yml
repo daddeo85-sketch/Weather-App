@@ -25,10 +25,10 @@ jobs:
         run: |
           mkdir -p out
           if git fetch --depth=1 origin data; then
-            for f in buoys.json tides.json airports.json; do git show "origin/data:$f" > "out/$f" 2>/dev/null || rm -f "out/$f"; done
+            git archive origin/data | tar -x -C out
           fi
 
-      - name: Fetch buoys and tide stations
+      - name: Fetch buoys, tide stations, airports and launches
         run: python3 .github/scripts/fetch_data.py out
 
       - name: Save to the data branch
