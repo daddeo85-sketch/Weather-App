@@ -156,6 +156,12 @@ details > summary { cursor: pointer; font-weight: 600; color: var(--accent); pad
 .tile .k { font-size: 12px; color: var(--muted); }
 .tile .v { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .periods { display: flex; gap: 8px; overflow-x: auto; margin-top: 12px; padding-bottom: 4px; scrollbar-width: thin; }
+.tile .s { font-size: 12px; color: var(--muted); margin-top: 3px; line-height: 1.3; }
+.mtag { display: inline-block; font-size: 10.5px; font-weight: 800; padding: 2px 7px; border-radius: 999px; color: #fff; text-transform: uppercase; letter-spacing: .03em; margin: 2px 4px 0 0; vertical-align: middle; }
+.mtag.super { background: #d35400; } .mtag.micro { background: #6b7c88; } .mtag.blue { background: #1f6fa8; }
+.mtag.black { background: #2c3e50; } .mtag.blood { background: #a93226; } .mtag.ecl { background: #8e44ad; }
+.tag.rip-high { background: #c0392b; } .tag.rip-mod { background: #d68910; } .tag.rip-low { background: #27ae60; }
+.moon-lines > div { margin-top: 4px; }
 .period { flex: none; width: 118px; background: var(--panel-solid); border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; }
 .period .n { font-size: 12.5px; font-weight: 700; }
 .period .t { font-size: 22px; font-weight: 800; }
@@ -281,8 +287,13 @@ input[type=range] { width: 100%; accent-color: var(--accent); height: 26px; marg
     <div class="tiles">
       <div class="tile"><div class="k">Heat index</div><div class="v" id="hi">--</div></div>
       <div class="tile"><div class="k">Humidity</div><div class="v" id="rh">--</div></div>
-      <div class="tile"><div class="k">Wind</div><div class="v" id="wind">--</div></div>
+      <div class="tile"><div class="k">Dew point</div><div class="v" id="dew">--</div><div class="s" id="dewSub"></div></div>
       <div class="tile"><div class="k">Rain chance</div><div class="v" id="pop">--</div></div>
+    </div>
+    <h3>Wind</h3>
+    <div class="tiles" style="margin-top:0">
+      <div class="tile"><div class="k">Wind now</div><div class="v" id="windNow">--</div><div class="s" id="windNowSub"></div></div>
+      <div class="tile"><div class="k">Today's top wind</div><div class="v" id="windTop">--</div><div class="s" id="windTopSub"></div></div>
     </div>
     <div class="periods" id="periods" aria-label="Forecast"></div>
     <p class="small" id="hiNote"></p>
@@ -353,6 +364,12 @@ input[type=range] { width: 100%; accent-color: var(--accent); height: 26px; marg
     <div class="card-head"><h2>Tides</h2><span class="small">Fort Pierce Inlet (Binney Dock)</span></div>
     <svg id="tidechart" viewBox="0 0 340 150" role="img" aria-label="Today's tide chart"></svg>
     <div class="tide-list" id="tideList"><div class="muted">Loading tides…</div></div>
+    <h3>Waves</h3>
+    <div class="tiles" id="waveNow" style="margin-top:0"><div class="muted">Loading waves…</div></div>
+    <div id="surf"></div>
+    <h3>Offshore waves, next few days</h3>
+    <div class="periods" id="waveDays" style="margin-top:0"></div>
+    <p class="small" id="waveSrc">Beach surf and rip current risk are the National Weather Service surf forecast for the St. Lucie County beaches. Offshore waves are measured at the Fort Pierce buoy (about 10 miles out) when it's reporting, and the days ahead come from the Open-Meteo wave model. <a href="https://www.ndbc.noaa.gov/station_page.php?station=41114" target="_blank" rel="noopener">Fort Pierce buoy</a></p>
     <h3>Big tides and small tides coming up</h3>
     <ul class="events" id="tideEvents"></ul>
     <h3>Highest tides in the next 30 days</h3>
@@ -382,9 +399,20 @@ input[type=range] { width: 100%; accent-color: var(--accent); height: 26px; marg
       <div>
         <div class="cond" id="moonName">--</div>
         <div class="small" id="moonLit"></div>
-        <div id="moonNext" style="margin-top:6px"></div>
+        <div id="moonNext" class="moon-lines" style="margin-top:6px"></div>
       </div>
     </div>
+    <h3>Full moons ahead</h3>
+    <ul class="events" id="moonList"></ul>
+    <details><summary>What the moon names mean</summary>
+      <p><b>Month names</b> (Wolf, Snow, Worm, Pink, Flower, Strawberry, Buck, Sturgeon, Harvest, Hunter's, Beaver, Cold): old names for each month's full moon. The Harvest Moon is the full moon closest to the first day of fall, and the Hunter's Moon is the one after it.</p>
+      <p><b>Supermoon:</b> a full moon when the moon is near its closest to Earth. It looks a bit bigger and brighter, and it brings king tides.</p>
+      <p><b>Micromoon:</b> a full moon near its farthest point. It looks a little smaller.</p>
+      <p><b>Blue moon:</b> the second full moon in one calendar month. It isn't actually blue.</p>
+      <p><b>Black moon:</b> the second new moon in one month. There's nothing to see, since a new moon is dark.</p>
+      <p><b>Blood moon:</b> a total lunar eclipse. Earth's shadow covers the moon and turns it a coppery red. A partial eclipse takes a dark bite out of the moon, and a penumbral one only shades it faintly.</p>
+    </details>
+    <p class="small">Moon phases and distances are calculated in the app. Eclipse dates are NASA's (Fred Espenak's eclipse tables). <a href="https://eclipse.gsfc.nasa.gov/LEdecade/LEdecade2021.html" target="_blank" rel="noopener">NASA lunar eclipse list</a></p>
   </section>
 
   <!-- TRAFFIC -->
@@ -536,12 +564,18 @@ var TOMTOM_KEY = "";
       $("hi").textContent = Math.round(hiF) + "°";
       $("hiNote").textContent = hiF >= 80 ? "Heat index " + Math.round(hiF) + "°. " + hiNote(hiF)
         : "Heat index is " + Math.round(hiF) + "°, so it feels about like the thermometer. It starts to matter at 80° and up.";
+      var dp = p.dewpoint && p.dewpoint.value;
+      if (dp != null) {
+        var dpf = Math.round(c2f(dp));
+        $("dew").textContent = dpf + "°";
+        $("dewSub").textContent = dpf < 55 ? "Dry and comfortable" : dpf < 62 ? "Comfortable" : dpf < 66 ? "A little sticky" : dpf < 71 ? "Sticky" : "Muggy";
+      }
       var ws = p.windSpeed && p.windSpeed.value, wg = p.windGust && p.windGust.value, wd = p.windDirection && p.windDirection.value;
       if (ws != null) {
-        var dirs = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
-        var dir = wd != null ? dirs[Math.round(wd / 45) % 8] + " " : "";
-        $("wind").textContent = ws < 1 ? "Calm" : dir + Math.round(ws / 1.609) + (wg ? "–" + Math.round(wg / 1.609) : "") + " mph";
-      }
+        $("windNow").textContent = ws < 1 ? "Calm" : (wd != null ? dir16(wd) + " " : "") + Math.round(kmh2mph(ws)) + " mph";
+        $("windNowSub").textContent = (wg ? "Gusts to " + Math.round(kmh2mph(wg)) + " mph" : "No gusts reported") +
+          (wd != null && ws >= 1 ? " · from the " + DIRWORD[Math.round(wd / 45) % 8] : "");
+      } else { $("windNow").textContent = "--"; $("windNowSub").textContent = "Wind sensor not reporting"; }
       $("obsTime").textContent = "As of " + fmtTime.format(new Date(p.timestamp));
     }).catch(function () { $("cond").textContent = "Current conditions unavailable"; });
 
@@ -558,6 +592,120 @@ var TOMTOM_KEY = "";
           '<div class="s">' + esc(x.shortForecast) + '</div></div>';
       }).join("");
     }).catch(function () { $("periods").innerHTML = '<div class="err">Forecast unavailable right now.</div>'; });
+  }
+
+  /* ---------------- Wind ---------------- */
+  var DIR16 = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"];
+  var DIRWORD = ["north", "northeast", "east", "southeast", "south", "southwest", "west", "northwest"];
+  function dir16(deg) { return DIR16[Math.round(deg / 22.5) % 16]; }
+  function kmh2mph(v) { return v / 1.609344; }
+  function etOffset(d) {                                      // -5 in winter, -4 in summer
+    try {
+      var z = new Intl.DateTimeFormat("en-US", { timeZone: TZ, timeZoneName: "shortOffset" }).formatToParts(d)
+        .filter(function (x) { return x.type === "timeZoneName"; })[0].value.match(/GMT([+-]\d+)/);
+      if (z) return +z[1];
+    } catch (e) {}
+    return -5;
+  }
+  function etMidnight() { var n = new Date(), a = ymd(n).split("-"); return new Date(Date.UTC(+a[0], +a[1] - 1, +a[2], -etOffset(n), 0, 0)); }
+  function durMs(s) {                                         // "PT3H", "P1DT6H" -> ms
+    var m = String(s).match(/P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?)?/) || [];
+    return (((+m[1] || 0) * 24 + (+m[2] || 0)) * 60 + (+m[3] || 0)) * 60000;
+  }
+  function loadWind() {
+    var start = etMidnight(), end = start.getTime() + 86400000, now = Date.now();
+    var obs = nws("/stations/KFPR/observations?start=" + encodeURIComponent(start.toISOString()) + "&limit=300").then(function (d) {
+      var r = { s: null, g: null, gt: null };
+      (d.features || []).forEach(function (f) {
+        var p = f.properties, w = p.windSpeed && p.windSpeed.value, g = p.windGust && p.windGust.value;
+        if (w != null && (r.s == null || w > r.s)) r.s = w;
+        if (g != null && (r.g == null || g > r.g)) { r.g = g; r.gt = p.timestamp; }
+      });
+      return r;
+    }).catch(function () { return null; });
+    var fc = nws("/gridpoints/MLB/72,25").then(function (d) {
+      function mx(series) {
+        var best = null;
+        ((series && series.values) || []).forEach(function (v) {
+          var a = v.validTime.split("/"), t0 = new Date(a[0]).getTime(), t1 = t0 + durMs(a[1]);
+          if (t1 > now && t0 < end && v.value != null && (best == null || v.value > best)) best = v.value;
+        });
+        return best;
+      }
+      return { s: mx(d.properties.windSpeed), g: mx(d.properties.windGust) };
+    }).catch(function () { return null; });
+    Promise.all([obs, fc]).then(function (r) {
+      var o = r[0], f = r[1];
+      function mph(v) { return v == null ? null : Math.round(kmh2mph(v)); }
+      var top = Math.max(mph(o && o.s) || 0, mph(f && f.s) || 0), gust = Math.max(mph(o && o.g) || 0, mph(f && f.g) || 0);
+      if (!o && !f) { $("windTop").textContent = "--"; $("windTopSub").textContent = "Couldn't load today's wind"; return; }
+      $("windTop").textContent = top + " mph" + (gust > top ? ", gusts " + gust : "");
+      var lines = [];
+      if (o && o.s != null) lines.push("So far today (measured): " + mph(o.s) + " mph" + (o.g != null ? ", gust " + mph(o.g) + " at " + fmtTime.format(new Date(o.gt)) : ""));
+      if (f && f.s != null) lines.push("Rest of today (forecast): up to " + mph(f.s) + " mph" + (f.g != null ? ", gusts " + mph(f.g) : ""));
+      $("windTopSub").innerHTML = lines.map(esc).join("<br>");
+    });
+  }
+
+  /* ---------------- Waves ---------------- */
+  var BUOY = "41114";   // NDBC / Scripps waverider off Fort Pierce
+  var WAVE_API = "https://marine-api.open-meteo.com/v1/marine?latitude=27.47&longitude=-80.27&current=wave_height,wave_direction,wave_period&daily=wave_height_max,wave_direction_dominant,wave_period_max&timezone=America%2FNew_York&length_unit=imperial&forecast_days=6";
+  function loadWaves() {
+    var buoy = fetch(bust("https://www.ndbc.noaa.gov/data/realtime2/" + BUOY + ".txt", 10)).then(function (r) {
+      if (!r.ok) throw new Error(r.status); return r.text();
+    }).then(function (txt) {
+      var rows = txt.split("\n").filter(function (l) { return l && l.charAt(0) !== "#"; });
+      for (var i = 0; i < rows.length && i < 12; i++) {
+        var c = rows[i].trim().split(/\s+/);
+        if (c.length > 14 && c[8] !== "MM") return {
+          t: new Date(Date.UTC(+c[0], +c[1] - 1, +c[2], +c[3], +c[4])), h: +c[8] * 3.28084,
+          per: c[9] !== "MM" ? +c[9] : null, dir: c[11] !== "MM" ? +c[11] : null, wt: c[14] !== "MM" ? c2f(+c[14]) : null };
+      }
+      throw new Error("no waves");
+    }).catch(function () { return null; });
+    var model = getJSON(WAVE_API).catch(function () { return null; });
+    Promise.all([buoy, model]).then(function (r) {
+      var b = r[0], m = r[1], tiles = "";
+      function wv(h, per, dir) { return { v: h.toFixed(1) + " ft", s: (per ? "Every " + Math.round(per) + " sec" : "") + (dir != null ? (per ? " from the " : "From the ") + dir16(dir) : "") }; }
+      if (b && Date.now() - b.t.getTime() < 6 * 3600000) {
+        var x = wv(b.h, b.per, b.dir);
+        tiles += '<div class="tile"><div class="k">Waves offshore now</div><div class="v">' + esc(x.v) + '</div><div class="s">' + esc(x.s) + "<br>Measured at the Fort Pierce buoy, " + esc(fmtTime.format(b.t)) + "</div></div>";
+        if (b.wt != null) tiles += '<div class="tile"><div class="k">Ocean temp</div><div class="v">' + Math.round(b.wt) + '°</div><div class="s">At the buoy</div></div>';
+      } else if (m && m.current) {
+        var y = wv(m.current.wave_height, m.current.wave_period, m.current.wave_direction);
+        tiles += '<div class="tile"><div class="k">Waves offshore now</div><div class="v">' + esc(y.v) + '</div><div class="s">' + esc(y.s) + "<br>Wave model estimate (buoy not reachable)</div></div>";
+      }
+      $("waveNow").innerHTML = tiles || '<div class="err">Couldn\'t load wave readings right now.</div>';
+      if (m && m.daily && m.daily.time) {
+        var dd = m.daily;
+        $("waveDays").innerHTML = dd.time.map(function (day, i) {
+          var a = day.split("-"), dt = new Date(+a[0], +a[1] - 1, +a[2], 12);
+          var name = i === 0 ? "Today" : i === 1 ? "Tomorrow" : dt.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+          return '<div class="period"><div class="n">' + esc(name) + '</div><div class="t">' + esc((+dd.wave_height_max[i]).toFixed(1)) + ' ft</div>' +
+            '<div class="s">Biggest waves. From the ' + esc(dir16(dd.wave_direction_dominant[i])) + ", " + Math.round(dd.wave_period_max[i]) + " sec apart</div></div>";
+        }).join("");
+      } else $("waveDays").innerHTML = '<div class="err">Wave forecast unavailable right now.</div>';
+    });
+
+    nws("/products/types/SRF/locations/MLB/latest").then(function (d) {
+      var seg = (d.productText || "").split("$$").filter(function (s) { return /Saint Lucie/i.test(s); })[0];
+      if (!seg) throw new Error("no segment");
+      var head = (seg.match(/\n\.\.\.([^\n]+?)\.\.\.\s*\n/) || [])[1];
+      var re = /\n\.([A-Z][A-Z ]*?)\.\.\.([\s\S]*?)(?=\n\.[A-Z][A-Z ]*?\.\.\.|\n&&|$)/g, mm, rows = [];
+      while ((mm = re.exec(seg))) {
+        var body = mm[2], surf = (body.match(/Surf Height\.+\s*([^\n]+)/) || [])[1];
+        if (!surf) continue;
+        var rip = ((body.match(/Rip Current Risk\*?\.+\s*([^\n]+)/) || [])[1] || "").replace(/[.\s]+$/, "");
+        var water = ((body.match(/Water Temperature\.+\s*([^\n]+)/) || [])[1] || "").replace(/[.\s]+$/, "");
+        var nm = mm[1].trim().toLowerCase(); nm = nm.charAt(0).toUpperCase() + nm.slice(1);
+        var cls = /high/i.test(rip) ? "rip-high" : /mod/i.test(rip) ? "rip-mod" : "rip-low";
+        rows.push('<li><span class="tag ' + cls + '">Rip risk: ' + esc(rip || "?") + '</span><div><b>' + esc(nm) + ": surf " + esc(surf.replace(/[.\s]+$/, "")) + "</b>" +
+          (water ? '<div class="small">Water ' + esc(water.charAt(0).toLowerCase() + water.slice(1)) + "</div>" : "") + "</div></li>");
+      }
+      if (!rows.length) throw new Error("no rows");
+      $("surf").innerHTML = '<p class="small" style="margin:10px 0 0"><b>At the beach</b> (NWS surf forecast, issued ' + esc(fmtDay.format(new Date(d.issuanceTime)) + " " + fmtTime.format(new Date(d.issuanceTime))) + ")" +
+        (head ? '<br><span class="err">' + esc(head.charAt(0) + head.slice(1).toLowerCase()) + "</span>" : "") + '</p><ul class="events">' + rows.join("") + "</ul>";
+    }).catch(function () { $("surf").innerHTML = ""; });
   }
 
   /* ---------------- Radar ---------------- */
@@ -673,9 +821,10 @@ var TOMTOM_KEY = "";
     return { phase: el / 360, fraction: (1 - Math.cos(el * R)) / 2, dist: dist };
   }
   var PHASES = [[0, "New moon"], [0.25, "First quarter"], [0.5, "Full moon"], [0.75, "Last quarter"]];
-  function moonEvents(days) {
-    var out = [], step = 1800000, t0 = Date.now(), prev = moonState(new Date(t0)).phase;
-    for (var t = t0 + step; t < t0 + days * 86400000; t += step) {
+  function moonEvents(days) { return moonEventsRange(Date.now(), Date.now() + days * 86400000); }
+  function moonEventsRange(t0, t1) {
+    var out = [], step = 1800000, prev = moonState(new Date(t0)).phase;
+    for (var t = t0 + step; t < t1; t += step) {
       var s = moonState(new Date(t)), ph = s.phase;
       PHASES.forEach(function (P) {
         var hit = P[0] === 0 ? ph < prev - 0.5 : (prev < P[0] && ph >= P[0]);
@@ -684,6 +833,58 @@ var TOMTOM_KEY = "";
       prev = ph;
     }
     return out;
+  }
+  // NASA lunar eclipses (Espenak), time of greatest eclipse in UTC, 2026 to 2030
+  var ECLIPSES = [
+    ["2026-08-28T04:13:00Z", "Partial"], ["2027-02-20T23:13:00Z", "Penumbral"], ["2027-07-18T16:03:00Z", "Penumbral"],
+    ["2027-08-17T07:14:00Z", "Penumbral"], ["2028-01-12T04:13:00Z", "Partial"], ["2028-07-06T18:20:00Z", "Partial"],
+    ["2028-12-31T16:52:00Z", "Total", 71], ["2029-06-26T03:22:00Z", "Total", 102], ["2029-12-20T22:42:00Z", "Total", 54],
+    ["2030-06-15T18:33:00Z", "Partial"], ["2030-12-09T22:27:00Z", "Penumbral"]
+  ].map(function (e) { return { when: new Date(e[0]), type: e[1], totalMin: e[2] || 0 }; });
+  var MONTH_MOONS = ["Wolf Moon", "Snow Moon", "Worm Moon", "Pink Moon", "Flower Moon", "Strawberry Moon", "Buck Moon", "Sturgeon Moon", "Harvest Moon", "Hunter's Moon", "Beaver Moon", "Cold Moon"];
+  var fmtDayY = new Intl.DateTimeFormat("en-US", { timeZone: TZ, weekday: "short", month: "short", day: "numeric", year: "numeric" });
+  function moonSeenHere(d) { return SunCalc.getMoonPosition(d, HOME[0], HOME[1]).altitude > 0; }
+  function eclipseText(e) {
+    return e.type === "Total" ? "Blood moon (total lunar eclipse), red for about " + e.totalMin + " minutes"
+      : e.type === "Partial" ? "Partial lunar eclipse, a dark bite out of the moon" : "Penumbral eclipse, faint shading that's easy to miss";
+  }
+  // Full and new moons with their names and special types, from about 40 days back to 13 months ahead
+  function moonCalendar() {
+    var now = Date.now();
+    var ev = moonEventsRange(now - 40 * 86400000, now + 400 * 86400000).filter(function (e) { return e.phase === 0 || e.phase === 0.5; });
+    var count = {};
+    ev.forEach(function (e) {
+      e.key = ymd(e.when).slice(0, 7);
+      var k = e.phase + "|" + e.key; count[k] = (count[k] || 0) + 1; e.nth = count[k];
+      e.tags = [];
+      if (e.phase === 0.5) {
+        e.title = MONTH_MOONS[+e.key.slice(5) - 1];
+        if (e.dist < 362000) e.tags.push(["super", "Supermoon", "Close to Earth (" + Math.round(e.dist * 0.621371).toLocaleString("en-US") + " miles), so a bit bigger and brighter. Expect king tides."]);
+        if (e.dist > 405000) e.tags.push(["micro", "Micromoon", "Near its farthest point, so it looks a little smaller."]);
+        if (e.nth === 2) e.tags.push(["blue", "Blue moon", "Second full moon this month."]);
+        ECLIPSES.forEach(function (x) {
+          if (Math.abs(x.when - e.when) < 1.5 * 86400000) {
+            e.ecl = x;
+            e.tags.push([x.type === "Total" ? "blood" : "ecl", x.type === "Total" ? "Blood moon" : x.type + " eclipse",
+              eclipseText(x) + ", " + fmtTime.format(x.when) + ". " + (moonSeenHere(x.when) ? "Visible from Fort Pierce." : "Not visible from Fort Pierce (moon below the horizon at the peak).")]);
+          }
+        });
+      } else {
+        e.title = "New moon";
+        if (e.nth === 2) e.tags.push(["black", "Black moon", "Second new moon this month. Nothing to see."]);
+      }
+    });
+    // Harvest Moon = full moon nearest the fall equinox (about Sep 22); Hunter's Moon is the next one
+    var fulls = ev.filter(function (e) { return e.phase === 0.5; });
+    fulls.forEach(function (e, i) {
+      var y = +e.key.slice(0, 4), eq = Date.UTC(y, 8, 22, 18);
+      if (Math.abs(e.when - eq) < 15 * 86400000) {
+        e.title = "Harvest Moon";
+        if (fulls[i + 1]) fulls[i + 1].title = "Hunter's Moon";
+        if (e.key.slice(5) === "10" && fulls[i - 1]) fulls[i - 1].title = "Corn Moon";
+      }
+    });
+    return ev;
   }
   function phaseName(p) {
     if (p < 0.03 || p > 0.97) return "New moon";
@@ -718,11 +919,33 @@ var TOMTOM_KEY = "";
     $("moonName").textContent = phaseName(il.phase);
     $("moonLit").textContent = Math.round(il.fraction * 100) + "% lit";
     drawMoon(il.phase, il.fraction);
-    var ev = moonEvents(35);
-    var full = ev.filter(function (e) { return e.phase === 0.5; })[0];
-    var nw = ev.filter(function (e) { return e.phase === 0; })[0];
-    $("moonNext").innerHTML = (full ? "<div>Next full moon: <b>" + esc(dayLabel(full.when)) + "</b></div>" : "") +
-      (nw ? "<div>Next new moon: <b>" + esc(dayLabel(nw.when)) + "</b></div>" : "");
+    var cal = moonCalendar(), nowMs = now.getTime();
+    function tagsHtml(e) { return e.tags.map(function (g) { return '<span class="mtag ' + g[0] + '">' + esc(g[1]) + "</span>"; }).join(""); }
+    var full = cal.filter(function (e) { return e.phase === 0.5 && e.when.getTime() > nowMs - 36 * 3600000; })[0];
+    var nw = cal.filter(function (e) { return e.phase === 0 && e.when > now; })[0];
+    var html = "";
+    if (full) {
+      var isNow = full.when < now;
+      html += "<div>" + (isNow ? "This full moon" : "Next full moon") + ": <b>" + esc(dayLabel(full.when)) + "</b>, the <b>" + esc(full.title) + "</b> " + tagsHtml(full) + "</div>";
+    }
+    if (nw) html += "<div>Next new moon: <b>" + esc(dayLabel(nw.when)) + "</b> " + tagsHtml(nw) + "</div>";
+    var special = cal.filter(function (e) { return e.when > now && e !== full && e.tags.length; })[0];
+    if (special) html += "<div>Next special moon: <b>" + esc(fmtDayY.format(special.when)) + "</b>, " + esc(special.tags.map(function (g) { return g[1]; }).join(" and ")) +
+      (special.phase === 0.5 ? " (" + esc(special.title) + ")" : "") + "</div>";
+    var ne = ECLIPSES.filter(function (x) { return x.when > now; })[0];
+    if (ne) html += "<div>Next lunar eclipse: <b>" + esc(fmtDayY.format(ne.when)) + "</b>, " + esc(eclipseText(ne).charAt(0).toLowerCase() + eclipseText(ne).slice(1)) + ". " +
+      (moonSeenHere(ne.when) ? "Visible from Fort Pierce around " + esc(fmtTime.format(ne.when)) + "." : "Not visible from Fort Pierce.") + "</div>";
+    var nb = ECLIPSES.filter(function (x) { return x.when > now && x.type === "Total"; })[0];
+    if (nb && nb !== ne) html += "<div>Next blood moon: <b>" + esc(fmtDayY.format(nb.when)) + "</b>. " +
+      (moonSeenHere(nb.when) ? "Visible from Fort Pierce around " + esc(fmtTime.format(nb.when)) + "." : "Not visible from Fort Pierce.") + "</div>";
+    var nbv = ECLIPSES.filter(function (x) { return x.when > now && x.type === "Total" && moonSeenHere(x.when); })[0];
+    if (nbv && nbv !== nb && nbv !== ne) html += "<div>First blood moon you can see here: <b>" + esc(fmtDayY.format(nbv.when)) + "</b> around " + esc(fmtTime.format(nbv.when)) + ".</div>";
+    if (!ne) html += '<div class="small">See NASA\'s eclipse list below for eclipses after 2030.</div>';
+    $("moonNext").innerHTML = html;
+    $("moonList").innerHTML = cal.filter(function (e) { return e.phase === 0.5 && e.when.getTime() > nowMs - 36 * 3600000; }).slice(0, 13).map(function (e) {
+      return "<li><div><b>" + esc(fmtDayY.format(e.when)) + "</b> · " + esc(e.title) + " " + tagsHtml(e) +
+        e.tags.map(function (g) { return '<div class="small">' + esc(g[2]) + "</div>"; }).join("") + "</div></li>";
+    }).join("");
   }
 
   /* ---------------- Tides ---------------- */
@@ -966,8 +1189,8 @@ var TOMTOM_KEY = "";
 
   /* ---------------- Boot + refresh ---------------- */
   function stamp() { $("stamp").textContent = "Updated " + fmtTime.format(new Date()) + " · " + fmtDay.format(new Date()); }
-  function refreshFast() { loadNow(); loadAlerts(); loadRadar(); stamp(); }
-  function refreshSlow() { loadWhy(); loadTides(); loadSky(); }
+  function refreshFast() { loadNow(); loadWind(); loadAlerts(); loadRadar(); stamp(); }
+  function refreshSlow() { loadWhy(); loadTides(); loadWaves(); loadSky(); }
 
   placeHurricanes();
   initRadar();
