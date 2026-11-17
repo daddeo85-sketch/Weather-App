@@ -2346,7 +2346,8 @@ var ROUTES = S.routes;
   }
   function loadHurricanes(year) {
     $("nhc7").src = bust("https://www.nhc.noaa.gov/xgtwo/two_atl_7d0.png", 30);
-    getJSON("https://www.nhc.noaa.gov/CurrentStorms.json", { cache: "no-store" }).then(function (d) {
+    // NHC's own file first; if the browser can't read it, the copy the app saves every 30 minutes
+    getJSON("https://www.nhc.noaa.gov/CurrentStorms.json", { cache: "no-store" }).catch(function () { return getJSON(bust(DATA_URL + "storms.json", 5)); }).then(function (d) {
       var at = (d.activeStorms || []).filter(function (s) { return /^AT/i.test(s.binNumber || s.id || ""); });
       var CL = { HU: "Hurricane", TS: "Tropical Storm", TD: "Tropical Depression", STS: "Subtropical Storm", SD: "Subtropical Depression", PTC: "Potential Tropical Cyclone", PC: "Post-Tropical Cyclone" };
       $("activeStorms").innerHTML = at.length ? at.map(function (s) {

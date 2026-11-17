@@ -191,11 +191,20 @@ def launches(out):
     print("launches:", len(rows))
 
 
+def storms(out):
+    """Active Atlantic and Pacific storms from the National Hurricane Center.
+    The browser can't read NHC's file directly, so it's saved here every run."""
+    d = json.loads(get("https://www.nhc.noaa.gov/CurrentStorms.json"))
+    with open(os.path.join(out, "storms.json"), "w") as f:
+        json.dump({"updated": NOW.strftime("%Y-%m-%dT%H:%M:%SZ"), "activeStorms": d.get("activeStorms") or []}, f, separators=(",", ":"))
+    print("storms:", len(d.get("activeStorms") or []))
+
+
 if __name__ == "__main__":
     out = sys.argv[1] if len(sys.argv) > 1 else "out"
     os.makedirs(out, exist_ok=True)
     errors = []
-    for job in (buoys, tides, airports, launches):
+    for job in (buoys, tides, airports, launches, storms):
         try:
             job(out)
         except BaseException as e:  # keep going so one bad feed doesn't stop the other
