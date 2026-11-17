@@ -25,7 +25,7 @@ jobs:
         run: |
           mkdir -p out
           if git fetch --depth=1 origin data; then
-            for f in buoys.json tides.json; do git show "origin/data:$f" > "out/$f" 2>/dev/null || rm -f "out/$f"; done
+            for f in buoys.json tides.json airports.json; do git show "origin/data:$f" > "out/$f" 2>/dev/null || rm -f "out/$f"; done
           fi
 
       - name: Fetch buoys and tide stations

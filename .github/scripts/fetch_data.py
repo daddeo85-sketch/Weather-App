@@ -1,4 +1,4 @@
-"""Fetch the latest NOAA buoy readings and the NOAA tide station list.
+"""Fetch the latest NOAA buoy readings, NOAA station lists and a US airport list.
 
 The web page can't read NOAA's buoy files directly (the browser blocks them),
 so this runs on a schedule in GitHub Actions and saves small JSON files to the
@@ -76,30 +76,78 @@ def buoys(out):
     print("buoys:", fresh, "reporting,", len(rows), "kept")
 
 
-def tides(out):
-    """NOAA tide prediction stations, refreshed once a week."""
-    path = os.path.join(out, "tides.json")
+def fresh(path, days):
     prev = load(path)
     if prev and prev.get("updated"):
         age = NOW - datetime.datetime.strptime(prev["updated"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=datetime.timezone.utc)
-        if age < datetime.timedelta(days=7):
-            print("tides: still fresh")
-            return
-    d = json.loads(get("https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/stations.json?type=tidepredictions"))
-    rows = [[s["id"], s["name"], round(float(s["lat"]), 4), round(float(s["lng"]), 4)]
+        return age < datetime.timedelta(days=days)
+    return False
+
+
+def stations(kind):
+    d = json.loads(get("https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/stations.json?type=" + kind))
+    return [[s["id"], s["name"], round(float(s["lat"]), 4), round(float(s["lng"]), 4)]
             for s in d.get("stations", []) if s.get("lat") is not None and s.get("lng") is not None]
+
+
+def tides(out):
+    """NOAA tide prediction stations and water temperature stations, refreshed once a week."""
+    path = os.path.join(out, "tides.json")
+    prev = load(path) or {}
+    if fresh(path, 7) and prev.get("wt"):
+        print("tides: still fresh")
+        return
+    rows = stations("tidepredictions")
     if len(rows) < 1000:
         raise SystemExit("Tide station list looks short; keeping the old file.")
+    try:
+        wt = stations("watertemp")
+    except Exception as e:
+        print("WARNING water temp stations:", e)
+        wt = prev.get("wt", [])
     with open(path, "w") as f:
-        json.dump({"updated": NOW.strftime("%Y-%m-%dT%H:%M:%SZ"), "stations": rows}, f, separators=(",", ":"))
-    print("tides:", len(rows), "stations")
+        json.dump({"updated": NOW.strftime("%Y-%m-%dT%H:%M:%SZ"), "stations": rows, "wt": wt}, f, separators=(",", ":"))
+    print("tides:", len(rows), "stations,", len(wt), "water temp stations")
+
+
+def airports(out):
+    """US airports from OurAirports (public domain), refreshed once a week. Big and
+    mid-size airports, plus small ones with a K code (public-use fields)."""
+    import csv
+    import io
+    import re
+    path = os.path.join(out, "airports.json")
+    if fresh(path, 7):
+        print("airports: still fresh")
+        return
+    txt = get("https://davidmegginson.github.io/ourairports-data/airports.csv")
+    rows = []
+    kinds = {"large_airport": "L", "medium_airport": "M", "small_airport": "S"}
+    for r in csv.DictReader(io.StringIO(txt)):
+        k = kinds.get(r.get("type"))
+        if not k or r.get("iso_country") not in ("US", "PR", "VI", "GU"):
+            continue
+        code = (r.get("icao_code") or r.get("gps_code") or r.get("ident") or "").strip()
+        if k == "S" and not re.match(r"^K[A-Z0-9]{3}$", code):
+            continue
+        try:
+            lat, lon = round(float(r["latitude_deg"]), 4), round(float(r["longitude_deg"]), 4)
+        except (TypeError, ValueError):
+            continue
+        rows.append([code, r.get("name", ""), lat, lon, k, (r.get("iata_code") or "").strip(),
+                     (r.get("municipality") or "").strip(), (r.get("iso_region") or "").replace("US-", "")])
+    if len(rows) < 1000:
+        raise SystemExit("Airport list looks short; keeping the old file.")
+    with open(path, "w") as f:
+        json.dump({"updated": NOW.strftime("%Y-%m-%dT%H:%M:%SZ"), "airports": rows}, f, separators=(",", ":"))
+    print("airports:", len(rows))
 
 
 if __name__ == "__main__":
     out = sys.argv[1] if len(sys.argv) > 1 else "out"
     os.makedirs(out, exist_ok=True)
     errors = []
-    for job in (buoys, tides):
+    for job in (buoys, tides, airports):
         try:
             job(out)
         except BaseException as e:  # keep going so one bad feed doesn't stop the other
