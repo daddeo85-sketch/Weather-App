@@ -1,0 +1,25 @@
+<!doctype html><meta name=viewport content="width=device-width"><style>
+body{margin:0} .sky{position:relative;height:300px;overflow:hidden;--cloud: rgba(255,255,255,0.92);--cloud-shade: rgba(205,220,234,0.9);background:linear-gradient(#3a7bd5,#9cc6f0)}
+.sky.wx-rain{--cloud: rgba(120,130,145,0.95); --cloud-shade: rgba(80,90,105,0.9);background:linear-gradient(#6b7685,#a3adb9)}
+.sky.night{--cloud: rgba(70,82,100,0.75); --cloud-shade: rgba(40,50,66,0.7);background:linear-gradient(#0d1424,#1c2a40)}
+.cloud { position: absolute; width: 360px; height: 150px; margin-top: -60px; animation: drift linear infinite; transition: opacity 2s;
+  background:
+    radial-gradient(ellipse 46% 26% at 50% 80%, var(--cloud-shade) 0%, transparent 72%),
+    radial-gradient(ellipse 20% 34% at 30% 52%, var(--cloud) 0%, transparent 70%),
+    radial-gradient(ellipse 24% 44% at 47% 42%, var(--cloud) 0%, transparent 70%),
+    radial-gradient(ellipse 18% 32% at 64% 50%, var(--cloud) 0%, transparent 70%),
+    radial-gradient(ellipse 14% 24% at 78% 62%, var(--cloud) 0%, transparent 70%),
+    radial-gradient(ellipse 14% 22% at 18% 66%, var(--cloud) 0%, transparent 70%),
+    radial-gradient(ellipse 48% 22% at 50% 68%, var(--cloud) 0%, transparent 78%);
+  filter: blur(5px); }
+.cloud::before { content: ""; position: absolute; left: -12%; right: -12%; top: 54%; height: 28%;
+  background: radial-gradient(ellipse 50% 50% at 50% 50%, var(--cloud) 0%, transparent 70%); opacity: 0.5; filter: blur(6px); }
+.cloud::after { content: ""; position: absolute; left: 34%; top: 14%; width: 26%; height: 30%;
+  background: radial-gradient(ellipse 50% 50% at 50% 60%, rgba(255,255,255,0.55) 0%, transparent 70%); filter: blur(4px); }
+.sky.night .cloud::after, .sky.wx-rain .cloud::after, .sky.wx-storm .cloud::after { opacity: 0.25; }
+
+.cloud{animation:none}
+</style>
+<div class=sky><div class=cloud style="left:10px;top:70px"></div><div class=cloud style="left:300px;top:120px;transform:scale(0.7,0.6) scaleX(-1)"></div></div>
+<div class="sky wx-rain"><div class=cloud style="left:10px;top:70px"></div><div class=cloud style="left:300px;top:120px;transform:scale(0.9,0.75) scaleX(-1)"></div></div>
+<div class="sky night"><div class=cloud style="left:10px;top:70px"></div></div>
