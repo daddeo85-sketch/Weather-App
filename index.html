@@ -267,6 +267,9 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; justif
   border-top: 1px solid rgba(255,255,255,0.10); box-shadow: 0 -6px 22px rgba(0,0,0,0.35);
   padding: 4px max(6px, env(safe-area-inset-right, 0px)) calc(4px + env(safe-area-inset-bottom, 0px)) max(6px, env(safe-area-inset-left, 0px)); }
 .tabbar::-webkit-scrollbar { display: none; }
+.tabbar button { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+.tabbar.sorting { overflow-x: hidden; }
+.tabbar button.dragging { transform: translateY(-8px) scale(1.12); background: rgba(255,255,255,0.14); box-shadow: 0 6px 16px rgba(0,0,0,0.45); z-index: 2; }
 .tabbar button { flex: 1 1 0; min-width: 44px; background: none; border: 0; border-radius: 12px; color: rgba(225,232,245,0.72); cursor: pointer; position: relative;
   display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 5px 1px 4px; font: 700 calc(9.5px * var(--fs)) var(--font); letter-spacing: -0.1px; }
 .tabbar button .tl { white-space: nowrap; }
@@ -341,7 +344,7 @@ label.sw:first-of-type { border-top: 0; }
   transition: background 2s;
 }
 #skyfx { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2; }
-.sunEl, .moonEl { position: absolute; z-index: 2; transform: translate(-50%, -50%); transition: left 1s, top 1s, opacity 1s; }
+.sunEl, .moonEl { position: absolute; z-index: 0; transform: translate(-50%, -50%); transition: left 1s, top 1s, opacity 1s; }
 .sunEl { width: 96px; height: 96px; border-radius: 50%; background: url(img/sun.webp) center / 100% no-repeat;
   box-shadow: 0 0 80px 36px rgba(255,190,90,0.5); }
 .sunEl.low { box-shadow: 0 0 110px 50px rgba(255,130,70,0.5); }
@@ -723,6 +726,7 @@ body.hero .streetgap { display: block; }
     <div class="content">
     <div class="streetgap" aria-hidden="true"></div>
     <section class="card" id="vehCard"></section>
+    <input type="file" id="vehFile" accept="image/*" hidden>
     <section class="card" id="traffic">
       <div class="card-head"><h2>Your routes</h2><button class="btn primary" id="addRouteBtn" type="button">+ Add route</button></div>
       <form class="fstack routeform" id="rtForm" hidden>
@@ -833,8 +837,14 @@ body.hero .streetgap { display: block; }
     <div class="content">
     <div class="streetgap" aria-hidden="true"></div>
     <section class="card">
-      <div class="card-head"><h2>Launches near you</h2><span class="small">Within about 250 miles</span></div>
+      <div class="card-head"><h2 id="padTitle">Launches near you</h2><span class="small" id="padSub">Within about 250 miles</span></div>
+      <div class="frow padpick"><label class="small" for="padPick">Launch pad</label><select id="padPick"><option value="near">Near me (250 miles)</option></select></div>
       <ul class="events" id="launchNear"><li><span class="muted">Loading launches…</span></li></ul>
+    </section>
+    <section class="card" data-opt="reminders">
+      <div class="card-head"><h2>Launch reminders</h2></div>
+      <div class="remrow"><label><input type="checkbox" id="remOn"> Remind me</label><select id="remMin" aria-label="Minutes before launch"><option>5</option><option selected>10</option><option>15</option><option>30</option><option>60</option></select><span class="small">minutes before each launch above</span></div>
+      <p class="small" id="remMsg">Your phone pops up a reminder while the app is open. For an alarm that goes off even when it's closed, open a launch and tap Add to calendar.</p>
     </section>
     <section class="card" data-opt="world">
       <div class="card-head"><h2>Around the world</h2><span class="small">Next launches anywhere</span></div>
@@ -2548,18 +2558,51 @@ var ROUTES = S.routes;
     traffic: [["trafficlinks", "Crash, camera and news links", 1]],
     ride: [["ridescore", "Off-road conditions", 1], ["street", "Go-karts and street riding", 1], ["electric", "Electric ride notes (water, heat, cold)", 1], ["tracks", "Tracks and riding areas", 1]],
     planes: [["lowonly", "Only planes taking off or landing (below 6,000 feet)", 1], ["labels", "Flight numbers on the map", 0], ["atc", "Air traffic control audio link", 1], ["nearap", "Airports near you", 1], ["heli", "Heliports in the list", 1]],
-    rockets: [["world", "Launches around the world", 1]]
+    rockets: [["reminders", "Launch reminders", 1], ["world", "Launches around the world", 1]]
   };
   function optDef(k) { for (var t in OPTS) for (var i = 0; i < OPTS[t].length; i++) if (OPTS[t][i][0] === k) return !!OPTS[t][i][2]; return true; }
   function on(k) { return S.opt && k in S.opt ? !!S.opt[k] : optDef(k); }
   function applyOpts() { Array.prototype.forEach.call(document.querySelectorAll("[data-opt]"), function (e) { e.hidden = !on(e.getAttribute("data-opt")); }); }
+  function tabList() {
+    var o = S.tabOrder || [];
+    return TABS.slice().sort(function (a, b) { var i = o.indexOf(a[0]), j = o.indexOf(b[0]); return (i < 0 ? 99 + TABS.indexOf(a) : i) - (j < 0 ? 99 + TABS.indexOf(b) : j); });
+  }
+  function initTabDrag() {
+    var bar = $("tabbar"), hold = null, drag = null, sx = 0, sy = 0, eat = false;
+    function under(x) { var hit = null; Array.prototype.forEach.call(bar.querySelectorAll("[data-tabbtn]"), function (b) { var r = b.getBoundingClientRect(); if (x >= r.left && x <= r.right) hit = b; }); return hit; }
+    function start(x, y, target) {
+      var b = target.closest && target.closest("[data-tabbtn]"); if (!b) return;
+      sx = x; sy = y; clearTimeout(hold);
+      hold = setTimeout(function () { drag = b; b.classList.add("dragging"); bar.classList.add("sorting"); if (navigator.vibrate) navigator.vibrate(20); }, 450);
+    }
+    function move(x, y, e) {
+      if (!drag) { if (Math.abs(x - sx) > 8 || Math.abs(y - sy) > 8) clearTimeout(hold); return; }
+      if (e.cancelable) e.preventDefault();
+      var t = under(x); if (!t || t === drag) return;
+      var r = t.getBoundingClientRect(); bar.insertBefore(drag, x > r.left + r.width / 2 ? t.nextSibling : t);
+    }
+    function end() {
+      clearTimeout(hold); if (!drag) return;
+      drag.classList.remove("dragging"); bar.classList.remove("sorting"); drag = null; eat = true; setTimeout(function () { eat = false; }, 400);
+      var shown = Array.prototype.map.call(bar.querySelectorAll("[data-tabbtn]"), function (b) { return b.getAttribute("data-tabbtn"); });
+      S.tabOrder = shown.concat(tabList().map(function (x) { return x[0]; }).filter(function (k) { return shown.indexOf(k) < 0; })); saveS(S);
+    }
+    bar.addEventListener("touchstart", function (e) { start(e.touches[0].clientX, e.touches[0].clientY, e.target); }, { passive: true });
+    bar.addEventListener("touchmove", function (e) { move(e.touches[0].clientX, e.touches[0].clientY, e); }, { passive: false });
+    bar.addEventListener("touchend", end); bar.addEventListener("touchcancel", end);
+    bar.addEventListener("mousedown", function (e) { start(e.clientX, e.clientY, e.target); });
+    document.addEventListener("mousemove", function (e) { if (drag || hold) move(e.clientX, e.clientY, e); });
+    document.addEventListener("mouseup", end);
+    bar.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+    bar.addEventListener("click", function (e) { if (eat) { e.preventDefault(); e.stopPropagation(); } }, true);
+  }
   function tabOn(t) { return !(S.tabs && S.tabs[t] === false); }
-  function mainTab() { for (var i = 0; i < TABS.length; i++) if (tabOn(TABS[i][0])) return TABS[i][0]; return "weather"; }
+  function mainTab() { var L = tabList(); for (var i = 0; i < L.length; i++) if (tabOn(L[i][0])) return L[i][0]; return "weather"; }
   function tabLabel(t) { if (SUBS[t]) return SUBS[t][0]; for (var i = 0; i < TABS.length; i++) if (TABS[i][0] === t) return TABS[i][1]; return t; }
   function renderTabbar() {
-    $("tabbar").innerHTML = TABS.filter(function (x) { return tabOn(x[0]); }).map(function (x) {
-      var src = (x[0] === "traffic" && vehSrc() ? vehSrc() : "img/tab-" + x[3] + ".webp") + "?v=5";
-      return '<button type="button" data-go="#/' + x[0] + '" data-tabbtn="' + x[0] + '"><img class="ic" alt="" width="46" height="30" decoding="async" src="' + src + '"><span class="tl">' + esc(x[4] || x[1]) + "</span></button>";
+    $("tabbar").innerHTML = tabList().filter(function (x) { return tabOn(x[0]); }).map(function (x) {
+      var vs = x[0] === "traffic" && vehSrc(), src = vs ? (/^data:/.test(vs) ? vs : vs + "?v=5") : "img/tab-" + x[3] + ".webp?v=5";
+      return '<button type="button" data-go="#/' + x[0] + '" data-tabbtn="' + x[0] + '"><img class="ic" alt="" draggable="false" width="46" height="30" decoding="async" src="' + src + '"><span class="tl">' + esc(x[4] || x[1]) + "</span></button>";
     }).join("");
     markTab();
   }
@@ -3204,8 +3247,10 @@ var ROUTES = S.routes;
   var VKEY = "vehicle.v1", vp = null;
   function vehGet() { try { var v = JSON.parse(localStorage.getItem(VKEY) || "null"); return v && v.m ? v : null; } catch (e) { return null; } }
   function vehSkipped() { try { return !!localStorage.getItem(VKEY + ".skip"); } catch (e) { return false; } }
-  function vehSrc(v) { v = v || vehGet(); return v && v.m ? "img/veh/" + v.m + "-" + (v.c || "stock") + ".webp" : ""; }
-  function vehName(m) { var n = ""; VEH.truck.concat(VEH.car).forEach(function (x) { if (x[0] === m) n = x[1]; }); return n; }
+  var VPKEY = "vehicle.photo.v1";
+  function vphoto() { try { return JSON.parse(localStorage.getItem(VPKEY) || "null"); } catch (e) { return null; } }
+  function vehSrc(v) { v = v || vehGet(); if (v && v.m === "custom") { var ph = vphoto(); return ph ? ph.src : ""; } return v && v.m ? "img/veh/" + v.m + "-" + (v.c || "stock") + ".webp" : ""; }
+  function vehName(m) { if (m === "custom") return "Your photo"; var n = ""; VEH.truck.concat(VEH.car).forEach(function (x) { if (x[0] === m) n = x[1]; }); return n; }
   function colName(c) { var n = ""; VCOL.forEach(function (x) { if (x[0] === c) n = x[1]; }); return n; }
   function renderVeh() {
     var box = $("vehCard"); if (!box) return;
@@ -3217,7 +3262,19 @@ var ROUTES = S.routes;
       return;
     }
     var h = '<div class="card-head"><h2>Pick your ride</h2><button class="btn" type="button" data-veh="skip">Not now</button></div>';
-    if (vp.step === 1) h += '<div class="frow"><button class="btn" type="button" data-veh="t:truck">🛻 Truck</button><button class="btn" type="button" data-veh="t:car">🚗 Car</button></div>';
+    if (vp.step === 1) h += '<div class="frow"><button class="btn" type="button" data-veh="t:truck">🛻 Truck</button><button class="btn" type="button" data-veh="t:car">🚗 Car</button><button class="btn" type="button" data-veh="photo">📷 Use my own photo</button></div>' +
+      '<p class="small">For your own photo, a side shot works best. The app cuts out the background on your phone, then you size it and park it at the light.</p><p class="small" id="vehMsg" role="status"></p>';
+    else if (vp.step === 4) {
+      var ph = vp.ph;
+      h += '<div class="vehedit"><img alt="" src="' + ph.src + '" style="transform:scaleX(' + (ph.flip ? -1 : 1) + ')">' +
+        '<label>Size <input type="range" min="0.5" max="1.8" step="0.05" value="' + ph.size + '" data-vk="size"></label>' +
+        '<label>Stretch <input type="range" min="0.6" max="1.6" step="0.05" value="' + ph.stretch + '" data-vk="stretch"></label>' +
+        '<label>Turn <input type="range" min="-15" max="15" step="1" value="' + ph.turn + '" data-vk="turn"></label>' +
+        '<label>Spot on the street <input type="range" min="9" max="24" step="0.5" value="' + ph.z + '" data-vk="z"></label>' +
+        '<label>Up or down <input type="range" min="-0.6" max="0.6" step="0.05" value="' + (ph.lift || 0) + '" data-vk="lift"></label></div>' +
+        '<div class="frow"><button class="btn" type="button" data-veh="flip">↔ Flip</button><button class="btn primary" type="button" data-veh="psave">Save</button><button class="btn" type="button" data-veh="back1">Back</button></div>' +
+        '<p class="small">Watch the street up top as you slide. It sits at the light in the right lane.</p>';
+    }
     else if (vp.step === 2) h += '<p class="small">Which one?</p><div class="frow">' + VEH[vp.t].map(function (x) { return '<button class="btn" type="button" data-veh="m:' + x[0] + '">' + esc(x[1]) + "</button>"; }).join("") +
       '</div><div class="frow"><button class="btn" type="button" data-veh="back1">Back</button></div>';
     else {
@@ -3239,13 +3296,87 @@ var ROUTES = S.routes;
     else if (a === "back1") vp = { step: 1 };
     else if (a === "back2") vp = { step: 2, t: vp.t };
     else if (a === "save") { try { localStorage.setItem(VKEY, JSON.stringify({ m: vp.m, c: vp.c })); } catch (x) {} vp = null; renderTabbar(); }
+    else if (a === "photo") { $("vehFile").value = ""; $("vehFile").click(); return; }
+    else if (a === "flip") { vp.ph.flip = !vp.ph.flip; VPREV = vp.ph; }
+    else if (a === "psave") {
+      try { localStorage.setItem(VPKEY, JSON.stringify(vp.ph)); localStorage.setItem(VKEY, JSON.stringify({ m: "custom" })); }
+      catch (x) { say("vehMsg", "Your phone ran out of room to save the photo."); return; }
+      vp = null; VPREV = null; vimgLoad(); renderTabbar();
+    }
     renderVeh();
   });
 
+  document.addEventListener("input", function (e) {
+    var k = e.target.getAttribute && e.target.getAttribute("data-vk"); if (!k || !vp || !vp.ph) return;
+    vp.ph[k] = +e.target.value; VPREV = vp.ph;
+  });
+  var VIMG = null, VPREV = null;
+  function vimgLoad() { var ph = vphoto(), v = vehGet(); VIMG = null; if (!ph || !v || v.m !== "custom") return; var im = new Image(); im.onload = function () { VIMG = im; }; im.src = ph.src; }
+  // Cut the background out of a photo on the phone. First try the free in-browser AI cut-out, then fall back to removing the color around the edges.
+  function cutOut(file) {
+    return new Promise(function (ok, no) {
+      var im = new Image(), u = URL.createObjectURL(file);
+      im.onload = function () { ok(im); }; im.onerror = no; im.src = u;
+    }).then(function (im) {
+      var sc = Math.min(1, 1024 / Math.max(im.width, im.height)), cv = document.createElement("canvas");
+      cv.width = Math.round(im.width * sc); cv.height = Math.round(im.height * sc); cv.getContext("2d").drawImage(im, 0, 0, cv.width, cv.height);
+      say("vehMsg", "Cutting out the background… The first time, your phone downloads the cut-out tool (about 40 MB), so give it a minute.");
+      var ai = new Promise(function (ok, no) { cv.toBlob(function (b) { b ? ok(b) : no(new Error("blob")); }, "image/png"); }).then(function (blob) {
+        return Promise.race([import("https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.4.5/+esm").then(function (m) { return (m.removeBackground || m.default)(blob); }),
+          new Promise(function (ok, no) { setTimeout(function () { no(new Error("slow")); }, 120000); })]);
+      }).then(function (out) {
+        return new Promise(function (ok, no) { var i2 = new Image(); i2.onload = function () { var c2 = document.createElement("canvas"); c2.width = i2.width; c2.height = i2.height; c2.getContext("2d").drawImage(i2, 0, 0); ok([c2, true]); }; i2.onerror = no; i2.src = URL.createObjectURL(out); });
+      });
+      return ai.catch(function () { return [edgeCut(cv), false]; });
+    }).then(function (r) { return [trimCanvas(r[0]), r[1]]; });
+  }
+  function edgeCut(cv) {   // flood fill from the edges, removing colors close to the background
+    var w = cv.width, h = cv.height, cx = cv.getContext("2d"), d = cx.getImageData(0, 0, w, h), px = d.data, seen = new Uint8Array(w * h), st = [];
+    for (var x = 0; x < w; x++) { st.push(x, (h - 1) * w + x); } for (var y = 0; y < h; y++) { st.push(y * w, y * w + w - 1); }
+    var ref = function (i) { return [px[i * 4], px[i * 4 + 1], px[i * 4 + 2]]; };
+    while (st.length) {
+      var i = st.pop(); if (seen[i]) continue; seen[i] = 1;
+      var r = ref(i), x0 = i % w, y0 = (i - x0) / w;
+      px[i * 4 + 3] = 0;
+      [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (o) {
+        var nx = x0 + o[0], ny = y0 + o[1]; if (nx < 0 || ny < 0 || nx >= w || ny >= h) return;
+        var j = ny * w + nx; if (seen[j]) return;
+        var q = ref(j); if (Math.abs(q[0] - r[0]) + Math.abs(q[1] - r[1]) + Math.abs(q[2] - r[2]) < 42) st.push(j);
+      });
+    }
+    cx.putImageData(d, 0, 0); return cv;
+  }
+  function trimCanvas(cv) {
+    var w = cv.width, h = cv.height, px = cv.getContext("2d").getImageData(0, 0, w, h).data, x0 = w, y0 = h, x1 = 0, y1 = 0;
+    for (var y = 0; y < h; y++) for (var x = 0; x < w; x++) if (px[(y * w + x) * 4 + 3] > 24) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    if (x1 <= x0 || y1 <= y0) return cv;
+    var sc = Math.min(1, 480 / (x1 - x0 + 1)), o = document.createElement("canvas");
+    o.width = Math.round((x1 - x0 + 1) * sc); o.height = Math.round((y1 - y0 + 1) * sc);
+    o.getContext("2d").drawImage(cv, x0, y0, x1 - x0 + 1, y1 - y0 + 1, 0, 0, o.width, o.height); return o;
+  }
+  function vehPhotoPicked(f) {
+    if (!f) return;
+    cutOut(f).then(function (r) {
+      vp = { step: 4, ph: { src: r[0].toDataURL("image/png"), size: 1, stretch: 1, turn: 0, z: 13.5, lift: 0, flip: false } }; VPREV = vp.ph;
+      renderVeh(); if (!r[1]) say("vehMsg", "");
+      if (!r[1]) { var b = $("vehCard"); b.insertAdjacentHTML("beforeend", '<p class="small">The AI cut-out couldn\'t run on this phone, so I cut around the edge colors. A photo on a plain background works best.</p>'); }
+    }).catch(function () { say("vehMsg", "Couldn't open that photo. Try another one."); });
+  }
+  // your photo parked on the street, in the right lane by the light
+  function drawMyRide(c) {
+    var ph = VPREV || (VIMG && vphoto()); if (!ph) return;
+    var im = VPREV ? (drawMyRide.im && drawMyRide.src === ph.src ? drawMyRide.im : (drawMyRide.src = ph.src, drawMyRide.im = Object.assign(new Image(), { src: ph.src }))) : VIMG;
+    if (!im || !im.complete || !im.width) return;
+    var z = ph.z || 13.5, p = pz(z), w = 4.4 * (ph.size || 1) * (ph.stretch || 1) * p, hh = 4.4 * (ph.size || 1) * p * im.height / im.width, x = gx(1.9, z), y = gy(z, ph.lift || 0);
+    c.fillStyle = "rgba(0,0,0,0.35)"; c.beginPath(); c.ellipse(x, gy(z), w * 0.5, Math.max(2, w * 0.05), 0, 0, Math.PI * 2); c.fill();
+    c.save(); c.translate(x, y); c.rotate((ph.turn || 0) * Math.PI / 180); c.scale(ph.flip ? -1 : 1, 1);
+    if (R.night && "filter" in c) c.filter = "brightness(0.55)";
+    c.drawImage(im, -w / 2, -hh, w, hh); c.restore();
+  }
   /* ---------------- Rockets (The Space Devs Launch Library, saved to the data branch) ---------------- */
   var LAUNCH = null, cdTimer = null;
   function loadLaunches() {
-    getJSON(DATA_URL + "launches.json").then(function (d) { LAUNCH = d.launches || []; renderLaunches(); })
+    getJSON(DATA_URL + "launches.json").then(function (d) { LAUNCH = d.launches || []; padOptions(); renderLaunches(); })
       .catch(function () { $("launchNear").innerHTML = '<li><span class="muted">The launch list isn\'t available right now. Try again in a bit.</span></li>'; $("launchWorld").innerHTML = ""; });
   }
   function lstat(l) {
@@ -3268,12 +3399,31 @@ var ROUTES = S.routes;
       '<div class="small">' + esc(l.pad || "") + (l.loc ? ", " + esc(l.loc) : "") + (mi != null ? " · " + mi.toLocaleString() + " mi" : "") + "</div>" +
       '<div class="small">' + esc(dayLabel(new Date(t))) + " " + esc(fmtTime.format(new Date(t))) + ' · <span class="cdown" data-t="' + t + '">' + cdText(t - Date.now()) + "</span></div></div></li>";
   }
+  var KSC = "Kennedy Space Center, FL, USA";
+  function lsGet(k, d) { try { var v = JSON.parse(localStorage.getItem(k) || "null"); return v == null ? d : v; } catch (e) { return d; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  function padGet() { return lsGet("launchPad.v1", "near"); }
+  function padOptions() {
+    var sel = $("padPick"), cur = padGet(), locs = {};
+    locs[KSC] = 1; (LAUNCH || []).forEach(function (l) { if (l.loc) locs[l.loc] = 1; });
+    sel.innerHTML = '<option value="near">Near me (250 miles)</option>' + Object.keys(locs).sort().map(function (x) { return '<option value="' + esc(x) + '">' + esc(x.replace(/, USA$/, "")) + "</option>"; }).join("");
+    sel.value = cur; if (sel.value !== cur) sel.value = "near";
+  }
+  function padList() {
+    if (!LAUNCH) return [];
+    var now = Date.now(), pad = padGet();
+    return LAUNCH.map(function (l, i) { return [l, i]; }).filter(function (x) { return Date.parse(x[0].net) > now - 2 * 3600000; }).filter(function (x) {
+      return pad === "near" ? x[0].lat != null && miles(S.lat, S.lon, x[0].lat, x[0].lon) <= 250 : x[0].loc === pad;
+    }).slice(0, 8);
+  }
   function renderLaunches() {
     if (!LAUNCH) return;
     var now = Date.now(), live = LAUNCH.map(function (l, i) { return [l, i]; }).filter(function (x) { return Date.parse(x[0].net) > now - 2 * 3600000; });
-    var near = live.filter(function (x) { return x[0].lat != null && miles(S.lat, S.lon, x[0].lat, x[0].lon) <= 250; }).slice(0, 8);
+    var pad = padGet(), near = padList();
+    $("padTitle").textContent = pad === "near" ? "Launches near you" : "Launches from " + pad.split(",")[0];
+    $("padSub").textContent = pad === "near" ? "Within about 250 miles" : "Your launch pad";
     var world = live.filter(function (x) { return near.indexOf(x) < 0; }).slice(0, 8);
-    $("launchNear").innerHTML = near.length ? near.map(function (x) { return launchRow(x[0], x[1]); }).join("") : '<li><span class="muted">No launches scheduled within about 250 miles of ' + esc(placeLabel()) + " right now.</span></li>";
+    $("launchNear").innerHTML = near.length ? near.map(function (x) { return launchRow(x[0], x[1]); }).join("") : '<li><span class="muted">' + (pad === "near" ? "No launches scheduled within about 250 miles of " + esc(placeLabel()) : "No launches scheduled from " + esc(pad.split(",")[0])) + " right now.</span></li>";
     $("launchWorld").innerHTML = world.map(function (x) { return launchRow(x[0], x[1]); }).join("");
   }
   function launchDetail(l) {
@@ -3284,7 +3434,46 @@ var ROUTES = S.routes;
       rows([["Launch time", esc(dayLabel(new Date(t)) + " " + fmtTime.format(new Date(t)))], ["Window", esc(win)], ["Status", esc(l.stn)], ["Rocket", esc(l.rocket)], ["Company", esc(l.prov)],
         ["Pad", esc((l.pad || "") + (l.loc ? ", " + l.loc : ""))], ["Distance", l.lat != null ? Math.round(miles(S.lat, S.lon, l.lat, l.lon)).toLocaleString() + " miles" : null], ["Orbit", esc(l.orbit)]]) +
       (l.desc ? "<p>" + esc(l.desc) + "</p>" : "") +
+      '<div class="frow"><a class="btn primary" target="_blank" rel="noopener" href="' + esc(l.vid || "https://www.youtube.com/results?search_query=" + encodeURIComponent((l.mission || l.name || "") + " launch live")) + '">📺 Watch live</a>' +
+      '<a class="btn" download="launch.ics" href="' + icsHref(l) + '">📅 Add to calendar</a></div>' +
+      '<p class="small">' + (l.vid ? "Watch live opens the launch stream." : "Watch live searches YouTube for the stream, which usually goes up about an hour before.") + " The calendar alarm goes off " + remMin() + " minutes before.</p>" +
       '<p class="small">From The Space Devs Launch Library, checked about every 30 minutes. Launch times slip a lot, so check again before you head out.</p>'];
+  }
+
+  function remMin() { return +lsGet("launchRem.v1", { min: 10 }).min || 10; }
+  function icsHref(l) {
+    var t = new Date(Date.parse(l.net)), f = function (d) { return d.toISOString().replace(/[-:]/g, "").replace(/\.\d+/, ""); };
+    var ics = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Full Send Weather//EN", "BEGIN:VEVENT", "UID:" + f(t) + "-" + String(l.mission || l.name).replace(/[^A-Za-z0-9]/g, "") + "@fullsend",
+      "DTSTAMP:" + f(new Date()), "DTSTART:" + f(t), "DTEND:" + f(new Date(+t + 1800000)), "SUMMARY:🚀 " + (l.mission || l.name) + " launch",
+      "LOCATION:" + ((l.pad || "") + (l.loc ? ", " + l.loc : "")).replace(/,/g, "\\,"), "BEGIN:VALARM", "ACTION:DISPLAY", "DESCRIPTION:Launch soon", "TRIGGER:-PT" + remMin() + "M", "END:VALARM", "END:VEVENT", "END:VCALENDAR"].join("\r\n");
+    return "data:text/calendar;charset=utf-8," + encodeURIComponent(ics);
+  }
+  function initRockets() {
+    var r = lsGet("launchRem.v1", { on: false, min: 10 });
+    $("remOn").checked = !!r.on; $("remMin").value = String(r.min || 10);
+    $("padPick").addEventListener("change", function () { lsSet("launchPad.v1", this.value); renderLaunches(); });
+    function save() { lsSet("launchRem.v1", { on: $("remOn").checked, min: +$("remMin").value }); }
+    $("remMin").addEventListener("change", save);
+    $("remOn").addEventListener("change", function () {
+      save(); if (!this.checked) { say("remMsg", "Reminders are off."); return; }
+      if (!("Notification" in window)) { say("remMsg", "This browser can't show reminders. On iPhone, add the app to your home screen first, then turn this on. Add to calendar always works."); return; }
+      Notification.requestPermission().then(function (p) {
+        say("remMsg", p === "granted" ? "On. You'll get a reminder " + remMin() + " minutes before each launch on your list while the app is open. Use Add to calendar for one that works when it's closed." : "Your phone blocked reminders for this app. Allow notifications for it in your phone's settings, or use Add to calendar.");
+      });
+    });
+    setInterval(remCheck, 30000);
+  }
+  function remCheck() {
+    var r = lsGet("launchRem.v1", { on: false }); if (!r.on || !LAUNCH || !("Notification" in window) || Notification.permission !== "granted") return;
+    var done = lsGet("launchRem.done", {}), now = Date.now(), lead = (r.min || 10) * 60000;
+    padList().forEach(function (x) {
+      var l = x[0], t = Date.parse(l.net), key = (l.mission || l.name) + "@" + l.net, st = String(l.st || "").toLowerCase();
+      if (done[key] || t - now > lead || t - now < -60000 || (st !== "go" && st !== "tbc")) return;
+      done[key] = now; lsSet("launchRem.done", done);
+      var title = "🚀 " + (l.mission || l.name) + " in " + Math.max(1, Math.round((t - now) / 60000)) + " min", opt = { body: (l.rocket || "") + " from " + (l.pad || l.loc || ""), tag: key, icon: "img/tab-rockets.webp" };
+      if (navigator.serviceWorker && navigator.serviceWorker.ready) navigator.serviceWorker.ready.then(function (sw) { sw.showNotification(title, opt); }).catch(function () { new Notification(title, opt); });
+      else new Notification(title, opt);
+    });
   }
 
   /* ---------------- Boot ---------------- */
@@ -3310,6 +3499,8 @@ var ROUTES = S.routes;
   applyLabels();
   renderTabbar();
   initSettings();
+  initRockets(); initTabDrag(); vimgLoad();
+  $("vehFile").addEventListener("change", function () { vehPhotoPicked(this.files && this.files[0]); });
   placeHurricanes();
   initRadar();
   initTraffic();
@@ -3484,6 +3675,8 @@ var ROUTES = S.routes;
     R.camH = R.half * below / (0.42 * wc);                  // road edges just inside the screen at the bottom
     R.k = below * R.zb / R.camH;
     R.mid = R.w / 2;
+    var hzY = sc.top + sc.height * 0.2;
+    Array.prototype.forEach.call(sky.querySelectorAll(".cloud"), function (el, i) { el.style.top = Math.max(-30, [0.06, 0.2, 0.36, 0.52, 0.13, 0.44][i] * (hzY - 40) - 60) + "px"; });
     var seaTop = R.hy - R.lift, seaH = Math.max(12, gy(R.zFar) - R.hy);
     root.setProperty("--seaTop", seaTop + "px"); root.setProperty("--seaH", seaH + "px");
   }
@@ -3543,8 +3736,8 @@ var ROUTES = S.routes;
       var sk = Math.max(soak, wet ? 0.35 : 0), G = GROUND || {}, grow = Math.min(2.4, 0.7 + (G.r24 || 0) * 1.3 + (G.r72 || 0) * 0.25 + (wet ? 0.2 : 0));
       var nP = Math.round(5 + sk * 11), prn = seeded(23);
       for (var pI = 0; pI < nP; pI++) {
-        var pzz = 2.6 + prn() * 22, px = (prn() < 0.5 ? -1 : 1) * (0.5 + prn() * (H2 - 1.1)), pw = (0.45 + prn() * 0.75) * grow;
-        var cxp = gx(px, pzz), cyp = gy(pzz), rx = pw * pz(pzz), ry = Math.max(1, rx * 0.22);
+        var pzz = 4.5 + prn() * 22, px = (prn() < 0.5 ? -1 : 1) * (0.5 + prn() * (H2 - 1.1)), pw = (0.45 + prn() * 0.75) * grow;
+        var cxp = gx(px, pzz), cyp = gy(pzz), rx = pw * pz(pzz), ry = Math.max(1, (gy(pzz - pw * 0.5) - gy(pzz + pw * 0.5)) / 2);
         var pg = c.createLinearGradient(0, cyp - ry, 0, cyp + ry);
         pg.addColorStop(0, rgba(mix(low, [255, 255, 255], 0.25), n ? 0.45 : 0.55)); pg.addColorStop(1, rgba(mix(low, [0, 0, 0], 0.35), n ? 0.4 : 0.5));
         c.fillStyle = pg; c.beginPath(); c.ellipse(cxp, cyp, rx, ry, 0, 0, Math.PI * 2); c.fill();
@@ -3583,6 +3776,10 @@ var ROUTES = S.routes;
     var hz = Math.min(0.9, 0.35 + dull * 0.5), hg = c.createLinearGradient(0, R.hy, 0, gy(9));
     hg.addColorStop(0, rgba(low, hz)); hg.addColorStop(1, rgba(low, 0));
     c.fillStyle = hg; c.fillRect(0, R.hy, R.w, gy(9) - R.hy);
+    // soften the sea horizon so it doesn't read as a hard line across the sky
+    var sg = c.createLinearGradient(0, R.hy - 16, 0, R.hy + 6);
+    sg.addColorStop(0, rgba(low, 0)); sg.addColorStop(0.75, rgba(low, Math.min(0.85, hz + 0.1))); sg.addColorStop(1, rgba(low, hz));
+    c.fillStyle = sg; c.fillRect(0, R.hy - 16, R.w, 22);
     // street lights, far to near
     LAMPS.slice().reverse().forEach(function (L) {
       var side = L[0], z = L[1], p = pz(z), xp = gx(side * (H2 + 0.9), z), x0 = gx(side * (H2 - 1.3), z);
@@ -3630,14 +3827,16 @@ var ROUTES = S.routes;
     poly([[W, 13.0, 0.3], [W, 14.0, 0.3], [W, 14.0, 2.45], [W, 13.0, 2.45]], trim);
     poly([[W, 13.1, 0.3], [W, 13.9, 0.3], [W, 13.9, 2.35], [W, 13.1, 2.35]], shade("#9e2b25"));
     // roof slope toward the street, with a little overhang
-    poly([[W + 0.45, Z1 - 0.35, WH - 0.25], [W + 0.45, Z2 + 0.35, WH - 0.25], [RX, Z2 + 0.35, RH], [RX, Z1 - 0.35, RH]], shade("#4a4744", 0.05));
+    poly([[W + 0.45, Z1 - 0.3, WH - 0.45 * (RH - WH) / (W - RX)], [W + 0.45, Z2 + 0.35, WH - 0.45 * (RH - WH) / (W - RX)], [RX, Z2 + 0.35, RH], [RX, Z1 - 0.3, RH]], shade("#4a4744", 0.05));
     // gable end facing us
     poly([[B, Z1, 0], [W, Z1, 0], [W, Z1, WH], [RX, Z1, RH], [B, Z1, WH]], wall);
     poly([[-13.0, Z1, 1.0], [-10.6, Z1, 1.0], [-10.6, Z1, 2.3], [-13.0, Z1, 2.3]], trim);
     poly([[-12.9, Z1, 1.1], [-10.7, Z1, 1.1], [-10.7, Z1, 2.2], [-12.9, Z1, 2.2]], glass);
-    if (lit) { c.save(); c.globalAlpha = 0.35; c.fillStyle = lit; var gw = P(-11.8, Z1, 1.6); c.beginPath(); c.arc(gw[0], gw[1], 1.6 * pz(Z1), 0, Math.PI * 2); c.fill(); c.restore(); }
-    c.strokeStyle = trim; c.lineWidth = Math.max(1, 0.1 * pz(Z1)); c.beginPath();                          // fascia trim on the gable
-    var a = P(B - 0.3, Z1 - 0.35, WH - 0.2), b = P(RX, Z1 - 0.35, RH + 0.05), d = P(W + 0.45, Z1 - 0.35, WH - 0.25);
+    // roof edge over the gable: an even overhang on both sides meeting in one sharp peak
+    var rf = shade("#4a4744", 0.05), ov = 0.45, th = 0.32, kL = (RH - WH) / (RX - B), kR = (RH - WH) / (W - RX);
+    poly([[B - ov, Z1 - 0.3, WH - ov * kL], [RX, Z1 - 0.3, RH + 0.02], [W + ov, Z1 - 0.3, WH + ov * kR], [W + ov, Z1 - 0.3, WH + ov * kR - th], [RX, Z1 - 0.3, RH - th], [B - ov, Z1 - 0.3, WH - ov * kL - th]], rf);
+    c.strokeStyle = trim; c.lineWidth = Math.max(1, 0.06 * pz(Z1)); c.lineJoin = "miter"; c.beginPath();
+    var a = P(B - ov, Z1 - 0.3, WH - ov * kL - th), b = P(RX, Z1 - 0.3, RH - th), d = P(W + ov, Z1 - 0.3, WH + ov * kR - th);
     c.moveTo(a[0], a[1]); c.lineTo(b[0], b[1]); c.lineTo(d[0], d[1]); c.stroke();
     // front porch: slab, steps, posts and a little roof
     poly([[W, 12.3, 0.35], [W + 1.5, 12.3, 0.35], [W + 1.5, 14.7, 0.35], [W, 14.7, 0.35]], shade("#b9b2a5"));
@@ -3723,8 +3922,42 @@ var ROUTES = S.routes;
       });
       c.lineWidth = 1.1; c.stroke();
     }
+    drawFlag(c, t);
     if (WX.kind === "rain" || WX.kind === "storm" || (WX.wet || 0) > 0) gutterFlow(c, t);
     drawSignal(c, t);
+    drawMyRide(c);
+  }
+  // US flag on a pole by the sidewalk, in front of the house. It flies downwind and waves harder as the wind picks up.
+  function drawFlag(c, t) {
+    var X = -6.0, z = 11.6, p = pz(z), H = 6.6, dim = R.dimv || 1;
+    var col = function (h) { return css(mix(hex(h), [0, 0, 0], 1 - dim)); };
+    var xb = gx(X, z), yb = gy(z), yt = gy(z, H);
+    c.fillStyle = "rgba(0,0,0,0.25)"; c.beginPath(); c.ellipse(xb, yb, 0.35 * p, 0.09 * p, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = col("#cfd3d6"); c.fillRect(xb - 0.05 * p, yt, 0.1 * p, yb - yt);
+    c.fillStyle = col("#d9b44a"); c.beginPath(); c.arc(xb, yt, Math.max(1.2, 0.09 * p), 0, Math.PI * 2); c.fill();
+    var mph = WX.mph || 0, w = Math.min(mph, 35) / 35, sl = slant(), dir = sl < -0.02 ? -1 : 1;
+    var L = 2.5 * p, Ht = 1.32 * p, N = 14, droop = (1 - Math.min(1, mph / 8)) * 1.1, amp = (0.06 + w * 0.12) * Ht, sp = 0.004 + w * 0.012;
+    var pts = [];
+    for (var i = 0; i <= N; i++) {
+      var f = i / N, ang = droop * f, wv = Math.sin(t * sp - f * 7) * amp * f;
+      pts.push([xb + dir * Math.cos(ang) * f * L, yt + 0.04 * p + Math.sin(ang) * f * L * 0.9 + wv, Math.cos(ang)]);
+    }
+    for (var k = 0; k < N; k++) {
+      var a = pts[k], b = pts[k + 1], sh = 0.85 + 0.15 * Math.cos(t * sp - k / N * 7);
+      for (var j = 0; j < 13; j++) {
+        var y0 = j / 13 * Ht, y1 = (j + 1) / 13 * Ht;
+        var blue = k / N < 0.4 && j < 7;
+        c.fillStyle = css(mix(hex(blue ? "#1f3a7a" : j % 2 ? "#f4f4f2" : "#c0272d"), [0, 0, 0], 1 - dim * sh));
+        c.beginPath(); c.moveTo(a[0], a[1] + y0 * a[2]); c.lineTo(b[0] + dir * 0.4, b[1] + y0 * b[2]); c.lineTo(b[0] + dir * 0.4, b[1] + y1 * b[2]); c.lineTo(a[0], a[1] + y1 * a[2]); c.closePath(); c.fill();
+      }
+    }
+    if (p > 8) {   // a few stars in the blue
+      c.fillStyle = css(mix([255, 255, 255], [0, 0, 0], 1 - dim));
+      for (var si = 1; si < 5; si++) for (var sj = 1; sj < 5; sj++) {
+        var q = pts[Math.round(si / 5 * 0.4 * N)], sy = sj / 5 * 7 / 13 * Ht;
+        c.fillRect(q[0] - 0.5, q[1] + sy * q[2] - 0.5, 1, 1);
+      }
+    }
   }
   // Rainwater running along both gutters and dropping into the next storm drain
   function gutterFlow(c, t) {
