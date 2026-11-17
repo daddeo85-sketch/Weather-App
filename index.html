@@ -3056,11 +3056,6 @@ var ROUTES = S.routes;
       var rg = c.createRadialGradient(0, 0, 0, 0, 0, rx);
       rg.addColorStop(0, rgba([255, 184, 80], 0.6 * glow)); rg.addColorStop(0.55, rgba([255, 170, 60], 0.22 * glow)); rg.addColorStop(1, rgba([255, 170, 60], 0));
       c.fillStyle = rg; c.beginPath(); c.arc(0, 0, rx, 0, Math.PI * 2); c.fill(); c.restore();
-      if (wet) {
-        var lg = c.createLinearGradient(0, cyp, 0, cyp + ry * 5);
-        lg.addColorStop(0, rgba([255, 190, 95], 0.5 * glow)); lg.addColorStop(1, rgba([255, 190, 95], 0));
-        c.fillStyle = lg; c.fillRect(cxp - rx * 0.16, cyp, rx * 0.32, ry * 5);
-      }
     });
     // haze: far things fade into the sky color, more in rain and fog
     var hz = Math.min(0.9, 0.35 + dull * 0.5), hg = c.createLinearGradient(0, R.hy, 0, gy(9));
@@ -3082,7 +3077,7 @@ var ROUTES = S.routes;
         // cone of light from the lamp head down to its pool
         var by = hy0 + 0.28 * p, py = yb, rx = 3.3 * p;
         var cg = c.createLinearGradient(0, by, 0, py);
-        cg.addColorStop(0, rgba([255, 196, 100], 0.4 * glow * (1 - fade))); cg.addColorStop(1, rgba([255, 196, 100], 0.04 * glow));
+        cg.addColorStop(0, rgba([255, 196, 100], 0.18 * glow * (1 - fade))); cg.addColorStop(1, rgba([255, 196, 100], 0));
         c.fillStyle = cg; c.beginPath(); c.moveTo(x0 - 0.3 * p, by); c.lineTo(x0 + 0.3 * p, by); c.lineTo(x0 + rx, py); c.lineTo(x0 - rx, py); c.closePath(); c.fill();
         var bg = c.createRadialGradient(x0, by, 0, x0, by, 2.2 * p);
         bg.addColorStop(0, rgba([255, 230, 170], 0.95 * glow)); bg.addColorStop(0.25, rgba([255, 190, 90], 0.45 * glow)); bg.addColorStop(1, rgba([255, 180, 80], 0));
