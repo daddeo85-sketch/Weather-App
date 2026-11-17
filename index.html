@@ -385,8 +385,7 @@ label.sw:first-of-type { border-top: 0; }
 .sky.night { --cloud: rgba(70,82,100,0.75); --cloud-shade: rgba(40,50,66,0.7); }
 .sky.night.wx-rain, .sky.night.wx-storm { --cloud: rgba(52,60,74,0.9); --cloud-shade: rgba(30,36,48,0.9); }
 .deck { position: absolute; left: 0; right: 0; top: 0; height: 70%; opacity: 0; transition: opacity 2s;
-  background: linear-gradient(180deg, rgba(95,104,118,0.95) 0%, rgba(110,118,130,0.8) 45%, rgba(120,128,140,0) 100%); }
-.night .deck { background: linear-gradient(180deg, rgba(30,36,46,0.97) 0%, rgba(38,44,56,0.85) 45%, rgba(40,46,58,0) 100%); }
+  background: linear-gradient(180deg, var(--deck1, rgba(95,104,118,0.95)) 0%, var(--deck2, rgba(110,118,130,0.8)) 45%, rgba(120,128,140,0) 100%); }   /* follows the daylight */
 .sky.wx-cloudy .deck { opacity: 0.75; } .sky.wx-rain .deck, .sky.wx-fog .deck { opacity: 0.9; } .sky.wx-storm .deck { opacity: 1; }
 .flash { position: absolute; inset: 0; background: #fff; opacity: 0; }
 .sky.wx-storm .flash { animation: flash 9s infinite; }
@@ -3751,6 +3750,9 @@ var ROUTES = S.routes;
     // Real cloud cover on top of the real sun height: overcast is a flat gray that still brightens at sunrise
     var dull = { clear: 0, partly: 0.15, cloudy: WX.overcast ? 0.85 : 0.55, fog: 0.6, rain: 0.7, storm: 0.8 }[WX.kind] || 0;
     if (dull) c = c.map(function (x) { return mix(gray(x, dull), [0, 0, 0], dull * (WX.kind === "storm" ? 0.35 : WX.overcast ? 0.1 : 0.18)); });
+    // A full overcast by day is a flat, light gray that gets brighter as the sun climbs behind it
+    if (WX.overcast && alt > -2) { var lt = Math.min(1, (alt + 2) / 22); c = c.map(function (x, i) { return mix(x, hex(["#9ba4ae", "#aeb5bd", "#bdc3c9"][i]), 0.6 * lt); }); }
+    root.setProperty("--deck1", rgba(mix(gray(c[0], 1), [0, 0, 0], 0.12), 0.95)); root.setProperty("--deck2", rgba(mix(gray(c[1], 1), [0, 0, 0], 0.08), 0.8));
     root.setProperty("--sky-top", css(c[0])); root.setProperty("--sky-mid", css(c[1])); root.setProperty("--sky-low", css(c[2]));
     var sea = alt > 0 ? mix(hex("#1f78b4"), c[2], 0.25) : mix(hex("#0b2340"), c[2], 0.2);
     root.setProperty("--sea1", css(gray(sea, dull * 0.6))); root.setProperty("--sea2", css(gray(mix(sea, [0, 0, 0], 0.3), dull * 0.6)));
