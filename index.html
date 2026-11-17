@@ -3317,12 +3317,12 @@ var ROUTES = S.routes;
     var arc = moonArc(now);
     if (arc) {
       var q = onV(now.getTime(), arc.rise, arc.peak, arc.set), day = alt > -2;
-      moonEl.hidden = false; moonEl.innerHTML = moonPhoto(mi.phase, day);
+      moonEl.removeAttribute("hidden"); moonEl.innerHTML = moonPhoto(mi.phase, day);
       moonEl.classList.toggle("day", day);
       moonEl.style.left = q.x + "%"; moonEl.style.top = (trackTop + (horizon - trackTop) * q.y) + "px";
       moonEl.style.opacity = day ? 0.55 : ({ partly: 0.9, cloudy: 0.7, fog: 0.6, rain: 0.62, storm: 0.5 }[WX.kind] || 1);
       if (!day && !glint.style.opacity || (!day && +glint.style.opacity === 0 && q.y > 0.5 && dull < 0.5)) { glint.style.left = q.x + "%"; glint.style.opacity = 0.35 * mi.fraction; }
-    } else moonEl.hidden = true;
+    } else moonEl.setAttribute("hidden", "");
     // Streetlight comes on after sunset, or on a dark stormy day
     lampOn = alt < 1 || (WX.kind === "storm" || (WX.kind === "rain" && WX.heavy));
     R.night = alt < -3; R.low = c[2]; R.dimv = alt < -3 ? 0.32 : 1 - dull * 0.35;
