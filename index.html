@@ -285,6 +285,14 @@ label.sw:first-of-type { border-top: 0; }
 .abanner::after { content: "\203A"; position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 24px; }
 .score { font-size: calc(26px * var(--fs)); font-weight: 800; }
 .score.good { color: var(--good); } .score.okay { color: var(--warn); } .score.rough { color: var(--bad); }
+.goodv { color: var(--good); } .okayv { color: var(--warn); } .roughv { color: var(--bad); }
+.rideline { font-weight: 600; margin: 4px 0 6px; }
+.evnote { margin: 8px 0 0; padding: 8px 10px; border-radius: 10px; background: var(--panel-solid); border-left: 5px solid var(--good); font-weight: 600; }
+.evnote.okay { border-left-color: var(--warn); } .evnote.rough { border-left-color: var(--bad); }
+.track { cursor: pointer; }
+.tstat { flex: 0 0 auto; display: inline-block; min-width: 76px; text-align: center; font-size: calc(11.5px * var(--fs)); font-weight: 800; padding: 3px 8px; border-radius: 999px; color: #fff; background: #6b7c88; }
+.tstat.open { background: var(--good); } .tstat.later { background: #1f6fa8; } .tstat.closed { background: #8a5a44; }
+.links.tl { margin-top: 4px; }
 .pick { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
 .pick .btn { min-height: 36px; font-size: calc(13px * var(--fs)); }
 .pick .btn.on { background: var(--accent); color: var(--accent-fg); border-color: transparent; }
@@ -724,6 +732,31 @@ label.sw:first-of-type { border-top: 0; }
         <a id="planeOpen" href="https://globe.adsbexchange.com/" target="_blank" rel="noopener">✈ Open the full flight map</a>
         <a id="atcLink" data-opt="atc" href="https://www.liveatc.net/" target="_blank" rel="noopener">🎧 Listen to air traffic control</a>
       </div>
+    </section>
+    </div>
+  </div>
+
+  <div class="view" data-view="ride" hidden>
+    <div class="optbar">
+      <button class="chip" type="button" data-go="#/settings" aria-label="Change your place">📍 <span class="pname"></span></button>
+      <button class="btn optbtn" type="button" data-go="#/ride/options">⚙ Full Send options</button>
+    </div>
+    <section class="card opts" hidden></section>
+    <section class="card detail" hidden></section>
+    <div class="content">
+    <section class="card" data-opt="ridescore">
+      <div class="card-head"><h2>Off-road riding weather</h2><span class="small">Dirt bikes and ATVs</span></div>
+      <div id="rideBody"><p class="muted">Loading…</p></div>
+      <p class="small">Tap a day for the details.</p>
+    </section>
+    <section class="card" data-opt="street">
+      <div class="card-head"><h2>Street conditions</h2><span class="small">Now and the next 3 hours</span></div>
+      <div id="streetBody"><p class="muted">Loading…</p></div>
+    </section>
+    <section class="card" data-opt="tracks">
+      <div class="card-head"><h2>Tracks and riding areas</h2><span class="small">Within about 100 miles</span></div>
+      <ul class="events" id="trackList"></ul>
+      <p class="small">Open or closed comes only from each place's posted hours. Rain, races and holidays change things, so check their page or Facebook before you load up. Tap a track for hours, phone and directions.</p>
     </section>
     </div>
   </div>
@@ -1197,7 +1230,7 @@ var ROUTES = S.routes;
         var g = c.getContext("2d"); g.drawImage(img, 0, 0);
         var d = g.getImageData(Math.max(0, px - 2), Math.max(0, py - 2), 5, 5).data, hit = 0, heavy = 0;
         for (var i = 0; i < d.length; i += 4) if (d[i + 3] > 40) { hit++; if (d[i] > 200 && d[i + 2] < 120) heavy++; }
-        window.SKY.radar(hit / 25, heavy > 2);
+        window.SKY.radar(hit / 25, heavy > 2); D.radarFrac = hit / 25; D.radarHeavy = heavy > 2; renderRide();
       } catch (e) {}
     };
     img.src = host + f.path + "/256/" + z + "/" + tx + "/" + ty + "/2/1_1.png";
@@ -2114,7 +2147,7 @@ var ROUTES = S.routes;
 
   /* ---------------- Tabs, options and back button ---------------- */
   var TABS = [["weather", "Weather", "☀️"], ["radar", "Radar", "📡"], ["ocean", "Tides & waves", "🌊"],
-              ["storms", "Hurricanes", "🌀"], ["traffic", "Traffic", "🚗"], ["planes", "Planes", "✈️"]];
+              ["storms", "Hurricanes", "🌀"], ["traffic", "Traffic", "🚗"], ["planes", "Planes", "✈️"], ["ride", "Full Send", "🏍️"]];
   // Windows that open from the Weather tab instead of having a tab of their own
   var SUBS = { sky: ["Sun & moon", "weather"], why: ["Why it's raining", "weather"] };
   var OPTS = {
@@ -2126,6 +2159,7 @@ var ROUTES = S.routes;
     why: [["keypoints", "What the forecasters say", 1], ["sfcmap", "Highs, lows and fronts map", 1], ["satellite", "Satellite loop", 1], ["videos", "Videos and links", 1]],
     storms: [["active", "Active storms", 1], ["outlook", "7-day outlook map", 1], ["season", "Season numbers", 1], ["stormlist", "Storms this season", 1], ["nhcvideos", "Hurricane Center videos", 1]],
     traffic: [["trafficlinks", "Crash, camera and news links", 1]],
+    ride: [["ridescore", "Off-road riding weather", 1], ["street", "Street conditions", 1], ["electric", "Electric ride notes (water, heat, cold)", 1], ["tracks", "Tracks and riding areas", 1]],
     planes: [["lowonly", "Only planes taking off or landing (below 6,000 feet)", 1], ["labels", "Flight numbers on the map", 0], ["atc", "Air traffic control audio link", 1]]
   };
   function optDef(k) { for (var t in OPTS) for (var i = 0; i < OPTS[t].length; i++) if (OPTS[t][i][0] === k) return !!OPTS[t][i][2]; return true; }
@@ -2181,6 +2215,7 @@ var ROUTES = S.routes;
     if (r.v === "traffic" && tmap) setTimeout(function () { tmap.invalidateSize(); }, 30);
     if (r.v === "planes" && !r.sub) loadPlaneFrame(false);
     if (r.v === "storms" && !r.sub) loadNhcVideos();
+    if (r.v === "ride" && !r.sub) renderTracks();
     seen[r.v] = true;
   }
   function sw(k, label) { return '<label class="sw"><span>' + esc(label) + '</span><input type="checkbox" data-optk="' + k + '"' + (on(k) ? " checked" : "") + "></label>"; }
@@ -2411,6 +2446,229 @@ var ROUTES = S.routes;
         '<p class="small">A quick read for boating, fishing and the beach: calm is under 3 ft waves, under 13 mph wind and under a 30% rain chance. Rough is 5 ft waves, 20 mph wind, a 60% rain chance or a high rip current risk. Always check the details before going out.</p>'];
     }
   };
+  /* ---------------- Full Send: riding weather, street conditions and tracks ---------------- */
+  // Hours are the ones each place posts on its own site (checked Nov 2026). Minutes after midnight, Eastern time.
+  // "dark" means the place says it stays open until dark. Status is only ever worked out from these posted hours.
+  function wk(days, a, b) { var o = {}; days.forEach(function (d) { o[d] = [a, b]; }); return o; }
+  var TRACKS = [
+    { name: "Mesa Motocross Park", town: "Fellsmere", lat: 27.769443, lon: -80.578989, addr: "9550 Mesa Park Blvd, Fellsmere, FL 32948",
+      what: "Dirt bikes and quads", url: "https://mesamotocross.com/", site: "mesamotocross.com", fb: "https://www.facebook.com/mesamotocross", phone: "786-975-4024",
+      hours: function () { var o = wk([6, 0], 600, 960); o[3] = [780, 1170]; return o; },
+      notes: ["Wednesday is quads and dirt bikes only. Weekends are open to all riders.", "Rider fee about $50, spectators about $15. Private sessions by phone.", "They post weather calls and schedule changes on Facebook."] },
+    { name: "Okeechobee MX (Moto Bros)", town: "Okeechobee", lat: 27.288053, lon: -80.747317, addr: "7543 NE 48th St, Okeechobee, FL 34972",
+      what: "Dirt bikes and pit bikes. Check the park rules for quads.", url: "https://motobros.com/okeechobee-mx/", site: "motobros.com", fb: "https://www.facebook.com/MotoBros.Okeechobee.Mx", phone: "863-204-1803",
+      hours: function () { return wk([3, 4, 5, 6, 0], 480, 960); },
+      notes: ["Day pass or membership to ride.", "Race weekends can change practice times, so check their schedule or Facebook first."] },
+    { name: "Orlando MX Park", town: "Orlando (Bithlo)", lat: 28.542756, lon: -81.088336, addr: "19400 E Colonial Dr, Orlando, FL 32820",
+      what: "Dirt bikes and pit bikes", url: "https://orlandomxpark.com/", site: "orlandomxpark.com",
+      hours: function () { var o = wk([6, 0], 600, 960); o[3] = [600, "dark"]; o[4] = [600, "dark"]; return o; },
+      notes: ["Day or annual membership required, full gear required.", "Hours change with the season and heavy rain closes the track, so check their Facebook first."] },
+    { name: "Bone Valley ATV Park", town: "Mulberry", lat: 27.76, lon: -81.96, addr: "10427 County Road 630 W, Mulberry, FL 33860",
+      what: "ATVs, UTVs and dirt bikes", url: "https://www.polkfl.gov/things-to-do/parks-and-recreation/bone-valley-atv-park/", site: "Polk County page", fb: "https://www.facebook.com/bonevalleyatvpark", phone: "863-270-1338",
+      hours: function (mon) { return wk([5, 6, 0, 1], 480, mon >= 6 && mon <= 9 ? 1140 : 1020); },
+      notes: ["County park: adults about $15, kids 7 to 15 about $5.", "ATVs must be registered, and riders under 16 need the rider safety course.", "The motocross track (the Bone Yard) only runs on select Saturdays. Call the gatehouse to check."] },
+    { name: "Miami Motocross Park", town: "Hialeah", lat: 25.926048, lon: -80.44902, addr: "16665 NW Krome Ave, Hialeah, FL 33018",
+      what: "Dirt bikes, with bike rentals", url: "https://mxparks.com/motocross-tracks/florida/miami-motocross-park-hialeah", site: "track listing", hours: null,
+      notes: ["No regular hours are posted. Gate about $30, no membership needed.", "Bike rentals with gear, 50cc to 450cc."] }
+  ];
+  var DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], DOWL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  var etParts = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "short", hour: "numeric", minute: "numeric", month: "numeric", hourCycle: "h23" });
+  function etNow(d) {
+    var p = {}; etParts.formatToParts(d || new Date()).forEach(function (x) { p[x.type] = x.value; });
+    return { dow: DOW.indexOf(p.weekday), min: (+p.hour % 24) * 60 + +p.minute, mon: +p.month };
+  }
+  function clock(m) { var h = Math.floor(m / 60), mm = m % 60; return (h % 12 || 12) + (mm ? ":" + (mm < 10 ? "0" : "") + mm : "") + (h < 12 ? " AM" : " PM"); }
+  function closeTxt(c) { return c === "dark" ? "dark" : clock(c); }
+  function sunsetMin() {
+    var t = SunCalc.getTimes(new Date(), HOME[0], HOME[1]).sunset; return t ? etNow(t).min : 1080;
+  }
+  function trackStatus(t) {
+    if (!t.hours) return { cls: "", txt: "Check status", sub: "No hours posted. Call or check before you go." };
+    var n = etNow(), h = t.hours(n.mon), today = h[n.dow];
+    var close = today && (today[1] === "dark" ? sunsetMin() : today[1]);
+    if (today && n.min >= today[0] && n.min < close) return { cls: "open", txt: "Open now", sub: "Posted hours today: " + clock(today[0]) + " to " + closeTxt(today[1]) };
+    if (today && n.min < today[0]) return { cls: "later", txt: "Opens at " + clock(today[0]), sub: "Posted hours today: " + clock(today[0]) + " to " + closeTxt(today[1]) };
+    for (var i = 1; i <= 7; i++) {
+      var d = (n.dow + i) % 7; if (!h[d]) continue;
+      return { cls: "closed", txt: today ? "Closed for today" : "Closed today", sub: "Next open " + (i === 1 ? "tomorrow" : DOWL[d]) + " at " + clock(h[d][0]) + ", per posted hours" };
+    }
+    return { cls: "", txt: "Check status", sub: "" };
+  }
+  function hoursList(t) {
+    if (!t.hours) return [];
+    var h = t.hours(etNow().mon), out = [];
+    [1, 2, 3, 4, 5, 6, 0].forEach(function (d) { out.push([DOWL[d], h[d] ? clock(h[d][0]) + " to " + closeTxt(h[d][1]) : "Closed"]); });
+    return out;
+  }
+  function mapsLink(t) { return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(t.addr); }
+
+  function loadRide() {
+    getJSON("https://api.open-meteo.com/v1/forecast?latitude=" + S.lat + "&longitude=" + S.lon +
+      "&current=temperature_2m,apparent_temperature,weather_code,precipitation,rain,showers,wind_speed_10m,wind_gusts_10m,wind_direction_10m,is_day" +
+      "&hourly=precipitation,precipitation_probability,weather_code,visibility,apparent_temperature,temperature_2m,wind_speed_10m,wind_gusts_10m" +
+      "&daily=weather_code,temperature_2m_max,apparent_temperature_max,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,wind_gusts_10m_max,sunrise,sunset" +
+      "&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=" + encodeURIComponent(TZ) + "&past_days=2&forecast_days=5").then(function (d) {
+      D.ride = d; renderRide(); redrawDetail();
+    }).catch(function () {
+      $("rideBody").innerHTML = '<p class="err">Riding weather isn\'t loading right now. Tap reload to try again.</p>';
+      $("streetBody").innerHTML = '<p class="err">Street conditions aren\'t loading right now. Tap reload to try again.</p>';
+    });
+  }
+  var LV = [["good", "Good"], ["okay", "OK"], ["rough", "Bad"]];
+  function worst(a) { return a.reduce(function (m, x) { return Math.max(m, x[0]); }, 0); }
+  function ridx() {
+    var d = D.ride, h = d.hourly, c = d.current || {}, key = (c.time || "").slice(0, 13) + ":00", i = h.time.indexOf(key);
+    if (i < 0) { var now = Date.now(); i = 0; h.time.forEach(function (t, j) { if (new Date(t).getTime() <= now) i = j; }); }
+    return i;
+  }
+  function sumP(from, to) { var h = D.ride.hourly, s = 0; for (var i = Math.max(0, from); i <= to && i < h.precipitation.length; i++) s += h.precipitation[i] || 0; return s; }
+  function inch(v) { return v < 0.01 ? "none" : v < 0.1 ? "a trace (" + v.toFixed(2) + " in)" : v.toFixed(2) + " in"; }
+  function isStorm(code) { return code >= 95; }
+  function isRainCode(code) { return (code >= 51 && code <= 67) || (code >= 80 && code <= 82) || code >= 95; }
+  function windWord(m) { return m < 10 ? "light wind" : m < 18 ? "breezy" : "windy"; }
+  function todayIdx() { var dd = D.ride.daily, t = ymd(new Date()), k = dd.time.indexOf(t); return k < 0 ? 2 : k; }
+
+  // Off-road riding score for one day. k is the daily index (0-1 are the past two days).
+  function rideDay(k) {
+    var dd = D.ride.daily, today = todayIdx(), r = [], wet, hi = dd.apparent_temperature_max[k], tmax = dd.temperature_2m_max[k];
+    if (k === today) {
+      var i = ridx(), l24 = sumP(i - 23, i), l48 = sumP(i - 47, i), c = D.ride.current || {};
+      wet = l24 >= 0.5 ? 2 : (l24 >= 0.15 || l48 >= 0.75) ? 1 : 0;
+      r.push([wet, wet === 2 ? "muddy with standing water likely (" + l24.toFixed(2) + " in of rain in 24 hours)" : wet === 1 ? "soft and muddy spots (" + l24.toFixed(2) + " in of rain in the last day, " + l48.toFixed(2) + " in over two days)" : "dry track", "Track"]);
+      if (isStorm(c.weather_code)) r.push([2, "lightning in the area now", "Lightning"]);
+      var st0 = SunCalc.getTimes(new Date(), HOME[0], HOME[1]), ss = st0.sunset.getTime(), left = (ss - Date.now()) / 60000, sr = st0.sunrise.getTime();
+      if (Date.now() < sr) r.push([1, "not light yet, sunrise at " + fmtTime.format(new Date(sr)), "Daylight"]);
+      else if (left <= 0) r.push([2, "it's dark now", "Daylight"]);
+      else if (left < 60) r.push([2, "under an hour of daylight left", "Daylight"]);
+      else if (left < 150) r.push([1, Math.floor(left / 60) + " hr " + Math.round(left % 60) + " min of daylight left", "Daylight"]);
+    } else {
+      var prev = dd.precipitation_sum[k - 1] || 0;
+      wet = prev >= 0.5 ? 2 : prev >= 0.15 ? 1 : 0;
+      r.push([wet, wet === 2 ? "muddy from the day before (" + prev.toFixed(2) + " in)" : wet === 1 ? "soft spots from rain the day before" : "dry track", "Track"]);
+    }
+    var pp = dd.precipitation_probability_max[k] || 0;
+    if (isStorm(dd.weather_code[k])) r.push([2, "thunderstorms in the forecast", "Storms"]);
+    r.push([pp >= 60 ? 2 : pp >= 30 ? 1 : 0, pp + "% rain chance", "Rain"]);
+    var g = Math.round(dd.wind_gusts_10m_max[k] || 0), w = Math.round(dd.wind_speed_10m_max[k] || 0);
+    r.push([g >= 40 ? 2 : g >= 25 ? 1 : 0, g >= 25 ? "gusts to " + g + " mph" : windWord(w), "Wind"]);
+    if (hi >= 105) r.push([2, "heat index " + Math.round(hi) + "°, dangerous heat", "Heat"]);
+    else if (hi >= 95) r.push([1, "heat index " + Math.round(hi) + "°, take water breaks", "Heat"]);
+    else if (tmax <= 50) r.push([1, "chilly, " + Math.round(tmax) + "°", "Heat"]);
+    else r.push([0, Math.round(tmax) + "°", "Heat"]);
+    var lv = worst(r);
+    var shown = lv ? r.filter(function (x) { return x[0] > 0; }).sort(function (a, b) { return b[0] - a[0]; }) : r.filter(function (x) { return /Track|Heat|Wind/.test(x[2]); });
+    return { lv: lv, cls: LV[lv][0], label: LV[lv][1], reasons: r, line: LV[lv][1] + (lv === 0 ? " riding: " : lv === 1 ? " riding: " : " for riding: ") + shown.slice(0, 3).map(function (x) { return x[1]; }).join(", ") };
+  }
+  function dayName(k) { var t = todayIdx(); return k === t ? "Today" : k === t + 1 ? "Tomorrow" : dayOf(D.ride.daily.time[k] + " 12:00").split(",")[0]; }
+
+  // Street riding conditions now and over the next 3 hours.
+  function street() {
+    var d = D.ride, h = d.hourly, c = d.current || {}, i = ridx(), dd = d.daily, k = todayIdx();
+    var visU = (d.hourly_units && d.hourly_units.visibility) || "m";
+    function vmi(v) { return v == null ? null : /ft/.test(visU) ? v / 5280 : v / 1609.34; }
+    var radar = D.radarFrac || 0, nowP = (c.precipitation || 0) + (c.rain || 0) + (c.showers || 0);
+    var raining = nowP > 0 || isRainCode(c.weather_code) || radar >= 0.3;
+    var heavy = nowP >= 0.1 || c.weather_code >= 63 && c.weather_code <= 67 || c.weather_code === 81 || c.weather_code === 82 || D.radarHeavy;
+    var l3 = sumP(i - 2, i), l6 = sumP(i - 5, i);
+    var road = raining ? [heavy ? 2 : 1, "Wet", "wet roads"] : l3 >= 0.1 ? [1, "Wet, puddles likely", "wet roads, puddles likely"] : l3 > 0.01 ? [1, "Damp in spots", "damp roads"] : l6 >= 0.25 ? [1, "Drying, puddles in low spots", "puddles in low spots"] : [0, "Dry", "dry roads"];
+    var storm = isStorm(c.weather_code), gust = Math.round(c.wind_gusts_10m || 0), ws = Math.round(c.wind_speed_10m || 0);
+    var vis = vmi(h.visibility[i]), feel = Math.round(c.apparent_temperature), temp = Math.round(c.temperature_2m);
+    var st0 = SunCalc.getTimes(new Date(), HOME[0], HOME[1]), now = Date.now(), ss = st0.sunset.getTime(), sr = st0.sunrise.getTime(), dark = now >= ss || now < sr;
+    var left = (ss - now) / 60000;
+    var nowR = [road, storm ? [2, "Lightning in the area", "lightning nearby"] : raining ? [heavy ? 2 : 1, heavy ? "Heavy rain" : "Light rain", heavy ? "heavy rain" : "light rain"] : [0, "No rain", "no rain"],
+      [gust >= 40 ? 2 : gust >= 25 ? 1 : 0, ws + " mph, gusts " + gust, gust >= 25 ? "gusts to " + gust + " mph" : windWord(ws)],
+      vis == null ? [0, "--", ""] : [vis < 0.5 ? 2 : vis < 3 ? 1 : 0, vis >= 10 ? "10+ miles" : vis.toFixed(vis < 1 ? 1 : 0) + " mi" + (vis < 3 ? ", fog or haze" : ""), vis < 0.5 ? "thick fog" : "haze or fog"],
+      [feel >= 105 ? 2 : feel >= 95 || temp <= 45 ? 1 : 0, temp + "°, feels " + feel + "°", feel >= 95 ? "heat index " + feel + "°" : temp <= 45 ? "cold, " + temp + "°" : temp + "°"],
+      [dark ? 1 : 0, dark ? "Dark: lights on" : Math.floor(left / 60) + " hr " + Math.round(left % 60) + " min left", "dark out"]];
+    // Next 3 hours
+    var np = 0, nsum = 0, nst = false, ng = 0, nv = 99, darkSoon = !dark && left < 180;
+    for (var j = i + 1; j <= i + 3 && j < h.time.length; j++) {
+      np = Math.max(np, h.precipitation_probability[j] || 0); nsum += h.precipitation[j] || 0; if (isStorm(h.weather_code[j])) nst = true;
+      ng = Math.max(ng, h.wind_gusts_10m[j] || 0); var vv = vmi(h.visibility[j]); if (vv != null) nv = Math.min(nv, vv);
+    }
+    ng = Math.round(ng);
+    var nextR = [];
+    if (nst) nextR.push([2, "thunderstorms possible"]);
+    nextR.push([np >= 60 || nsum >= 0.05 ? 2 : np >= 30 ? 1 : 0, np >= 30 ? np + "% rain chance" : "low rain chance (" + np + "%)"]);
+    if (road[0] && !raining && np < 30) nextR.push([1, "roads should keep drying"]);
+    if (ng >= 25) nextR.push([ng >= 40 ? 2 : 1, "gusts to " + ng + " mph"]);
+    if (nv < 3) nextR.push([nv < 0.5 ? 2 : 1, "fog, visibility down to " + nv.toFixed(1) + " mi"]);
+    if (darkSoon) nextR.push([1, "dark at " + fmtTime.format(new Date(ss))]);
+    var lvNow = worst(nowR), lvNext = worst(nextR);
+    var whyNow = nowR.filter(function (x) { return x[0] > 0; }).sort(function (a, b) { return b[0] - a[0]; }).map(function (x) { return x[2]; });
+    var lineNow = LV[lvNow][1] + " for the street now: " + (lvNow ? whyNow.slice(0, 4).join(", ") : "dry roads, " + windWord(ws) + ", " + temp + "°") + ".";
+    var nextShow = lvNext ? nextR.filter(function (x) { return x[0] > 0; }) : nextR;
+    var lineNext = "Next 3 hours: " + LV[lvNext][1] + ", " + nextShow.map(function (x) { return x[1]; }).join(", ") + ".";
+    // Electric ride notes
+    var ev = [];
+    if (raining || road[0] || np >= 50) ev.push([2, "Electric rides: avoid, wet roads" + (raining || l3 >= 0.1 ? " and puddles" : "") + ". Water and electrics don't mix."]);
+    if (feel >= 95 || temp >= 92) ev.push([1, "Electric rides: heat is hard on the battery and motor. Take breaks and park it in the shade."]);
+    if (temp <= 50) ev.push([1, "Electric rides: cold cuts battery range, so plan a shorter ride."]);
+    if (!ev.length) ev.push([0, "Electric rides: no weather worries right now."]);
+    return { lvNow: lvNow, lvNext: lvNext, nowR: nowR, lineNow: lineNow, lineNext: lineNext, ev: ev, l3: l3, l6: l6, i: i };
+  }
+
+  function renderRide() {
+    if (!D.ride || !$("rideBody")) return;
+    try {
+      var t = todayIdx(), days = [];
+      for (var k = t; k < Math.min(t + 4, D.ride.daily.time.length); k++) days.push([k, rideDay(k)]);
+      var td = days[0][1];
+      $("rideBody").innerHTML = '<div class="score ' + td.cls + '">' + esc(td.label) + '</div><p class="rideline">' + esc(td.line) + ".</p>" +
+        '<div class="tiles">' + days.map(function (x) {
+          return '<div class="tile" data-d="rday:' + x[0] + '" role="button" tabindex="0"><div class="k">' + esc(dayName(x[0])) + '</div><div class="v ' + x[1].cls + 'v">' + esc(x[1].label) + '</div><div class="s">' +
+            esc(x[1].reasons.filter(function (r) { return r[0] === x[1].lv; }).slice(0, 2).map(function (r) { return r[1]; }).join(", ")) + "</div></div>";
+        }).join("") + "</div>";
+      var s = street(), L = ["Road", "Rain and lightning", "Wind", "Visibility", "Temperature", "Daylight"];
+      $("streetBody").innerHTML = '<div class="score ' + LV[s.lvNow][0] + '">' + LV[s.lvNow][1] + '</div><p class="rideline">' + esc(s.lineNow) + "</p><p>" + esc(s.lineNext) + "</p>" +
+        '<div class="tiles" data-d="street" role="button" tabindex="0">' + s.nowR.map(function (x, n) {
+          return '<div class="tile"><div class="k">' + L[n] + '</div><div class="s ' + LV[x[0]][0] + 'v">' + esc(x[1]) + "</div></div>";
+        }).join("") + "</div>" +
+        '<div data-opt="electric">' + s.ev.map(function (x) { return '<p class="evnote ' + LV[x[0]][0] + '">⚡ ' + esc(x[1]) + "</p>"; }).join("") + "</div>" +
+        '<p class="small">Wet or dry roads are an estimate from the rain here now (weather model and radar) and in the last few hours. Tap for hour by hour.</p>';
+      applyOpts();
+    } catch (e) { $("rideBody").innerHTML = '<p class="err">Riding weather isn\'t available right now.</p>'; }
+  }
+  function renderTracks() {
+    var box = $("trackList"); if (!box) return;
+    var list = TRACKS.map(function (t, i) { return [miles(S.lat, S.lon, t.lat, t.lon), t, i]; }).filter(function (x) { return x[0] <= 115; }).sort(function (a, b) { return a[0] - b[0]; });
+    if (!list.length) { box.innerHTML = '<li><span class="muted">No tracks I know of within about 100 miles of ' + esc(placeLabel()) + ".</span></li>"; return; }
+    box.innerHTML = list.map(function (x) {
+      var t = x[1], st = trackStatus(t);
+      return '<li class="track" data-d="track:' + x[2] + '" role="button" tabindex="0"><span class="tstat ' + st.cls + '">' + esc(st.txt) + '</span><div><b>' + esc(t.name) + "</b> · " + Math.round(x[0]) + " mi" +
+        '<div class="small">' + esc(t.town) + " · " + esc(t.what) + '</div><div class="small">' + esc(st.sub) + '</div>' +
+        '<div class="links tl"><a href="' + esc(t.url) + '" target="_blank" rel="noopener">' + esc(t.site) + "</a>" + (t.fb ? '<a href="' + esc(t.fb) + '" target="_blank" rel="noopener">Today\'s status on Facebook</a>' : "") + "</div></div></li>";
+    }).join("");
+  }
+  function trackDetail(t) {
+    if (!t) return ["Track", '<p class="muted">That track isn\'t in the list.</p>'];
+    var st = trackStatus(t), rain = "";
+    if (D.ride) { var i = ridx(), l24 = sumP(i - 23, i); if (l24 >= 0.25) rain = "<p>It's rained " + l24.toFixed(2) + " in here in the last 24 hours. Tracks often close or run muddy after that much, so check before you load up.</p>"; }
+    return [t.name, '<p><span class="tstat ' + st.cls + '">' + esc(st.txt) + "</span> " + esc(st.sub) + "</p>" + rain +
+      rows([["Town", esc(t.town)], ["Distance", Math.round(miles(S.lat, S.lon, t.lat, t.lon)) + " miles, straight line"], ["Rides", esc(t.what)], ["Phone", t.phone ? '<a href="tel:' + esc(t.phone.replace(/\D/g, "")) + '">' + esc(t.phone) + "</a>" : null], ["Address", esc(t.addr)]]) +
+      (t.hours ? "<h3>Posted hours</h3>" + rows(hoursList(t)) : "<h3>Hours</h3><p>No regular hours are posted. Call or check their page before you go.</p>") +
+      "<p>" + t.notes.map(esc).join("</p><p>") + "</p>" +
+      '<div class="links"><a href="' + esc(t.url) + '" target="_blank" rel="noopener">' + esc(t.site) + "</a>" + (t.fb ? '<a href="' + esc(t.fb) + '" target="_blank" rel="noopener">Facebook (weather calls)</a>' : "") +
+      '<a href="' + esc(mapsLink(t)) + '" target="_blank" rel="noopener">Directions</a></div>' +
+      '<p class="small">Open or closed here comes only from the hours the place posts. Weather, races and holidays can change them, so check before you go.</p>'];
+  }
+  DET.street = function () {
+    if (!D.ride) return ["Street conditions", LOADING];
+    var s = street(), h = D.ride.hourly, out = [];
+    for (var j = s.i; j <= s.i + 6 && j < h.time.length; j++)
+      out.push([j === s.i ? "Now" : hourLabel(h.time[j]), (h.precipitation_probability[j] || 0) + "% rain · gusts " + Math.round(h.wind_gusts_10m[j] || 0) + " mph · feels " + Math.round(h.apparent_temperature[j]) + "°" + (isStorm(h.weather_code[j]) ? " · storms" : "")]);
+    return ["Street conditions", '<div class="score ' + LV[s.lvNow][0] + '">' + LV[s.lvNow][1] + "</div><p>" + esc(s.lineNow) + "</p><p>" + esc(s.lineNext) + "</p>" +
+      rows([["Rain, last 3 hours", inch(s.l3)], ["Rain, last 6 hours", inch(s.l6)]]) + "<h3>Hour by hour</h3>" + rows(out) +
+      (on("electric") ? s.ev.map(function (x) { return "<p>⚡ " + esc(x[1]) + "</p>"; }).join("") : "") +
+      '<p class="small">Good means dry roads, calm wind and clear air. OK means damp roads, gusts over 25 mph, haze or dark. Bad means rain, lightning, gusts over 40 mph, fog under half a mile or a heat index over 105°. Wet or dry is an estimate.</p>'];
+  };
+  function rideDayDetail(k) {
+    if (!D.ride) return ["Riding weather", LOADING];
+    var x = rideDay(k), dd = D.ride.daily;
+    return [dayName(k) + ": riding weather", '<div class="score ' + x.cls + '">' + x.label + "</div><p>" + esc(x.line) + ".</p>" +
+      rows(x.reasons.map(function (r) { return [r[2], '<span class="' + LV[r[0]][0] + 'v">' + esc(r[1]) + "</span>"]; }).concat([["Sunset", fmtTime.format(SunCalc.getTimes(new Date(Date.now() + (k - todayIdx()) * 864e5), HOME[0], HOME[1]).sunset)], ["Rain expected", inch(dd.precipitation_sum[k] || 0)]])) +
+      '<p class="small">Bad if the track is soaked (half an inch of rain in a day), storms, a 60% rain chance, gusts over 40 mph or a heat index over 105°. Sandy tracks drain fast, clay ones don\'t, so check the track too.</p>'];
+  }
   function stormDetail(s) {
     if (!s) return ["Storm", '<p class="muted">That storm isn\'t in the list right now.</p>'];
     var wiki = s.main ? "https://en.wikipedia.org/wiki/" + encodeURIComponent(s.main.replace(/ /g, "_")) : HURSTAT.page;
@@ -2425,6 +2683,8 @@ var ROUTES = S.routes;
   function renderDetail(tab, key, box) {
     var out;
     if (/^period:\d+$/.test(key)) { var x = (D.periods || [])[+key.split(":")[1]]; out = x ? [x.name, "<p><b>" + esc(x.temperature) + "°</b> · " + esc(x.shortForecast) + "</p><p>" + esc(x.detailedForecast) + "</p>"] : ["Forecast", LOADING]; }
+    else if (/^track:\d+$/.test(key)) out = trackDetail(TRACKS[+key.split(":")[1]]);
+    else if (/^rday:\d+$/.test(key)) out = rideDayDetail(+key.split(":")[1]);
     else if (/^storm:\d+$/.test(key)) out = STORMS ? stormDetail(STORMS[+key.split(":")[1]]) : ["Storm", LOADING];
     else if (/^strongest:/.test(key)) { var nm = key.slice(10).toLowerCase(); out = STORMS ? stormDetail(STORMS.filter(function (s) { return s.name.toLowerCase() === nm || s.heading.toLowerCase().indexOf(nm) >= 0; })[0]) : ["Storm", LOADING]; }
     else if (/^list:/.test(key)) {
@@ -2442,7 +2702,7 @@ var ROUTES = S.routes;
   /* ---------------- Boot ---------------- */
   // Everything loads when the page opens. Tap the reload button (or reload the page) for new numbers.
   function stamp() { $("stamp").textContent = "Updated " + fmtTime.format(new Date()) + " · " + fmtDay.format(new Date()); }
-  function loadAll() { feedP = null; loadNow(); loadOM(); loadWind(); loadAlerts(); loadRadar(); loadWhy(); loadTides(); loadWaves(); loadWaterTemp(); loadSky(); stamp(); }
+  function loadAll() { feedP = null; loadNow(); loadOM(); loadWind(); loadAlerts(); loadRadar(); loadWhy(); loadTides(); loadWaves(); loadWaterTemp(); loadSky(); loadRide(); renderTracks(); stamp(); }
 
   document.addEventListener("click", function (e) {
     var g = e.target.closest("[data-go]");
