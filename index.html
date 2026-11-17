@@ -243,6 +243,13 @@ input[type=range] { width: 100%; accent-color: var(--accent); height: 26px; marg
 .stormlist { columns: 2; column-gap: 18px; padding-left: 18px; margin: 6px 0; }
 .active { border-left: 6px solid var(--bad); padding-left: 10px; margin: 8px 0; }
 #hurricanes-off summary { font-size: 17px; }
+/* ---------- Maps on phones: one finger scrolls the page ---------- */
+.maphint { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); z-index: 1100; background: rgba(0,0,0,0.72); color: #fff;
+  padding: 10px 14px; border-radius: 12px; font: 600 14px var(--font); pointer-events: none; opacity: 0; transition: opacity .2s; text-align: center; max-width: 80%; }
+.maphint.on { opacity: 1; }
+.shield { position: absolute; inset: 0; z-index: 900; display: flex; align-items: flex-end; justify-content: center; padding: 0 0 14px; background: transparent; border: 0; cursor: pointer; }
+.shield span { background: rgba(0,0,0,0.65); color: #fff; padding: 8px 12px; border-radius: 999px; font: 600 13px var(--font); }
+.mapwrap.full .shield { display: none; }
 .foot { text-align: center; color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,0.4); font-size: 12px; margin-top: 10px; }
 </style>
 </head>
@@ -729,7 +736,8 @@ var TOMTOM_KEY = "";
         map.setView(ll, 9);
       }, function () { $("rMsg").textContent = "Location is off for this page, so the map stays on Fort Pierce."; }, { timeout: 10000 });
     });
-    fullToggle("rFull", "radarWrap", function () { map.invalidateSize(); });
+    touchMap(map, $("radarWrap"));
+    fullToggle("rFull", "radarWrap", function () { map.invalidateSize(); mapFull(map, $("radarWrap")); });
   }
   function layerFor(i) {
     var f = frames[i];
@@ -766,6 +774,33 @@ var TOMTOM_KEY = "";
       $("rUpdated").textContent = "Updated " + fmtTime.format(new Date(frames[pos].time * 1000));
       setPlaying(playing);
     }).catch(function () { $("rUpdated").textContent = "Radar unavailable"; });
+  }
+  // On phones a map would grab every swipe, so one finger scrolls the page and two fingers
+  // move and zoom the map. Full screen turns one-finger panning back on.
+  var COARSE = !!(window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
+  function touchMap(m, wrap) {
+    if (!COARSE) return;
+    m.dragging.disable(); if (m.tap) m.tap.disable();
+    var hint = document.createElement("div"), ht = null;
+    hint.className = "maphint"; hint.textContent = "Use two fingers to move the map, or tap full screen";
+    wrap.appendChild(hint);
+    m.getContainer().addEventListener("touchstart", function (e) {
+      if (wrap.classList.contains("full")) return;
+      clearTimeout(ht);
+      if (e.touches.length === 1) { hint.classList.add("on"); ht = setTimeout(function () { hint.classList.remove("on"); }, 1400); }
+      else hint.classList.remove("on");
+    }, { passive: true });
+    m.on("zoomstart movestart", function () { hint.classList.remove("on"); });
+  }
+  function mapFull(m, wrap) { if (COARSE && m) { if (wrap.classList.contains("full")) m.dragging.enable(); else m.dragging.disable(); } }
+  // Embedded maps (Waze, flight map) can't be told to ignore one finger, so on phones a tap opens them full screen.
+  function shield(wrap) {
+    if (!COARSE) return;
+    var b = document.createElement("button");
+    b.type = "button"; b.className = "shield"; b.setAttribute("aria-label", "Open the map full screen");
+    b.innerHTML = "<span>Tap to use the map</span>";
+    b.addEventListener("click", function () { wrap.querySelector(".mapbtns .btn").click(); });
+    wrap.appendChild(b);
   }
   function fullToggle(btnId, wrapId, after) {
     $(btnId).addEventListener("click", function () {
@@ -1055,13 +1090,15 @@ var TOMTOM_KEY = "";
       $("tSource").textContent = "Live from TomTom";
       $("tkey").innerHTML = '<span><i style="background:#2ecc71"></i>Moving</span><span><i style="background:#f1c40f"></i>Slow</span><span><i style="background:#e67e22"></i>Heavy</span><span><i style="background:#c0392b"></i>Stopped</span><span>🚗💥 Crash (tap it)</span>';
       $("tHow").textContent = "Tap a crash or warning icon to see what happened, how long the delay is, and which stretch of road it covers.";
-      fullToggle("tFull", "trafficWrap", function () { tmap.invalidateSize(); });
+      touchMap(tmap, wrap);
+      fullToggle("tFull", "trafficWrap", function () { tmap.invalidateSize(); mapFull(tmap, wrap); });
     } else {
       var f = document.createElement("iframe");
       f.className = "waze"; f.id = "wazeFrame"; f.title = "Live traffic map";
       f.setAttribute("allowfullscreen", ""); f.loading = "lazy";
       f.src = "https://embed.waze.com/iframe?zoom=12&lat=" + HOME[0] + "&lon=" + HOME[1] + "&ct=livemap";
       wrap.insertBefore(f, wrap.firstChild);
+      shield(wrap);
       $("tSource").textContent = "Live from Waze";
       $("tkey").innerHTML = '<span><i style="background:#f1c40f"></i>Slow</span><span><i style="background:#e67e22"></i>Heavy</span><span><i style="background:#c0392b"></i>Stopped</span><span>Icons: crashes, hazards, police</span>';
       $("tHow").textContent = "Colored lines are slowdowns; clear roads have no color. Tap a crash or hazard icon to see what drivers reported. Pinch to zoom.";
