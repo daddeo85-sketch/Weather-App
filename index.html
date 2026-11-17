@@ -367,6 +367,8 @@ label.sw:first-of-type { border-top: 0; }
 .cat { flex: none; font-size: calc(11px * var(--fs)); font-weight: 800; padding: 2px 7px; border-radius: 999px; color: #fff; background: #6b7c88; }
 .cat.ts { background: #1f6fa8; } .cat.c1, .cat.c2 { background: #d68910; } .cat.c3, .cat.c4, .cat.c5 { background: #c0392b; }
 #fsPreview { margin: 6px 0 0; }
+.foot .fblink { color: #fff; text-decoration: underline; text-underline-offset: 2px; display: inline-block; padding: 6px 4px 0; }
+a.btn { text-decoration: none; display: inline-flex; align-items: center; }
 .foot { text-align: center; color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,0.4); font-size: calc(12px * var(--fs)); margin-top: 10px; }
 /* ---------- Live sky scene: real sun and moon, clouds, rain, waves and a street ---------- */
 :root { --tabh: calc(64px + env(safe-area-inset-bottom, 0px)); --sea1: #1f6d9e; --sea2: #154f78; --glow: 0; }
@@ -950,13 +952,18 @@ body.hero .streetgap { display: block; }
       <div id="tabSwitches"></div>
       <p class="small">Saved on this phone only, with no account. Each phone or browser keeps its own settings.</p>
     </section>
+    <section class="card">
+      <h2>Feedback</h2>
+      <p class="small">Something off, or an idea for the app? Send it straight to the builder.</p>
+      <div class="frow"><a class="btn" id="fbBtn" href="https://docs.google.com/forms/d/e/1FAIpQLSfXQwiCIQjHxH4N0HxH15jROSP23En125zYxKyX70hSPsVnLg/viewform" target="_blank" rel="noopener"><svg class="cic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16a1.5 1.5 0 0 1 1.5 1.5v10A1.5 1.5 0 0 1 20 17H9l-4.5 3.8V17H4a1.5 1.5 0 0 1-1.5-1.5v-10A1.5 1.5 0 0 1 4 4z"/></svg>Send feedback</a></div>
+    </section>
   </div>
   <div class="view" data-view="alerts" hidden>
     <div class="card-head" style="color:#fff;text-shadow:0 1px 4px rgba(0,0,0,0.4)"><h2>Weather alerts</h2></div>
     <div id="alerts"></div>
   </div>
 
-  <p class="foot">Data: NWS, NOAA, NDBC, NHC, Open-Meteo, RainViewer, Iowa State IEM (HRRR future radar), The Space Devs, ADS-B Exchange, OurAirports, OpenStreetMap, Esri, Waze, Wikipedia.</p>
+  <p class="foot">Data: NWS, NOAA, NDBC, NHC, Open-Meteo, RainViewer, Iowa State IEM (HRRR future radar), The Space Devs, ADS-B Exchange, OurAirports, OpenStreetMap, Esri, Waze, Wikipedia.<br><a class="fblink" href="https://docs.google.com/forms/d/e/1FAIpQLSfXQwiCIQjHxH4N0HxH15jROSP23En125zYxKyX70hSPsVnLg/viewform" target="_blank" rel="noopener">Send feedback</a></p>
 </div>
 
 <nav class="tabbar" id="tabbar" aria-label="Sections"></nav>
