@@ -938,9 +938,8 @@ body.hero .streetgap { display: block; }
 // Preview only: ?pw=360 shows the app at a phone's width
 (function () {
   var m = location.search.match(/[?&]pw=(\d{3})/); if (!m || window !== top || innerWidth <= +m[1]) return;
-  var w = +m[1], k = innerWidth / w; window.stop(); document.open();
-  document.write('<!doctype html><body style="margin:0;overflow:hidden;background:#000"><iframe src="' + location.href.replace(/"/g, "%22") + '" style="border:0;width:' + w + 'px;height:' + Math.round(innerHeight / k) + 'px;transform:scale(' + k + ');transform-origin:0 0"></iframe></body>');
-  document.close();
+  var w = +m[1], k = innerWidth / w;
+  document.write('<iframe src="' + location.href.replace(/"/g, "%22") + '" style="position:fixed;left:0;top:0;z-index:2147483647;border:0;background:#000;width:' + w + 'px;height:' + Math.round(innerHeight / k) + 'px;transform:scale(' + k + ');transform-origin:0 0"></iframe><plaintext style="display:none">');
 })();
 </script>
 <script>
