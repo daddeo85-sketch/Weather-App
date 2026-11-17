@@ -12,8 +12,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#2f6fa3">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
-<link rel="icon" type="image/png" sizes="64x64" href="icons/favicon-64.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png?v=3">
+<link rel="icon" type="image/png" sizes="64x64" href="icons/favicon-64.png?v=3">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <style>
 /* ---------- Theme tokens ---------- */
@@ -1027,7 +1027,7 @@ body.hero .streetgap { display: block; }
   function show(body, buttons) {
     if (!box) return;
     if (box.parentNode !== document.body) document.body.appendChild(box);   // sit above everything, clear of the page's own layers
-    box.innerHTML = '<img src="icons/icon-192.png" alt=""><div class="t"><b class="h">Get Full Send Weather</b>' + body + (buttons || "") +
+    box.innerHTML = '<img src="icons/icon-192.png?v=3" alt=""><div class="t"><b class="h">Get Full Send Weather</b>' + body + (buttons || "") +
       '</div><button class="x" type="button" aria-label="Close">✕</button>';
     place(); setTimeout(place, 800); box.hidden = false; box.classList.add("off");
     setTimeout(function () { box.classList.remove("off"); }, 30);
