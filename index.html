@@ -3564,6 +3564,12 @@ var ROUTES = S.routes;
   // Ground from real rainfall: wet = puddles and mud, dry = brown grass and no water
   var GROUND = { r24: 0, r72: 0, r14: 1, ok: false };
   function groundWet() { return GROUND.ok ? Math.min(1, GROUND.r24 / 0.5 + GROUND.r72 / 2) : 0; }
+  // Puddles on the road: only while it's raining or for a few hours after, bigger with more rain
+  function puddleLevel() {
+    var r3 = GROUND.ok ? GROUND.r3 || 0 : 0, now = Math.max(WX.wet || 0, 0), raining = now > 0 || WX.kind === "rain" || WX.kind === "storm";
+    if (!raining && r3 < 0.02) return 0;
+    return Math.min(1, (raining ? 0.25 : 0.1) + now * 6 + r3 * 2.5);
+  }
   function groundDry() { return GROUND.ok && GROUND.r72 < 0.05 && !WX.wet ? Math.max(0, Math.min(1, (0.6 - GROUND.r14) / 0.5)) : 0; }
 
   function hex(h) { return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]; }
@@ -3674,7 +3680,7 @@ var ROUTES = S.routes;
     // Streetlight comes on after sunset, or on a dark stormy day
     lampOn = alt < 1 || (WX.kind === "storm" || (WX.kind === "rain" && WX.heavy));
     R.night = alt < -3; R.low = c[2]; R.dimv = alt < -3 ? 0.32 : 1 - dull * 0.35;
-    drawRoad({ night: alt < -3, wet: WX.kind === "rain" || WX.kind === "storm" || WX.wet > 0 || groundWet() > 0.6, dull: dull, low: c[2], glow: lampOn ? (alt < -6 ? 1 : 0.65) : 0 });
+    drawRoad({ night: alt < -3, wet: puddleLevel() > 0, dull: dull, low: c[2], glow: lampOn ? (alt < -6 ? 1 : 0.65) : 0 });
     fgStart();
     // Stars on clear nights
     var starCount = night && (WX.kind === "clear" || WX.kind === "partly") ? Math.round(110 * (1 - mi.fraction * (mp.altitude > 0 ? 0.6 : 0))) : 0;
@@ -3757,8 +3763,10 @@ var ROUTES = S.routes;
         c.fillStyle = mud; c.globalAlpha = 0.45; c.beginPath(); c.ellipse(gx(mx, mz), gy(mz), mw * pz(mz), mw * pz(mz) * 0.3, 0, 0, Math.PI * 2); c.fill();
       }
       c.globalAlpha = 1;
-      var sk = Math.max(soak, wet ? 0.35 : 0), G = GROUND || {}, grow = Math.min(2.4, 0.7 + (G.r24 || 0) * 1.3 + (G.r72 || 0) * 0.25 + (wet ? 0.2 : 0));
-      var nP = Math.round(5 + sk * 11), prn = seeded(23);
+    }
+    var pud = puddleLevel();
+    if (pud > 0) {
+      var grow = 0.5 + pud * 1.9, nP = Math.round(3 + pud * 13), prn = seeded(23);
       for (var pI = 0; pI < nP; pI++) {
         var pzz = 4.5 + prn() * 22, px = (prn() < 0.5 ? -1 : 1) * (0.5 + prn() * (H2 - 1.1)), pw = (0.45 + prn() * 0.75) * grow;
         var cxp = gx(px, pzz), cyp = gy(pzz), rx = pw * pz(pzz), ry = Math.max(1, (gy(pzz - pw * 0.5) - gy(pzz + pw * 0.5)) / 2);
@@ -3768,10 +3776,10 @@ var ROUTES = S.routes;
       }
     }
     // storm drain inlets: a grate in the gutter and an opening in the curb
-    R.gutterWater = soak > 0.3 || wet;
+    R.gutterWater = pud > 0.3;
     DRAINS.forEach(function (d) {
       var sd = d[0], z = d[1], e = sd * H2, p = pz(z);
-      if (wet || soak > 0.3) { c.fillStyle = rgba(mix(low, [200, 210, 220], 0.3), n ? 0.4 : 0.55); quad(c, e - sd * 0.32, e, Math.max(zn, z - 5), z); }  // water backed up at the inlet
+      if (pud > 0.2) { c.fillStyle = rgba(mix(low, [200, 210, 220], 0.3), n ? 0.4 : 0.55); quad(c, e - sd * 0.32, e, Math.max(zn, z - 5), z); }  // water backed up at the inlet
       c.fillStyle = "#15171a"; quad(c, e - sd * 0.52, e - sd * 0.06, z, z + 1);
       c.strokeStyle = shade("#6d6a64"); c.lineWidth = Math.max(0.6, 0.03 * p); c.beginPath();
       for (var b = 0; b <= 6; b++) { var zz = z + b / 6; c.moveTo(gx(e - sd * 0.52, zz), gy(zz)); c.lineTo(gx(e - sd * 0.06, zz), gy(zz)); }
@@ -4049,9 +4057,9 @@ var ROUTES = S.routes;
       .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }).then(function (d) {
         var h = d.hourly || {}, t = h.time || [], p = h.precipitation || [], now = Date.now(), r24 = 0, r72 = 0;
         var off = (d.utc_offset_seconds || 0) * 1000;
-        t.forEach(function (x, i) { var ms = Date.parse(x + "Z") - off, age = now - ms; if (age >= 0 && age < 864e5) r24 += p[i] || 0; if (age >= 0 && age < 2592e5) r72 += p[i] || 0; });
+        var r3 = 0; t.forEach(function (x, i) { var ms = Date.parse(x + "Z") - off, age = now - ms; if (age >= 0 && age < 108e5) r3 += p[i] || 0; if (age >= 0 && age < 864e5) r24 += p[i] || 0; if (age >= 0 && age < 2592e5) r72 += p[i] || 0; });
         var ds = (d.daily && d.daily.precipitation_sum) || [], r14 = 0; ds.slice(0, -1).forEach(function (v) { r14 += v || 0; });
-        GROUND = { r24: r24, r72: r72, r14: r14, ok: true }; safeUpdate();
+        GROUND = { r3: r3, r24: r24, r72: r72, r14: r14, ok: true }; safeUpdate();
       }).catch(function () {});
   }
   function size() {
@@ -4162,7 +4170,19 @@ var ROUTES = S.routes;
   var KEY = "installSnooze.v2", box = document.getElementById("installBanner"), deferred = null;
   var q = location.search, preview = (q.match(/installpreview=(ios|android|inapp)/) || [])[1];
   var standalone = (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || window.navigator.standalone === true;
-  if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(function () {});
+  // Updates arrive on their own: check for a new version on open and whenever the app comes back to the front,
+  // and when one takes over, reload once quietly so people always see the latest
+  if ("serviceWorker" in navigator && location.protocol === "https:") {
+    var hadSW = !!navigator.serviceWorker.controller, reloaded = false;
+    navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then(function (reg) {
+      reg.update().catch(function () {});
+      document.addEventListener("visibilitychange", function () { if (!document.hidden) reg.update().catch(function () {}); });
+    }).catch(function () {});
+    navigator.serviceWorker.addEventListener("controllerchange", function () {
+      if (!hadSW || reloaded) { hadSW = true; return; }
+      reloaded = true; location.reload();
+    });
+  }
   // A "Not now" hides it for 3 days, then it asks again
   function snoozed() { try { return Date.now() < (+localStorage.getItem(KEY) || 0); } catch (e) { return false; } }
   if (!box || (!preview && (standalone || snoozed()))) return;
