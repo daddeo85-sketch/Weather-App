@@ -2425,7 +2425,7 @@ var ROUTES = S.routes;
   function tabLabel(t) { if (SUBS[t]) return SUBS[t][0]; for (var i = 0; i < TABS.length; i++) if (TABS[i][0] === t) return TABS[i][1]; return t; }
   function renderTabbar() {
     $("tabbar").innerHTML = TABS.filter(function (x) { return tabOn(x[0]); }).map(function (x) {
-      var src = x[0] === "traffic" && vehSrc() ? vehSrc() : "img/tab-" + x[3] + ".webp";
+      var src = (x[0] === "traffic" && vehSrc() ? vehSrc() : "img/tab-" + x[3] + ".webp") + "?v=4";
       return '<button type="button" data-go="#/' + x[0] + '" data-tabbtn="' + x[0] + '"><img class="ic" alt="" width="46" height="30" decoding="async" src="' + src + '"><span class="tl">' + esc(x[4] || x[1]) + "</span></button>";
     }).join("");
     markTab();
@@ -3402,17 +3402,18 @@ var ROUTES = S.routes;
     if (soak > 0.05) {
       var rnd = seeded(7), mud = css(mix(hex("#5a4330"), [0, 0, 0], 1 - dim));
       for (var mI = 0; mI < 14; mI++) {
-        var mz = 2 + rnd() * 24, ms = rnd() < 0.5 ? -1 : 1, mx = ms * (H2 + 2.6 + rnd() * 2.5), mw = 0.8 + rnd() * 1.8;
+        var mz = 3 + rnd() * 24, ms = rnd() < 0.5 ? -1 : 1, mx = ms * (H2 + 2.8 + rnd() * 3), mw = 0.4 + rnd() * 0.8;
         if (rnd() > soak + 0.2) continue;
-        c.fillStyle = mud; c.globalAlpha = 0.75; c.beginPath(); c.ellipse(gx(mx, mz), gy(mz), mw * pz(mz), mw * pz(mz) * R.camH / mz * 0.9, 0, 0, Math.PI * 2); c.fill();
+        c.fillStyle = mud; c.globalAlpha = 0.45; c.beginPath(); c.ellipse(gx(mx, mz), gy(mz), mw * pz(mz), mw * pz(mz) * 0.3, 0, 0, Math.PI * 2); c.fill();
       }
       c.globalAlpha = 1;
-      var nP = Math.round(3 + soak * 7);
+      var nP = Math.round(3 + soak * 5);
       for (var pI = 0; pI < nP; pI++) {
-        var pzz = 2.5 + rnd() * 22, px = (rnd() * 2 - 1) * (H2 - 0.8), pw = 0.7 + rnd() * 1.4 * (0.5 + soak);
-        var cxp = gx(px, pzz), cyp = gy(pzz), rx = pw * pz(pzz), ry = Math.max(1, rx * R.camH / pzz * 0.9);
-        c.fillStyle = rgba(mix(low, [255, 255, 255], 0.15), n ? 0.55 : 0.7); c.beginPath(); c.ellipse(cxp, cyp, rx, ry, 0, 0, Math.PI * 2); c.fill();
-        c.strokeStyle = "rgba(20,22,26,0.35)"; c.lineWidth = 1; c.stroke();
+        var pzz = 3 + rnd() * 20, px = (rnd() < 0.5 ? -1 : 1) * (0.6 + rnd() * (H2 - 1.4)), pw = 0.35 + rnd() * 0.6 * (0.5 + soak);
+        var cxp = gx(px, pzz), cyp = gy(pzz), rx = pw * pz(pzz), ry = Math.max(1, rx * 0.22);
+        var pg = c.createLinearGradient(0, cyp - ry, 0, cyp + ry);
+        pg.addColorStop(0, rgba(mix(low, [255, 255, 255], 0.25), n ? 0.45 : 0.55)); pg.addColorStop(1, rgba(mix(low, [0, 0, 0], 0.35), n ? 0.4 : 0.5));
+        c.fillStyle = pg; c.beginPath(); c.ellipse(cxp, cyp, rx, ry, 0, 0, Math.PI * 2); c.fill();
       }
     }
     // storm drain inlets: a grate in the gutter and an opening in the curb
@@ -3553,9 +3554,9 @@ var ROUTES = S.routes;
       for (var k = 0; k < n; k++) {
         var f = ((t * 0.00045 * heavy + k / n + i * 0.37) % 1), z = prev + f * len, p = pz(z);
         if (p < 3) continue;
-        var x = e - sd * (0.1 + ((k * 7) % 5) * 0.05), dz = Math.min(0.9, len * 0.08);
-        c.strokeStyle = rgba(mix(low, [235, 242, 250], 0.55), 0.5 * (1 - Math.abs(f - 0.5)) + 0.2);
-        c.lineWidth = Math.max(0.8, 0.05 * p);
+        var x = e - sd * (0.06 + ((k * 7) % 5) * 0.045), dz = Math.min(0.45, len * 0.05);
+        c.strokeStyle = rgba([170, 196, 220], 0.32 * (1 - Math.abs(f - 0.5)) + 0.12);
+        c.lineWidth = Math.max(0.6, 0.03 * p);
         c.beginPath(); c.moveTo(gx(x, z), gy(z)); c.lineTo(gx(x, Math.min(z1, z + dz)), gy(Math.min(z1, z + dz))); c.stroke();
       }
       var pz1 = pz(z1), s = (t * 0.004 + i) % 1;                                                         // little splash at the grate
