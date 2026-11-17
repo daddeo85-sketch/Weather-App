@@ -293,6 +293,7 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; justif
   background: var(--chip); color: var(--fg); border: 1px solid var(--line); border-radius: 999px; padding: 0 12px; font: 600 calc(13px * var(--fs)) var(--font); cursor: pointer;
   backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
 .optbtn { min-height: 36px; }
+.soonbar { margin: 0 0 10px; padding: 9px 14px; border-radius: 12px; background: rgba(20,30,48,0.78); border: 1px solid rgba(255,255,255,0.18); color: #fff; font-size: 14px; line-height: 1.35; text-align: center; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
 label.sw { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); cursor: pointer; }
 label.sw:first-of-type { border-top: 0; }
 .sw input { appearance: none; -webkit-appearance: none; flex: none; width: 48px; height: 28px; margin: 0; border-radius: 999px; background: var(--line); position: relative; cursor: pointer; transition: background .15s; }
@@ -717,6 +718,7 @@ body.hero .streetgap { display: block; }
   </div>
 
   <div class="view" data-view="traffic" hidden>
+    <div class="soonbar" id="tSoon" role="note"><b>Live traffic is coming soon.</b> Our developers are working on it.</div>
     <div class="optbar">
       <button class="chip" type="button" data-go="#/settings" aria-label="Change your place">📍 <span class="pname"></span></button>
       <button class="btn optbtn" type="button" data-go="#/traffic/options">⚙ Traffic options</button>
@@ -912,6 +914,7 @@ var DEFAULT_PLACE = {
 // Optional: a free TomTom key turns the traffic map into green/yellow/red roads with crash icons.
 // Sign up yourself at developer.tomtom.com, then paste the key between the quotes.
 var TOMTOM_KEY = "";
+if (TOMTOM_KEY) document.addEventListener("DOMContentLoaded", function () { var b = document.getElementById("tSoon"); if (b) b.hidden = true; });
 
 var STORE_KEY = "weatherSettings.v1";
 // Buoy readings and the tide station list, saved every 30 minutes by the GitHub Action
