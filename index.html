@@ -416,13 +416,24 @@ body.hero .streetgap { display: block; }
 .logo .a { font-size: calc(10px * var(--fs)); letter-spacing: 3px; color: #ffe2a8; margin-top: 3px; padding-left: 3px; }
 .ttl { display: flex; align-items: center; gap: 10px; }
 .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-/* install banner */
-.install { position: relative; display: flex; gap: 10px; align-items: flex-start; background: var(--panel); border: 1px solid var(--line); border-radius: 16px;
-  padding: 10px 12px; margin: 0 0 10px; box-shadow: 0 6px 24px rgba(0,0,0,0.18); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
-.install img { width: 44px; height: 44px; border-radius: 10px; flex: none; }
-.install .t { flex: 1; font-size: calc(14px * var(--fs)); }
-.install .x { position: absolute; top: 4px; right: 4px; min-height: 34px; width: 34px; padding: 0; border: 0; background: transparent; font-size: 20px; }
-.install ol { margin: 4px 0 0; padding-left: 20px; }
+/* install prompt: a bottom sheet that slides up over the tab bar */
+.install { position: fixed; left: 10px; right: 10px; bottom: calc(var(--instB, 70px) + 10px); z-index: 1600; max-width: 460px; margin: 0 auto;
+  display: flex; gap: 12px; align-items: flex-start; padding: 16px 16px 14px; border-radius: 20px; color: #fff;
+  background: linear-gradient(160deg, #0b1838 0%, #13305f 60%, #1b4180 100%); border: 1px solid rgba(255,255,255,0.14);
+  box-shadow: 0 18px 50px rgba(0,0,0,0.45); transform: translateY(0); opacity: 1; transition: transform .35s cubic-bezier(.2,.9,.3,1.2), opacity .25s; }
+.install.off { transform: translateY(30px); opacity: 0; }
+.install img { width: 58px; height: 58px; border-radius: 14px; flex: none; box-shadow: 0 4px 14px rgba(0,0,0,0.4); }
+.install .t { flex: 1; font-size: calc(14px * var(--fs)); line-height: 1.4; padding-right: 22px; }
+.install .t b.h { display: block; font-size: calc(17px * var(--fs)); font-weight: 800; letter-spacing: -0.2px; margin-bottom: 2px; }
+.install .t .sub { color: rgba(255,255,255,0.78); }
+.install .x { position: absolute; top: 6px; right: 6px; min-height: 34px; width: 34px; padding: 0; border: 0; background: transparent; color: rgba(255,255,255,0.8); font-size: 18px; }
+.install ol { margin: 8px 0 0; padding-left: 20px; color: rgba(255,255,255,0.92); }
+.install ol li { margin: 3px 0; }
+.install .go { margin-top: 10px; display: flex; gap: 8px; }
+.install .go button { min-height: 40px; padding: 0 18px; border-radius: 999px; border: 0; font-weight: 700; font-size: calc(15px * var(--fs)); }
+.install .go .yes { background: #ffc24a; color: #1a1300; }
+.install .go .no { background: rgba(255,255,255,0.12); color: #fff; }
+.install .sh { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 6px; background: rgba(255,255,255,0.16); vertical-align: -6px; margin: 0 2px; }
 .sugg { display: flex; flex-direction: column; gap: 4px; margin: 2px 0 4px; }
 .sugg button { text-align: left; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line, rgba(0,0,0,.12)); background: var(--card2, rgba(255,255,255,.7)); color: inherit; font: inherit; font-size: calc(14px * var(--fs)); }
 .sugg button .small { display: block; }
@@ -1101,7 +1112,7 @@ var ROUTES = S.routes;
       var ws = p.windSpeed && p.windSpeed.value, wg = p.windGust && p.windGust.value, wd = p.windDirection && p.windDirection.value;
       D.windMph = ws != null ? Math.round(kmh2mph(ws)) : null; D.gustMph = wg ? Math.round(kmh2mph(wg)) : null; D.obs.ws = D.windMph;
       renderScore();
-      if (window.SKY) { window.SKY.obs(p.textDescription || ""); if (ws != null) window.SKY.wind(kmh2mph(ws), wg ? kmh2mph(wg) : 0, wd); }
+      if (window.SKY) { try { window.SKY.obs(p.textDescription || ""); if (ws != null) window.SKY.wind(kmh2mph(ws), wg ? kmh2mph(wg) : 0, wd); } catch (e) {} }
       if (ws != null) {
         $("windNow").textContent = ws < 1 ? "Calm" : (wd != null ? dir16(wd) + " " : "") + Math.round(kmh2mph(ws)) + " mph";
         $("windNowSub").textContent = (wg ? "Gusts to " + Math.round(kmh2mph(wg)) + " mph" : "No gusts reported") +
@@ -2047,7 +2058,7 @@ var ROUTES = S.routes;
       D.uvMax = mx;
       $("uvNow").textContent = Math.round(u) + " " + uvWordS(u);
       $("uvSub").textContent = mx != null ? "Top today: " + Math.round(mx) + (bt ? " at " + hourLabel(bt) : "") : "";
-      if (window.SKY) window.SKY.weather(d.current);
+      if (window.SKY) { try { window.SKY.weather(d.current); } catch (e) {} }
     }).catch(function () { $("uvNow").textContent = "--"; $("uvSub").textContent = "UV unavailable right now"; });
   }
   // Rain in the next 8 hours and when the rain should quit, from the Open-Meteo hourly forecast
@@ -4034,7 +4045,7 @@ var ROUTES = S.routes;
         var off = (d.utc_offset_seconds || 0) * 1000;
         t.forEach(function (x, i) { var ms = Date.parse(x + "Z") - off, age = now - ms; if (age >= 0 && age < 864e5) r24 += p[i] || 0; if (age >= 0 && age < 2592e5) r72 += p[i] || 0; });
         var ds = (d.daily && d.daily.precipitation_sum) || [], r14 = 0; ds.slice(0, -1).forEach(function (v) { r14 += v || 0; });
-        GROUND = { r24: r24, r72: r72, r14: r14, ok: true }; update();
+        GROUND = { r24: r24, r72: r72, r14: r14, ok: true }; safeUpdate();
       }).catch(function () {});
   }
   function size() {
@@ -4102,15 +4113,23 @@ var ROUTES = S.routes;
       WX.code = c.weather_code; WX.cover = c.cloud_cover || 0;
       WX.wet = Math.max(c.precipitation || 0, c.rain || 0, c.showers || 0);
       if (WX.mph === 0 && c.wind_speed_10m != null) { WX.mph = Math.max(c.wind_speed_10m, 0.7 * (c.wind_gusts_10m || 0)); WX.dir = c.wind_direction_10m; }
-      classify(); update();
+      classify(); safeUpdate();
     },
-    radar: function (frac, heavy) { WX.radar = frac; WX.radarHeavy = heavy; classify(); update(); },
-    wind: function (mph, gust, dir) { if (mph == null) return; WX.mph = Math.max(mph, 0.7 * (gust || 0)); WX.dir = dir; update(); },
-    obs: function (text) { WX.obsText = text || ""; classify(); update(); },
-    set: function (kind) { WX.kind = kind; update(); }   // for testing: SKY.set("storm")
+    radar: function (frac, heavy) { WX.radar = frac; WX.radarHeavy = heavy; classify(); safeUpdate(); },
+    wind: function (mph, gust, dir) { if (mph == null) return; WX.mph = Math.max(mph, 0.7 * (gust || 0)); WX.dir = dir; safeUpdate(); },
+    obs: function (text) { WX.obsText = text || ""; classify(); safeUpdate(); },
+    set: function (kind) { WX.kind = kind; safeUpdate(); }   // for testing: SKY.set("storm")
   };
-  size(); update();
-  window.skyResize = function () { size(); drops = []; update(); };
+  // A drawing hiccup in the street scene must never knock out the weather numbers
+  function safeUpdate() {
+    try { update(); } catch (e) {
+      window.__skyErr = String(e && e.stack || e);
+      if (/debug/.test(location.search)) document.title = "ERR " + (e && e.message) + " @ " + String(e && e.stack || "").split("\n").slice(0, 3).join(" | ");
+      if (window.console) console.error(e);
+    }
+  }
+  size(); safeUpdate();
+  window.skyResize = function () { size(); drops = []; safeUpdate(); };
   window.addEventListener("resize", window.skyResize);
   // Keep the street lined up with its open space when banners above it come and go
   if (window.ResizeObserver) {
@@ -4125,41 +4144,62 @@ var ROUTES = S.routes;
       });
     }).observe(page);
   }
-  setInterval(update, 60000);
-  document.addEventListener("visibilitychange", function () { if (!document.hidden) { update(); } });
+  setInterval(safeUpdate, 60000);
+  document.addEventListener("visibilitychange", function () { if (!document.hidden) { safeUpdate(); } });
   loadGround(); setInterval(loadGround, 30 * 60000);
   window.SKY.ground = function () { return GROUND; };
 })();
 
-/* ---------------- Install banner and offline support ---------------- */
+/* ---------------- Install prompt and offline support ---------------- */
 (function () {
   "use strict";
-  var KEY = "installBannerOff.v1", box = document.getElementById("installBanner"), deferred = null;
+  var KEY = "installSnooze.v2", box = document.getElementById("installBanner"), deferred = null;
+  var q = location.search, preview = (q.match(/installpreview=(ios|android|inapp)/) || [])[1];
   var standalone = (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || window.navigator.standalone === true;
   if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(function () {});
-  function off() { try { return localStorage.getItem(KEY) === "1"; } catch (e) { return false; } }
-  if (standalone || off() || !box) return;
+  // A "Not now" hides it for 3 days, then it asks again
+  function snoozed() { try { return Date.now() < (+localStorage.getItem(KEY) || 0); } catch (e) { return false; } }
+  if (!box || (!preview && (standalone || snoozed()))) return;
   var ua = navigator.userAgent, ios = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1), android = /Android/.test(ua);
-  var shareIcon = '<svg viewBox="0 0 24 24" width="16" height="16" style="vertical-align:-3px" fill="currentColor" aria-label="Share"><path d="M12 2 7.5 6.5l1.4 1.4L11 5.8V15h2V5.8l2.1 2.1 1.4-1.4zM5 10v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V10h-3v2h1v8H7v-8h1v-2z"/></svg>';
-  function show(html) {
-    box.innerHTML = '<img src="icons/icon-192.png" alt=""><div class="t">' + html + '</div><button class="btn x" type="button" aria-label="Close">✕</button>';
-    box.hidden = false;
-    box.querySelector(".x").addEventListener("click", function () { box.hidden = true; try { localStorage.setItem(KEY, "1"); } catch (e) {} });
+  var inApp = /FBAN|FBAV|Instagram|Line\/|Snapchat|Twitter|LinkedInApp|GSA\//.test(ua);
+  if (preview) { ios = preview !== "android"; android = preview === "android"; inApp = preview === "inapp"; }
+  if (!ios && !android) return;   // phones only
+  document.body.appendChild(box);   // sit above everything, clear of the page's own layers
+  var shareIcon = '<span class="sh"><svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-label="Share"><path d="M12 2 7.5 6.5l1.4 1.4L11 5.8V15h2V5.8l2.1 2.1 1.4-1.4zM5 10v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V10h-3v2h1v8H7v-8h1v-2z"/></svg></span>';
+  function place() { var tb = document.querySelector(".tabbar"); box.style.setProperty("--instB", (tb && tb.offsetHeight ? tb.offsetHeight : 0) + "px"); }
+  function hide(snooze) {
+    box.classList.add("off"); setTimeout(function () { box.hidden = true; }, 300);
+    if (snooze) try { localStorage.setItem(KEY, String(Date.now() + 3 * 864e5)); } catch (e) {}
   }
+  function show(body, buttons) {
+    box.innerHTML = '<img src="icons/icon-192.png" alt=""><div class="t"><b class="h">Get Full Send Weather</b>' + body + (buttons || "") +
+      '</div><button class="x" type="button" aria-label="Close">✕</button>';
+    place(); box.hidden = false; box.classList.add("off");
+    requestAnimationFrame(function () { requestAnimationFrame(function () { box.classList.remove("off"); }); });
+    box.querySelector(".x").addEventListener("click", function () { hide(true); });
+    var no = box.querySelector(".no"); if (no) no.addEventListener("click", function () { hide(true); });
+  }
+  window.addEventListener("resize", place);
   window.addEventListener("beforeinstallprompt", function (e) {
     e.preventDefault(); deferred = e;
-    show('<b>Get Full Send Weather</b><br>Put it on your home screen like a regular app.<div style="margin-top:6px"><button class="btn primary" type="button" id="doInstall">Install</button></div>');
+    show('<span class="sub">Free. Installs in a second and opens like a regular app.</span>',
+      '<div class="go"><button class="yes" type="button" id="doInstall">Install</button><button class="no" type="button">Not now</button></div>');
     document.getElementById("doInstall").addEventListener("click", function () {
       deferred.prompt();
-      deferred.userChoice.then(function (r) { if (r.outcome === "accepted") box.hidden = true; deferred = null; });
+      deferred.userChoice.then(function (r) { hide(r.outcome !== "accepted"); deferred = null; });
     });
   });
-  window.addEventListener("appinstalled", function () { box.hidden = true; try { localStorage.setItem(KEY, "1"); } catch (e) {} });
-  if (ios) show('<b>Get Full Send Weather on your iPhone</b><ol><li>Tap ' + shareIcon + ' Share' + (/CriOS|FxiOS|EdgiOS/.test(ua) ? " (top right or bottom of the screen)" : " at the bottom of Safari") + '.</li>' +
-    '<li>Scroll down and tap <b>Add to Home Screen</b>.</li><li>If you see <b>Open as Web App</b>, leave it on. Then tap <b>Add</b>.</li></ol>');
-  else if (android) setTimeout(function () {
-    if (!deferred) show('<b>Get Full Send Weather</b><br>Tap your browser\'s menu (⋮), then <b>Install app</b> or <b>Add to Home screen</b>.');
-  }, 3500);
+  window.addEventListener("appinstalled", function () { hide(false); });
+  setTimeout(function () {
+    if (deferred || !box.hidden) return;
+    if (inApp) show('<span class="sub">To install it, open this page in your phone\'s browser first.</span><ol><li>Tap the <b>⋯</b> menu at the top.</li><li>Tap <b>Open in ' + (ios ? "Safari" : "browser") + '</b>.</li></ol>');
+    else if (ios) show('<span class="sub">Add it to your home screen. It opens like a regular app.</span><ol><li>Tap ' + shareIcon + ' <b>Share</b>' +
+      (/CriOS|FxiOS|EdgiOS/.test(ua) ? " (top right or bottom of the screen)" : " at the bottom of Safari") + '.</li>' +
+      '<li>Scroll down and tap <b>Add to Home Screen</b>.</li><li>Tap <b>Add</b>.</li></ol>', '<div class="go"><button class="no" type="button">Not now</button></div>');
+    else show('<span class="sub">Add it to your home screen. It opens like a regular app.</span><ol><li>Tap your browser\'s menu <b>⋮</b>.</li><li>Tap <b>Install app</b> or <b>Add to Home screen</b>.</li></ol>',
+      '<div class="go"><button class="no" type="button">Not now</button></div>');
+  }, preview === "android" ? 0 : 1800);
+  if (preview === "android") window.dispatchEvent(Object.assign(new Event("beforeinstallprompt"), { prompt: function () {}, userChoice: Promise.resolve({ outcome: "dismissed" }) }));
 })();
 </script>
 </body>
