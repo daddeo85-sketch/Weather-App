@@ -3698,7 +3698,7 @@ var ROUTES = S.routes;
     function shade(hx, extra) { return css(mix(hex(hx), [0, 0, 0], 1 - dim + (extra || 0))); }
     // beach, grass, sidewalks, road
     var dry = groundDry(), soak = groundWet();
-    c.fillStyle = css(mix(mix(hex("#5f8a43"), hex("#a68a4e"), dry), [0, 0, 0], 1 - dim)); quad(c, -600, 600, zn, zf);
+    c.fillStyle = css(mix(mix(hex("#5f8a43"), hex("#a68a4e"), dry), [0, 0, 0], 1 - dim)); c.fillRect(0, gy(zf), R.w, R.h - gy(zf));
     R.grass = css(mix(mix(hex("#4f7d34"), hex("#b0925a"), dry), [0, 0, 0], 1 - dim));
     R.grass2 = css(mix(mix(hex("#78a64e"), hex("#c9ad72"), dry), [0, 0, 0], 1 - dim));
     c.fillStyle = shade(wet ? "#34373d" : "#4b4e54", wet ? 0.08 : 0); quad(c, -H2, H2, zn, zf - 4);
@@ -3775,7 +3775,7 @@ var ROUTES = S.routes;
     // haze: far things fade into the sky color, more in rain and fog
     var hz = Math.min(0.9, 0.35 + dull * 0.5), hg = c.createLinearGradient(0, R.hy, 0, gy(9));
     hg.addColorStop(0, rgba(low, hz)); hg.addColorStop(1, rgba(low, 0));
-    c.fillStyle = hg; c.fillRect(0, R.hy, R.w, gy(9) - R.hy);
+    // (no light haze band: the far ground just fades into the real sky behind it)
     // soften the sea horizon so it doesn't read as a hard line across the sky
     var fadeH = Math.max(14, (gy(16) - R.hy) * 0.6), sg = c.createLinearGradient(0, R.hy - 1, 0, R.hy + fadeH);
     sg.addColorStop(0, "rgba(0,0,0,1)"); sg.addColorStop(1, "rgba(0,0,0,0)");
