@@ -240,6 +240,7 @@ input[type=range] { width: 100%; accent-color: var(--accent); height: 26px; marg
 /* ---------- Traffic ---------- */
 .routes { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0; }
 .routes .btn.on { background: var(--accent); color: var(--accent-fg); border-color: transparent; }
+.rainamt { margin-top: 3px; font-weight: 600; color: var(--fg); }
 .waze { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
 #pmap { position: absolute; inset: 0; }
 .plane-ic { background: none; border: 0; }
@@ -984,7 +985,7 @@ body.hero .streetgap { display: block; }
     <div id="alerts"></div>
   </div>
 
-  <p class="foot">Data: NWS, NOAA, NDBC, NHC, Open-Meteo, RainViewer, Iowa State IEM (HRRR future radar), The Space Devs, adsb.lol, airplanes.live, adsb.fi, OurAirports, OpenStreetMap, Esri, Waze, Wikipedia.<br><a class="fblink" href="https://docs.google.com/forms/d/e/1FAIpQLSfXQwiCIQjHxH4N0HxH15jROSP23En125zYxKyX70hSPsVnLg/viewform" target="_blank" rel="noopener">Send feedback</a></p>
+  <p class="foot">Data: NWS, NOAA, NDBC, NHC, Open-Meteo, RainViewer, Iowa State IEM (HRRR future radar), The Space Devs, adsb.lol, airplanes.live, adsb.fi, OpenSky Network, OurAirports, OpenStreetMap, Esri, Waze, Wikipedia.<br><a class="fblink" href="https://docs.google.com/forms/d/e/1FAIpQLSfXQwiCIQjHxH4N0HxH15jROSP23En125zYxKyX70hSPsVnLg/viewform" target="_blank" rel="noopener">Send feedback</a></p>
 </div>
 
 <nav class="tabbar" id="tabbar" aria-label="Sections"></nav>
@@ -1296,7 +1297,7 @@ var ROUTES = S.routes;
       var per = d.properties.periods || [];
       var hi = null, lo = null;
       per.slice(0, 2).forEach(function (x) { if (x.isDaytime) hi = x.temperature; else lo = x.temperature; });
-      $("hilo").textContent = (hi != null ? "High " + hi + "°" : "") + (hi != null && lo != null ? " · " : "") + (lo != null ? "Low " + lo + "°" : "");
+      D.hl = [hi, lo]; setHilo();
       D.periods = per;
       D.pop = per[0] && per[0].probabilityOfPrecipitation ? per[0].probabilityOfPrecipitation.value || 0 : null;
       if (D.pop != null) $("pop").textContent = D.pop + "%";
@@ -1308,6 +1309,14 @@ var ROUTES = S.routes;
   /* ---------------- Rain amounts ---------------- */
   // Inches of rain: the Open-Meteo forecast's hourly amounts, added up over each forecast period and over the day.
   function rainIn(v) { return v < 0.095 ? v.toFixed(2) : v.toFixed(1); }
+  function rainAmt(v) { return (v || 0) < 0.01 ? "0" : rainIn(v); }
+  function setHilo() {   // "High 77° · Low 74° · Rain 0.96 in" (today's expected rain, 0 when none)
+    var hl = D.hl || [null, null], p = [];
+    if (hl[0] != null) p.push("High " + hl[0] + "°");
+    if (hl[1] != null) p.push("Low " + hl[1] + "°");
+    if (D.rainToday != null) p.push("Rain " + rainAmt(D.rainToday) + " in");
+    $("hilo").textContent = p.join(" · ");
+  }
   function periodRain(x) {   // hourly amounts cover the hour before their time stamp
     var h = D.om && D.om.hourly; if (!h || !h.precipitation || !x.startTime) return null;
     var a = x.startTime.slice(0, 13), b = x.endTime.slice(0, 13), sum = 0, any = false;
@@ -1337,7 +1346,7 @@ var ROUTES = S.routes;
   function rainDay() {   // today's total on the rain tile, and the hour-by-hour strip for the rest of today
     var d = D.om, h = d && d.hourly; if (!h || !h.precipitation) return;
     var today = ymd(new Date()), tot = d.daily && d.daily.precipitation_sum ? d.daily.precipitation_sum[0] || 0 : 0;
-    D.rainToday = tot;
+    D.rainToday = tot; setHilo();
     if ($("popSub")) $("popSub").textContent = tot >= 0.01 ? rainIn(tot) + " in today" : "No rain today";
     var now = hourKey(new Date()), run = 0, cells = [], left = 0;
     for (var k = 0; k < h.time.length; k++) {
@@ -2713,10 +2722,18 @@ var ROUTES = S.routes;
   // Free, no-key flight feeds, tried in order; the first one this phone can read is kept.
   var PSRC = [["adsb.lol", function (la, lo, nm) { return "https://api.adsb.lol/v2/point/" + la + "/" + lo + "/" + nm; }],
               ["airplanes.live", function (la, lo, nm) { return "https://api.airplanes.live/v2/point/" + la + "/" + lo + "/" + nm; }],
-              ["adsb.fi", function (la, lo, nm) { return "https://opendata.adsb.fi/api/v2/lat/" + la + "/lon/" + lo + "/dist/" + nm; }]], pSrc = 0;
+              ["adsb.fi", function (la, lo, nm) { return "https://opendata.adsb.fi/api/v2/lat/" + la + "/lon/" + lo + "/dist/" + nm; }],
+              ["OpenSky Network", function (la, lo, nm) {
+                var dy = nm / 60, dx = dy / Math.cos(la * Math.PI / 180);
+                return "https://opensky-network.org/api/states/all?lamin=" + (la - dy).toFixed(3) + "&lamax=" + (+la + dy).toFixed(3) + "&lomin=" + (lo - dx).toFixed(3) + "&lomax=" + (+lo + dx).toFixed(3);
+              }, function (d) {   // OpenSky sends rows of values in meters; turn them into the same shape as the others
+                return { ac: (d.states || []).map(function (x) {
+                  return { hex: x[0], flight: x[1] || "", lon: x[5], lat: x[6], alt_baro: x[8] ? "ground" : x[7] != null ? Math.round(x[7] * 3.28084) : null, gs: x[9] != null ? x[9] * 1.94384 : null, track: x[10] };
+                }) };
+              }]], pSrc = 0;
   function planeGet(la, lo, nm, i) {
     i = i == null ? pSrc : i;
-    return getJSON(PSRC[i][1](la, lo, nm)).then(function (d) { pSrc = i; return d; }, function (e) {
+    return getJSON(PSRC[i][1](la, lo, nm)).then(function (d) { pSrc = i; return PSRC[i][2] ? PSRC[i][2](d) : d; }, function (e) {
       if (i + 1 < PSRC.length) return planeGet(la, lo, nm, i + 1);
       pSrc = 0; throw e;
     });
@@ -2765,7 +2782,7 @@ var ROUTES = S.routes;
       });
       Object.keys(pMarks).forEach(function (h) { if (!seen[h]) { pLayer.removeLayer(pMarks[h]); delete pMarks[h]; } });
       $("planeCount").textContent = n + (n === 1 ? " plane" : " planes") + " in view, live from " + PSRC[pSrc][0];
-      var at = pmap.attributionControl; if (at && at._pSrc !== pSrc) { if (at._pTxt) at.removeAttribution(at._pTxt); at._pTxt = "Planes &copy; " + PSRC[pSrc][0] + (pSrc ? "" : " (ODbL)"); at.addAttribution(at._pTxt); at._pSrc = pSrc; }
+      var at = pmap.attributionControl; if (at && at._pSrc !== pSrc) { if (at._pTxt) at.removeAttribution(at._pTxt); at._pTxt = "Planes &copy; " + PSRC[pSrc][0] + (pSrc === 0 ? " (ODbL)" : ""); at.addAttribution(at._pTxt); at._pSrc = pSrc; }
     }).catch(function () {
       $("planeCount").textContent = "Live planes didn't load. Trying again…";
     }).then(function () { pBusy = false; });
@@ -3517,7 +3534,7 @@ var ROUTES = S.routes;
       $("rideBody").innerHTML = '<div class="score ' + td.cls + '">' + esc(td.label) + '</div><p class="rideline">' + esc(td.line) + ".</p>" +
         '<div class="tiles">' + days.map(function (x) {
           return '<div class="tile" data-d="rday:' + x[0] + '" role="button" tabindex="0"><div class="k">' + esc(dayName(x[0])) + '</div><div class="v ' + x[1].cls + 'v">' + esc(x[1].label) + '</div><div class="s">' +
-            esc(x[1].reasons.filter(function (r) { return r[0] === x[1].lv; }).slice(0, 2).map(function (r) { return r[1]; }).join(", ")) + "</div></div>";
+            esc(x[1].reasons.filter(function (r) { return r[0] === x[1].lv; }).slice(0, 2).map(function (r) { return r[1]; }).join(", ")) + '</div><div class="s rainamt">Rain ' + rainAmt(D.ride.daily.precipitation_sum[x[0]]) + " in</div></div>";
         }).join("") + "</div>";
       var s = street(), L = ["Road", "Rain and lightning", "Wind", "Visibility", "Temperature", "Daylight"];
       $("streetBody").innerHTML = '<div class="score ' + LV[s.lvNow][0] + '">' + LV[s.lvNow][1] + '</div><p class="rideline">' + esc(s.lineNow) + "</p><p>" + esc(s.lineNext) + "</p>" +
