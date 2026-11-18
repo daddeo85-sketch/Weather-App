@@ -985,7 +985,7 @@ body.hero .streetgap { display: block; }
     <div id="alerts"></div>
   </div>
 
-  <p class="foot">Data: NWS, NOAA, NDBC, NHC, Open-Meteo, RainViewer, Iowa State IEM (HRRR future radar), The Space Devs, adsb.lol, airplanes.live, adsb.fi, OpenSky Network, OurAirports, OpenStreetMap, Esri, Waze, Wikipedia.<br><a class="fblink" href="https://docs.google.com/forms/d/e/1FAIpQLSfXQwiCIQjHxH4N0HxH15jROSP23En125zYxKyX70hSPsVnLg/viewform" target="_blank" rel="noopener">Send feedback</a></p>
+  <p class="foot">Data: NWS, NOAA, NDBC, NHC, Open-Meteo, RainViewer, Iowa State IEM (HRRR future radar), The Space Devs, adsb.lol, adsb.fi, OpenSky Network, OurAirports, OpenStreetMap, Esri, Waze, Wikipedia.<br><a class="fblink" href="https://docs.google.com/forms/d/e/1FAIpQLSfXQwiCIQjHxH4N0HxH15jROSP23En125zYxKyX70hSPsVnLg/viewform" target="_blank" rel="noopener">Send feedback</a></p>
 </div>
 
 <nav class="tabbar" id="tabbar" aria-label="Sections"></nav>
@@ -2721,7 +2721,6 @@ var ROUTES = S.routes;
   var pmap = null, pLayer, pApLayer, pMarks = {}, pTimer = null, pBusy = false, pMoveT = null;
   // Free, no-key flight feeds, tried in order; the first one this phone can read is kept.
   var PSRC = [["adsb.lol", function (la, lo, nm) { return "https://api.adsb.lol/v2/point/" + la + "/" + lo + "/" + nm; }],
-              ["airplanes.live", function (la, lo, nm) { return "https://api.airplanes.live/v2/point/" + la + "/" + lo + "/" + nm; }],
               ["adsb.fi", function (la, lo, nm) { return "https://opendata.adsb.fi/api/v2/lat/" + la + "/lon/" + lo + "/dist/" + nm; }],
               ["OpenSky Network", function (la, lo, nm) {
                 var dy = nm / 60, dx = dy / Math.cos(la * Math.PI / 180);
@@ -2730,10 +2729,11 @@ var ROUTES = S.routes;
                 return { ac: (d.states || []).map(function (x) {
                   return { hex: x[0], flight: x[1] || "", lon: x[5], lat: x[6], alt_baro: x[8] ? "ground" : x[7] != null ? Math.round(x[7] * 3.28084) : null, gs: x[9] != null ? x[9] * 1.94384 : null, track: x[10] };
                 }) };
-              }]], pSrc = 0;
+              }]], pSrc = 0, pErr = [];
   function planeGet(la, lo, nm, i) {
     i = i == null ? pSrc : i;
     return getJSON(PSRC[i][1](la, lo, nm)).then(function (d) { pSrc = i; return PSRC[i][2] ? PSRC[i][2](d) : d; }, function (e) {
+      pErr[i] = PSRC[i][0] + ": " + (e && e.message || e);
       if (i + 1 < PSRC.length) return planeGet(la, lo, nm, i + 1);
       pSrc = 0; throw e;
     });
@@ -2784,7 +2784,7 @@ var ROUTES = S.routes;
       $("planeCount").textContent = n + (n === 1 ? " plane" : " planes") + " in view, live from " + PSRC[pSrc][0];
       var at = pmap.attributionControl; if (at && at._pSrc !== pSrc) { if (at._pTxt) at.removeAttribution(at._pTxt); at._pTxt = "Planes &copy; " + PSRC[pSrc][0] + (pSrc === 0 ? " (ODbL)" : ""); at.addAttribution(at._pTxt); at._pSrc = pSrc; }
     }).catch(function () {
-      $("planeCount").textContent = "Live planes didn't load. Trying again…";
+      $("planeCount").textContent = "Live planes didn't load. Trying again…" + (/debug/.test(location.search) ? " " + pErr.join(" | ") : "");
     }).then(function () { pBusy = false; });
   }
   function loadPlaneFrame(force) {
