@@ -4816,7 +4816,7 @@ var ROUTES = S.routes;
   function drawRunners(c, t) {
     var blk = "#060606", lean = slant();
     [[-0.7, 0, 1.0], [1.7, 0.37, 0.9], [-2.0, 0.71, 1.1]].forEach(function (rn, n) {
-      var cyc = (t * 0.000032 * rn[2] + rn[1]) % 1, z = 25 - cyc * 12.5, X = rn[0] + Math.sin(t * 0.0009 + n * 2) * 0.35;
+      var cyc = (t * 0.00008 * rn[2] + rn[1]) % 1, z = 25 - cyc * 12.5, X = rn[0] + Math.sin(t * 0.0009 + n * 2) * 0.35;
       var fade = Math.min(1, cyc * 8, (1 - cyc) * 8), p = pz(z), ox = gx(X, z), oy = gy(z), ph = t * 0.017 * rn[2] + n * 1.7, st = Math.sin(ph), bob = Math.abs(Math.cos(ph)) * 0.06;
       function Q(x, y) { return [ox + x * p, oy - (y + bob) * p]; }
       c.globalAlpha = fade;
