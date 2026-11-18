@@ -5024,9 +5024,9 @@ var ROUTES = S.routes;
     var hd = G(0.84, 0); c.beginPath(); c.arc(hd[0], hd[1], 0.12 * p, 0, Math.PI * 2); c.fill();
     c.lineCap = "butt"; c.lineJoin = "miter";
     // a couple of small smoldering fires on the body, each with a thin, see-through wisp of smoke
-    [[0.25, 0.42, 0.26], [-0.5, -0.32, 0.18]].forEach(function (f, i) {
+    [[0.25, 0, 0.26], [-0.5, 0, 0.18]].forEach(function (f, i) {
       var a0 = G(f[0] - 0.14, 0, 0.12), a1 = G(f[0], 0.03, 0.14), a2 = G(f[0] + 0.14, 0, 0.12), s = G(f[0], 0, 0.18);
-      smolder(c, s[0], s[1] - f[2] * p * 0.6, p, t, sd + i * 3, 3.2, slant() * 0.3, 0.32, 0.5);
+      smolder(c, s[0], s[1] - f[2] * p * 0.6, p, t, sd + i * 3, 3.8, slant() * 0.3, 0.42, 0.68);
       fireGlow(c, a1[0], a1[1], 0.5 * p);
       fireSheet(c, [a0, a1, a2], f[2] * p, t, sd * 2 + i, slant() * 0.4);
     });
