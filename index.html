@@ -982,6 +982,7 @@ select { max-width: 100%; text-overflow: ellipsis; }
       <h2>Feedback</h2>
       <p class="small">Something off, or an idea for the app? Send it straight to the builder.</p>
       <div class="frow"><a class="btn" id="fbBtn" href="https://docs.google.com/forms/d/e/1FAIpQLSfXQwiCIQjHxH4N0HxH15jROSP23En125zYxKyX70hSPsVnLg/viewform" target="_blank" rel="noopener"><svg class="cic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16a1.5 1.5 0 0 1 1.5 1.5v10A1.5 1.5 0 0 1 20 17H9l-4.5 3.8V17H4a1.5 1.5 0 0 1-1.5-1.5v-10A1.5 1.5 0 0 1 4 4z"/></svg>Send feedback</a></div>
+      <p class="small" id="userCount" hidden style="margin-top:10px"></p>
     </section>
   </div>
   <div class="view" data-view="alerts" hidden>
@@ -4623,6 +4624,27 @@ var ROUTES = S.routes;
   window.SKY.ground = function () { return GROUND; };
 })();
 
+</script>
+<script>
+// Users counter: a free, no-account counter (Abacus). Each phone counts once ("people"),
+// and every open counts toward "opens". Nothing about the person is sent. Fails silently.
+(function () {
+  var API = "https://abacus.jasoncameron.dev/", q = location.search;
+  var testNs = /[?&]countertest/.test(q), preview = /[?&](testhere|debug|windtest|installpreview|pw)=?/.test(q);
+  var ns = testNs ? "fullsend-weather-app-test" : "fullsend-weather-app", FLAG = "fullsend.counted" + (testNs ? ".test" : "");
+  var first = false;
+  try { first = !localStorage.getItem(FLAG); } catch (e) {}
+  function jk(verb, key) { return fetch(API + verb + "/" + ns + "/" + key, { cache: "no-store" }).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }).catch(function () { return null; }); }
+  var hit = !preview || testNs;
+  var people = hit && first ? jk("hit", "people").then(function (d) { if (d) { try { localStorage.setItem(FLAG, "1"); } catch (e) {} } return d; }) : jk("get", "people");
+  var opens = jk(hit ? "hit" : "get", "opens");
+  Promise.all([people, opens]).then(function (r) {
+    var p = r[0] && r[0].value, o = r[1] && r[1].value, el = document.getElementById("userCount");
+    if (!el || !(p > 0)) return;
+    el.textContent = p.toLocaleString() + (p === 1 ? " person has" : " people have") + " opened Full Send" + (o > 0 ? ", " + o.toLocaleString() + " opens in all." : ".");
+    el.hidden = false;
+  });
+})();
 </script>
 </body>
 </html>
