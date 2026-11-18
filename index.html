@@ -4941,7 +4941,7 @@ var ROUTES = S.routes;
   function drawRunners(c, t, front) {
     var blk = "#060606";
     if (!R.night) {
-      [[-3.9, 4.0, 0.3], [-0.8, 13.6, 2.4], [-7.2, 12.5, -0.8]].forEach(function (f, n) { if (behindTruck(f[0], f[1]) === !front) fallen(c, t, f[0], f[1], f[2], 40 + n * 7); });
+      [[-1.6, 5.4, 0.3], [-1.9, 15.5, 2.4], [5.0, 5.9, 0.2]].forEach(function (f, n) { if (behindTruck(f[0], f[1]) === !front) fallen(c, t, f[0], f[1], f[2], 40 + n * 7); });
       return;
     }
     RUNNERS.forEach(function (rn, n) {
@@ -4996,7 +4996,7 @@ var ROUTES = S.routes;
     limb([[0.05, 0], [0.62, 0]], 0.32);
     var hd = G(0.84, 0); c.beginPath(); c.arc(hd[0], hd[1], 0.12 * p, 0, Math.PI * 2); c.fill();
     c.lineCap = "butt"; c.lineJoin = "miter";
-    var s0 = G(0.3, 0, 0.2); smolder(c, s0[0], s0[1], p, t, sd, 3.2, slant() * 0.25, 0.35);
+    var s0 = G(0.3, 0, 0.2); smolder(c, s0[0], s0[1], p, t, sd, 3.6, slant() * 0.25, 0.45);
   }
   // daytime: an ambulance in the right lane, closest to us, heading down the street toward last night's wreckage, lights going
   function drawRescue(c, t) {
