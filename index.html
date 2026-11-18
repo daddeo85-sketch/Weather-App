@@ -4589,20 +4589,20 @@ var ROUTES = S.routes;
   }
   // thick black rolling smoke off a fuel fire: dense and dark at the base, lit orange underneath, spreading as it climbs
   function blackSmoke(c, x, y, p, t, sd, H, drift) {
-    var n = 34, hotC = R.night ? [92, 44, 20] : [70, 46, 34], dk = R.night ? [12, 11, 11] : [26, 25, 26], top = R.night ? [34, 32, 32] : [58, 56, 58];
+    var n = 44, hotC = R.night ? [92, 44, 20] : [70, 46, 34], dk = R.night ? [12, 11, 11] : [26, 25, 26], top = R.night ? [34, 32, 32] : [58, 56, 58];
     for (var i = n - 1; i >= 0; i--) {
       var age = (t * 0.00011 + i / n + sd * 0.07) % 1, rise = Math.pow(age, 0.8);
-      var px = x + (drift * rise * rise * H * 0.9 + Math.sin(t * 0.0008 + i * 2.3 + sd) * (0.3 + rise * 1.6)) * p, py = y - rise * H * p;
-      var r = (0.9 + rise * 4.2) * p * (0.85 + 0.15 * Math.sin(i * 7.1)), a = Math.min(1, age * 8) * (0.92 - 0.5 * Math.pow(age, 1.6));
+      var px = x + (drift * rise * rise * H * 0.9 + Math.sin(t * 0.0008 + i * 2.3 + sd) * (0.06 + rise * 0.35)) * p, py = y - rise * H * p;
+      var r = (0.32 + rise * 1.0) * p * (0.85 + 0.15 * Math.sin(i * 7.1)), a = Math.min(1, age * 8) * (0.92 - 0.5 * Math.pow(age, 1.6));
       var col = age < 0.12 ? mix(hotC, dk, age / 0.12) : mix(dk, top, Math.min(1, (age - 0.12) / 0.88));
       var g = c.createRadialGradient(px - r * 0.2, py - r * 0.25, 0, px, py, r);
       g.addColorStop(0, rgba(col, a)); g.addColorStop(0.55, rgba(col, a * 0.85)); g.addColorStop(0.8, rgba(col, a * 0.4)); g.addColorStop(1, rgba(col, 0));
       c.fillStyle = g; c.beginPath(); c.arc(px, py, r, 0, Math.PI * 2); c.fill();
     }
     // fire light on the underside of the column
-    var u = c.createRadialGradient(x, y - 1.2 * p, 0, x, y - 1.2 * p, 2.6 * p);
+    var u = c.createRadialGradient(x, y - 0.6 * p, 0, x, y - 0.6 * p, 1.1 * p);
     u.addColorStop(0, rgba([255, 120, 40], R.night ? 0.28 : 0.12)); u.addColorStop(1, rgba([255, 90, 20], 0));
-    c.globalCompositeOperation = "lighter"; c.fillStyle = u; c.beginPath(); c.arc(x, y - 1.2 * p, 2.6 * p, 0, Math.PI * 2); c.fill(); c.globalCompositeOperation = "source-over";
+    c.globalCompositeOperation = "lighter"; c.fillStyle = u; c.beginPath(); c.arc(x, y - 0.6 * p, 1.1 * p, 0, Math.PI * 2); c.fill(); c.globalCompositeOperation = "source-over";
   }
   function embers(c, X, z, Y0, t, sd, size) {
     var lean = slant(), p = pz(z);
@@ -4908,7 +4908,7 @@ var ROUTES = S.routes;
     c.globalCompositeOperation = "source-over";
     // fire pouring out of the grille and up through the buckled hood
     var gf = W(FV + 0.2, 0, 0.9); fireGlow(c, gf[0], gf[1], 4.5 * gf[2]);
-    var sm = W(4.4, 0, 2.6); blackSmoke(c, sm[0], sm[1], sm[2], t, 3, 13, -0.55 + slant() * 0.3);
+    var sm = W(4.4, 0, 2.6); blackSmoke(c, sm[0], sm[1], sm[2], t, 3, 12, -0.15 + slant() * 0.12);
     fireSheet(c, [W(FE, -1.0, 0.55), W(FV + 0.05, 0, 0.6), W(FE, 1.0, 0.55), W(4.5, 0.9, 1.45), W(4.3, 0, 1.6), W(4.5, -0.9, 1.45), W(FE, -1.0, 0.55)].slice(0, 6), 3.4 * gf[2], t, 31, slant());
     embers(c, gf[3], gf[4], 1.6, t, 19, 0.5);
   }
