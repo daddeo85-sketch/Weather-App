@@ -142,6 +142,12 @@ details > summary { cursor: pointer; font-weight: 600; color: var(--accent); pad
 .moon-lines > div { margin-top: 4px; }
 .period { flex: none; width: calc(118px * var(--fs)); background: var(--panel-solid); border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; }
 .period .n { font-size: calc(12.5px * var(--fs)); font-weight: 700; }
+/* Hour-by-hour in the detail screens: every hour on screen at once, no sideways scrolling */
+.periods.hrs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; overflow: visible; }
+.periods.hrs .period { width: auto; padding: 6px 7px; border-radius: 10px; }
+.periods.hrs .period .n { font-size: calc(11.5px * var(--fs)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.periods.hrs .period .t { font-size: calc(17px * var(--fs)); }
+.periods.hrs .period .s { font-size: calc(11px * var(--fs)); }
 .period .t { font-size: calc(22px * var(--fs)); font-weight: 800; }
 .period .s { font-size: calc(12px * var(--fs)); color: var(--muted); line-height: 1.3; }
 .period .p { font-size: calc(12px * var(--fs)); color: var(--accent); font-weight: 600; }
@@ -644,7 +650,7 @@ select { max-width: 100%; text-overflow: ellipsis; }
       <p class="small" id="waveSrc"></p>
       <h3>Tides</h3>
       <p class="tidenow" id="tideNow"></p>
-      <div data-opt="tidechart"><p class="small" style="margin:0">Water height, from 3 hours ago through the next 21 hours. Feet are above the average low tide.</p><svg id="tidechart" viewBox="0 0 340 176" role="img" aria-label="Tide chart for the next day"></svg></div>
+      <div data-opt="tidechart"><p class="small" style="margin:0">Water height, from 3 hours ago through the next 21 hours. Inches above or below average sea level.</p><svg id="tidechart" viewBox="0 0 340 176" role="img" aria-label="Tide chart for the next day"></svg></div>
       <div data-opt="tidetimes"><div class="tide-list tap" data-d="tides" id="tideList"><div class="muted">Loading tides…</div></div></div>
       <div id="tideMore">
         <div data-opt="bigtides"><h3>Big tides and small tides coming up</h3><ul class="events" id="tideEvents"></ul></div>
@@ -1308,6 +1314,11 @@ var ROUTES = S.routes;
       renderScore();
       renderPeriods();
     }).catch(function () { $("periods").innerHTML = '<div class="err">Forecast unavailable right now.</div>'; });
+    // The Weather Service's own hour-by-hour forecast, so the hourly temperatures match the high, low and current reading
+    nws("/gridpoints/" + S.office + "/" + S.gx + "," + S.gy + "/forecast/hourly").then(function (d) {
+      D.nwsH = (d.properties.periods || []).filter(function (x) { return new Date(x.endTime).getTime() > Date.now(); }).slice(0, 12);
+      redrawDetail();
+    }).catch(function () {});
   }
 
   /* ---------------- Rain amounts ---------------- */
@@ -3177,7 +3188,7 @@ var ROUTES = S.routes;
     if (!h || !h[key]) return '<p class="muted">Hour-by-hour numbers aren\'t available right now.</p>';
     var i = Math.max(0, h.time.indexOf(hourKey(new Date()))), out = [];
     for (var k = i; k < Math.min(h.time.length, i + n); k++) if (h[key][k] != null) out.push('<div class="period"><div class="n">' + esc(hourLabel(h.time[k])) + '</div><div class="t">' + fmt(h[key][k], k) + "</div></div>");
-    return '<div class="periods">' + out.join("") + "</div>";
+    return '<div class="periods hrs">' + out.join("") + "</div>";
   }
   function rows(list) { return '<div class="rows">' + list.filter(function (x) { return x && x[1] != null && x[1] !== ""; }).map(function (x) { return '<div class="k">' + esc(x[0]) + '</div><div class="v">' + x[1] + "</div>"; }).join("") + "</div>"; }
   function uvWord(u) { return u < 3 ? "Low" : u < 6 ? "Moderate" : u < 8 ? "High" : u < 11 ? "Very high" : "Extreme"; }
@@ -3188,7 +3199,11 @@ var ROUTES = S.routes;
       return ["Feels like", rows([["Air temperature", Math.round(o.tf) + "°"], ["Feels like", Math.round(o.feels) + "° (" + esc(o.feelsKind) + ")"], ["Humidity", o.rh != null ? Math.round(o.rh) + "%" : null], ["Wind", o.ws != null ? o.ws + " mph" : null], ["Rain today", D.rainToday != null ? rainAmt(D.rainToday) + " in" : null]]) +
         "<p>" + esc(o.feelsKind === "heat index" ? (hiNote(o.feels) || "Heat index adds the humidity to the temperature. It starts to matter at 80° and up.") :
           o.feelsKind === "wind chill" ? "Wind chill is how cold the wind makes it feel on bare skin." : "Right now it feels about like the thermometer reads.") + "</p>" +
-        "<h3>Feels like, next 12 hours</h3>" + hours("temperature_2m", 12, function (v, k) { var h = D.om.hourly; return Math.round(feelsF(v, h.relative_humidity_2m[k], h.wind_speed_10m[k])) + "°"; })];
+        "<h3>Feels like, next 12 hours</h3>" + (D.nwsH && D.nwsH.length ? '<div class="periods hrs">' + D.nwsH.map(function (x) {
+          var t = x.temperatureUnit === "C" ? c2f(x.temperature) : x.temperature, rh = x.relativeHumidity && x.relativeHumidity.value, w = parseInt(x.windSpeed, 10) || 0;
+          return '<div class="period"><div class="n">' + esc(hourLabel(x.startTime.slice(0, 13) + ":00")) + '</div><div class="t">' + Math.round(feelsF(t, rh, w)) + "°</div></div>";
+        }).join("") + "</div>"
+          : hours("temperature_2m", 12, function (v, k) { var h = D.om.hourly; return Math.round(feelsF(v, h.relative_humidity_2m[k], h.wind_speed_10m[k])) + "°"; }))];
     },
     humidity: function () {
       var o = D.obs; if (!o) return ["Humidity", LOADING];
