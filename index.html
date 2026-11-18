@@ -4256,7 +4256,7 @@ var ROUTES = S.routes;
       [-gap / 2, gap / 2].forEach(function (o) { band(o, 0.3, mudC, 0.3); band(o, 0.21, mudC, 0.55); band(o, 0.12, mudC, 0.6); });
       c.globalAlpha = 1;
     }
-    rut(function (z) { return H2 + 4.1 + 1.7 * Math.sin(z * 0.42 + 0.6); }, 1.2, 31, 1.1);
+    rut(function (z) { return H2 + 4.1 + 1.7 * Math.sin(z * 0.42 + 0.6); }, 8.15, 31, 1.2);
     rut(function (z) { return -(H2 + 4.0 + 0.8 * Math.sin(z * 0.35)); }, 21.6, 33, 1.1);
     // lane lines: solid white edges, dashed yellow center
     c.fillStyle = rgba([235, 235, 230], n ? 0.45 : 0.85); quad(c, -H2 + 0.75, -H2 + 0.9, zn, zf - 4); quad(c, H2 - 0.9, H2 - 0.75, zn, zf - 4);
@@ -4727,7 +4727,7 @@ var ROUTES = S.routes;
   // a four-wheeler popping a wheelie down the mud ruts toward us, flag flying off the back, rider blacked out
   function drawWheelie(c, t) {
     var dim = Math.max(0.5, R.dimv || 1), sh = function (h) { return css(mix(hex(h), [0, 0, 0], 1 - dim)); };
-    var X = 3.95, z = 5.6, p = pz(z), ox = gx(X, z), oy = gy(z), bob = Math.sin(t * 0.004) * 0.03;
+    var z = 8, X = R.half + 4.1 + 1.7 * Math.sin(z * 0.42 + 0.6), p = pz(z), ox = gx(X, z), oy = gy(z), bob = Math.sin(t * 0.004) * 0.03;
     function Q(x, y) { return [ox + x * p, oy - y * p]; }
     function poly(pts, col) { c.fillStyle = col; c.beginPath(); pts.forEach(function (q, i) { var a = Q(q[0], q[1]); if (i) c.lineTo(a[0], a[1]); else c.moveTo(a[0], a[1]); }); c.closePath(); c.fill(); }
     function rr(x, y, w, h, r, col) { var a = Q(x - w / 2, y + h / 2); c.fillStyle = col; c.beginPath(); if (c.roundRect) c.roundRect(a[0], a[1], w * p, h * p, r * p); else c.rect(a[0], a[1], w * p, h * p); c.fill(); }
