@@ -250,6 +250,8 @@ input[type=range] { width: 100%; accent-color: var(--accent); height: 26px; marg
 .rmapwrap { height: 34vh; min-height: 220px; margin: 8px 0; }
 #rmap { position: absolute; inset: 0; background: var(--panel-solid); }
 .routeform input { width: 100%; }
+.rthead { align-items: center; flex-wrap: wrap; }
+.rtbtns { display: flex; gap: 6px; flex-wrap: wrap; }
 a.btn { text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
 
 /* ---------- Hurricanes ---------- */
@@ -793,7 +795,13 @@ body.hero .streetgap { display: block; }
     <section class="card" id="vehCard"></section>
     <input type="file" id="vehFile" accept="image/*" hidden>
     <section class="card" id="traffic">
-      <div class="card-head"><h2>Your routes</h2><button class="btn primary" id="addRouteBtn" type="button">+ Add route</button></div>
+      <div class="card-head rthead"><h2>Your routes</h2><div class="rtbtns"><button class="btn primary" id="whereBtn" type="button"><svg class="cic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 3 3 10.5l7.2 2.3L12.5 20z"/></svg>Where to?</button><button class="btn primary" id="addRouteBtn" type="button">+ Add route</button></div></div>
+      <form class="fstack routeform" id="wtForm" hidden>
+        <label class="small" for="wtTo">Where to? Starts from where you are now.</label><input id="wtTo" placeholder="Address or place" autocomplete="off" enterkeyhint="go">
+        <div class="sugg" id="sgWt"></div>
+        <div class="frow"><button class="btn primary" type="submit" id="wtGo">Go</button><button class="btn" type="button" id="wtCancel">Cancel</button></div>
+        <p class="small" id="wtMsg" role="status"></p>
+      </form>
       <form class="fstack routeform" id="rtForm" hidden>
         <label class="small" for="rtName">Name</label><input id="rtName" placeholder="Like Home to work" maxlength="40" autocomplete="off">
         <label class="small" for="rtFrom">Start (point A)</label>
@@ -812,7 +820,8 @@ body.hero .streetgap { display: block; }
         <div class="mapwrap rmapwrap" id="rmapWrap"><div id="rmap" aria-label="Route map"></div></div>
         <div class="frow"><a class="btn primary" id="rtG" target="_blank" rel="noopener">Google Maps (live traffic)</a><a class="btn primary" id="rtW" target="_blank" rel="noopener">Waze</a></div>
         <div class="frow"><button class="btn" type="button" id="rtZA"><svg class="cic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5a7 7 0 0 0-7 7c0 5.2 7 12 7 12s7-6.8 7-12a7 7 0 0 0-7-7zm0 9.6a2.6 2.6 0 1 1 0-5.2 2.6 2.6 0 0 1 0 5.2z"/></svg>A</button><button class="btn" type="button" id="rtZB"><svg class="cic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5a7 7 0 0 0-7 7c0 5.2 7 12 7 12s7-6.8 7-12a7 7 0 0 0-7-7zm0 9.6a2.6 2.6 0 1 1 0-5.2 2.6 2.6 0 0 1 0 5.2z"/></svg>B</button></div>
-        <div class="frow"><button class="btn" type="button" id="rtEdit">Edit</button><button class="btn" type="button" id="rtDel">Delete</button></div>
+        <div class="frow" id="rtEditRow"><button class="btn" type="button" id="rtEdit">Edit</button><button class="btn" type="button" id="rtDel">Delete</button></div>
+        <div class="frow" id="rtTripRow" hidden><button class="btn" type="button" id="rtKeep">+ Save this route</button><button class="btn" type="button" id="rtEnd">Clear trip</button></div>
         <p class="small" id="rtNote"></p>
       </div>
     </section>
@@ -1971,7 +1980,8 @@ var ROUTES = S.routes;
   }
 
   /* ---------------- Traffic ---------------- */
-  var tmap = null, tFlow = null, tIncidents = null, tRoute = null, curRoute = -1;
+  var tmap = null, tFlow = null, tIncidents = null, tRoute = null, curRoute = -1, TRIP = null;
+  function curR() { return curRoute === -2 ? TRIP : ROUTES[curRoute]; }   // -2 is the one-time "Where to?" trip
   var CRASH_SVG = '<svg viewBox="0 0 24 24"><path d="M5 11l1.5-4.5h11L19 11v6h-2v-2H7v2H5zm2.2-1h9.6l-.9-2.5H8.1zM7.5 12a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm9 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2zM2 3l3 3-1 1-3-3zm20 0l1 1-3 3-1-1zM11 1h2v4h-2z"/></svg>';
   var WARN_SVG = '<svg viewBox="0 0 24 24"><path d="M12 2 1 21h22zm1 15h-2v-2h2zm0-4h-2V9h2z"/></svg>';
   var ICON_NAMES = { 1: "Crash", 2: "Fog", 3: "Dangerous conditions", 4: "Rain", 5: "Ice", 6: "Traffic jam", 7: "Lane closed", 8: "Road closed", 9: "Road work", 10: "Wind", 11: "Flooding", 14: "Broken-down vehicle" };
@@ -2100,14 +2110,15 @@ var ROUTES = S.routes;
   }
   function routeButtons() {
     var rbox = $("routes");
-    if (!ROUTES.length) rbox.innerHTML = '<p class="small" style="margin:0">No routes yet. Tap <b>+ Add route</b> to save a drive from point A to point B, like home to work.</p>';
-    else rbox.innerHTML = '<button class="btn' + (curRoute < 0 ? " on" : "") + '" type="button" data-i="-1">Around town</button>' +
+    if (!ROUTES.length && !TRIP) rbox.innerHTML = '<p class="small" style="margin:0">No routes yet. Tap <b>Where to?</b> for a quick trip from where you are, or <b>+ Add route</b> to save one, like home to work.</p>';
+    else rbox.innerHTML = '<button class="btn' + (curRoute === -1 ? " on" : "") + '" type="button" data-i="-1">Around town</button>' +
+      (TRIP ? '<button class="btn' + (curRoute === -2 ? " on" : "") + '" type="button" data-i="-2">' + esc(TRIP.name) + "</button>" : "") +
       ROUTES.map(function (r, i) { return '<button class="btn' + (curRoute === i ? " on" : "") + '" type="button" data-i="' + i + '">' + esc(r.name) + "</button>"; }).join("");
     if (curRoute >= ROUTES.length) pickRoute(-1);
   }
   function pickRoute(i) {
     curRoute = i;
-    var r = ROUTES[i];
+    var r = curR();
     $("routeInfo").textContent = "";
     $("gmapsLink").href = r ? gmapsDir(r) : gmapsHome();
     $("gmapsLink").textContent = r ? "Directions with traffic" : "Google Maps traffic";
@@ -2137,6 +2148,7 @@ var ROUTES = S.routes;
   var rmap = null, rLine = null, rPins = null, editIdx = -1;
   function showRoute(r) {
     var card = $("routeCard"); card.hidden = !r; if (!r) return;
+    $("rtEditRow").hidden = !!r.trip; $("rtTripRow").hidden = !r.trip;
     var a = r.from, b = r.to;
     $("rtG").href = gmapsDir(r);
     $("rtW").href = "https://www.waze.com/ul?ll=" + b.lat + "," + b.lon + "&navigate=yes";
@@ -2155,7 +2167,7 @@ var ROUTES = S.routes;
     L.circleMarker([b.lat, b.lon], { radius: 7, color: "#fff", weight: 2, fillColor: "#c0392b", fillOpacity: 1 }).bindTooltip("B: " + b.label).addTo(rPins);
     rmap.fitBounds([[a.lat, a.lon], [b.lat, b.lon]], { padding: [30, 30] });
     getJSON("https://router.project-osrm.org/route/v1/driving/" + a.lon + "," + a.lat + ";" + b.lon + "," + b.lat + "?overview=full&geometries=geojson").then(function (d) {
-      var rt = d.routes && d.routes[0]; if (!rt || ROUTES[curRoute] !== r) return;
+      var rt = d.routes && d.routes[0]; if (!rt || curR() !== r) return;
       rLine = L.geoJSON(rt.geometry, { style: { color: "#1f6fa8", weight: 6, opacity: 0.85 } }).addTo(rmap);
       rmap.fitBounds(rLine.getBounds(), { padding: [24, 24] });
       var m = Math.round(rt.duration / 60), mi = rt.distance / 1609.34;
@@ -2173,7 +2185,7 @@ var ROUTES = S.routes;
     $("rtWx").innerHTML = '<span class="muted">Checking the weather along the route…</span>';
     getJSON("https://api.open-meteo.com/v1/forecast?latitude=" + pts.map(function (q) { return q[1].toFixed(3); }).join(",") + "&longitude=" + pts.map(function (q) { return q[0].toFixed(3); }).join(",") +
       "&current=temperature_2m,precipitation,weather_code,wind_speed_10m,wind_gusts_10m,visibility,snowfall&hourly=precipitation&past_hours=3&forecast_hours=1&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto").then(function (dd) {
-      if (ROUTES[curRoute] !== r) return;
+      if (curR() !== r) return;
       dd = Array.isArray(dd) ? dd : [dd];
       var bad = 0, rows = dd.map(function (d, i) {
         var c = d.current || {}, code = c.weather_code || 0, p3 = ((d.hourly || {}).precipitation || []).slice(0, 3).reduce(function (x, y) { return x + (y || 0); }, 0);
@@ -2191,7 +2203,7 @@ var ROUTES = S.routes;
       });
       $("rtWx").innerHTML = "<b>Along the route now: " + (bad ? "watch the weather in spots" : "dry the whole way") + "</b><ul>" + rows.join("") + "</ul>" +
         '<span class="muted">Traffic jams and crashes: use the Google Maps or Waze button, or the live map below.</span>';
-    }).catch(function () { if (ROUTES[curRoute] === r) $("rtWx").innerHTML = '<span class="muted">Couldn\'t get the weather along this route right now.</span>'; });
+    }).catch(function () { if (curR() === r) $("rtWx").innerHTML = '<span class="muted">Couldn\'t get the weather along this route right now.</span>'; });
   }
   // Address suggestions as you type (Photon, built on OpenStreetMap), and a little map to confirm the spot
   var peekMap = null, peekPin = null, sgT = {};
@@ -2212,14 +2224,14 @@ var ROUTES = S.routes;
     if (peekPin) peekMap.removeLayer(peekPin);
     peekPin = L.circleMarker([x.lat, x.lon], { radius: 8, color: "#fff", weight: 2, fillColor: "#c0392b", fillOpacity: 1 }).addTo(peekMap);
   }
-  function addrSuggest(inp, box, key) {
-    var f = $("rtForm");
+  function addrSuggest(inp, box, key, form) {
+    var f = $(form || "rtForm");
     $(inp).addEventListener("input", function () {
       f[key] = null; clearTimeout(sgT[inp]);
       var q = this.value.trim();
       if (q.length < 3 || q === "My location") { $(box).innerHTML = ""; return; }
       sgT[inp] = setTimeout(function () {
-        getJSON("https://photon.komoot.io/api/?q=" + encodeURIComponent(q) + "&limit=5&lang=en&lat=" + HOME[0] + "&lon=" + HOME[1]).then(function (d) {
+        getJSON("https://photon.komoot.io/api/?q=" + encodeURIComponent(q) + "&limit=5&lang=en&lat=" + (f._near || HOME)[0] + "&lon=" + (f._near || HOME)[1]).then(function (d) {
           if ($(inp).value.trim() !== q) return;
           var list = (d.features || []).map(function (ft) { var c = ft.geometry.coordinates; return { label: addrLabel(ft.properties || {}), lat: +c[1].toFixed(5), lon: +c[0].toFixed(5) }; }).filter(function (x) { return x.label; });
           $(box)._list = list;
@@ -2230,20 +2242,21 @@ var ROUTES = S.routes;
     $(box).addEventListener("click", function (e) {
       var b = e.target.closest("[data-sg]"); if (!b) return;
       var x = this._list[+b.getAttribute("data-sg")]; if (!x) return;
-      $(inp).value = x.label; f[key] = x; if (key === "_fromPick") f._here = null; this.innerHTML = ""; showPeek(x);
+      $(inp).value = x.label; f[key] = x; if (key === "_fromPick") f._here = null; this.innerHTML = ""; if (f.id === "rtForm") showPeek(x); else f.requestSubmit ? f.requestSubmit() : f.dispatchEvent(new Event("submit", { cancelable: true }));
     });
   }
   function routeForm(open, idx) {
-    var f = $("rtForm"); f.hidden = !open; $("addRouteBtn").hidden = open; editIdx = idx == null ? -1 : idx;
+    var f = $("rtForm"); f.hidden = !open; $("addRouteBtn").hidden = $("whereBtn").hidden = open; if (open) $("wtForm").hidden = true; editIdx = idx == null ? -1 : idx;
     var r = ROUTES[editIdx];
     $("rtName").value = r ? r.name : ""; $("rtFrom").value = r ? r.from.label : ""; $("rtTo").value = r ? r.to.label : "";
     $("rtSave").textContent = r ? "Save changes" : "Save route"; say("rtMsg", "");
-    f._here = r && r.from.here ? r.from : null; f._fromPick = f._toPick = null;
+    f._here = r && r.from.here ? r.from : null; f._fromPick = f._toPick = null; f._fromTrip = false;
     $("sgFrom").innerHTML = $("sgTo").innerHTML = ""; $("peekBox").hidden = true;
     if (open) $("rtName").focus();
   }
   function initRoutes() {
     $("addRouteBtn").addEventListener("click", function () { routeForm(true); });
+    initWhereTo();
     $("rtCancel").addEventListener("click", function () { routeForm(false); });
     $("rtEdit").addEventListener("click", function () { if (curRoute >= 0) routeForm(true, curRoute); });
     $("rtDel").addEventListener("click", function () {
@@ -2254,7 +2267,7 @@ var ROUTES = S.routes;
     });
     $("rtFrom").addEventListener("input", function () { $("rtForm")._here = null; });
     addrSuggest("rtFrom", "sgFrom", "_fromPick"); addrSuggest("rtTo", "sgTo", "_toPick");
-    ["rtZA", "rtZB"].forEach(function (id, k) { $(id).addEventListener("click", function () { var r = ROUTES[curRoute]; if (!r || !rmap) return; var x = k ? r.to : r.from; rmap.setView([x.lat, x.lon], 17); $("rmapWrap").scrollIntoView({ block: "center", behavior: "smooth" }); }); });
+    ["rtZA", "rtZB"].forEach(function (id, k) { $(id).addEventListener("click", function () { var r = curR(); if (!r || !rmap) return; var x = k ? r.to : r.from; rmap.setView([x.lat, x.lon], 17); $("rmapWrap").scrollIntoView({ block: "center", behavior: "smooth" }); }); });
     $("rtHere").addEventListener("click", function () {
       if (!navigator.geolocation) { say("rtMsg", "This browser can't share its location. Type the start instead."); return; }
       say("rtMsg", "Finding you…");
@@ -2277,12 +2290,57 @@ var ROUTES = S.routes;
         var i = editIdx >= 0 ? editIdx : ROUTES.length;
         ROUTES[i] = r; S.routes = ROUTES;
         if (!saveS(S)) { if (editIdx < 0) ROUTES.pop(); say("rtMsg", "This browser won't let the page save routes."); return; }
+        if (f._fromTrip) { TRIP = null; f._fromTrip = false; }
         routeForm(false); curRoute = i; routeButtons(); pickRoute(i);
       }).catch(function (err) {
         var m = String(err.message).match(/^notfound:(.*)$/);
         say("rtMsg", m ? "Couldn't find “" + m[1] + "”. Try adding the city, like 123 Main St, Stuart." : "Couldn't look those places up right now. Try again in a minute.");
       });
     });
+  }
+  /* "Where to?": a one-time trip from where you are right now. Type the place, tap Go, and it maps the drive with
+     traffic and the weather along the way. Nothing is saved unless you tap Save this route. */
+  function whereForm(open) {
+    var f = $("wtForm"); f.hidden = !open; $("whereBtn").hidden = $("addRouteBtn").hidden = open;
+    $("wtTo").value = ""; $("sgWt").innerHTML = ""; say("wtMsg", ""); f._wtPick = null;
+    if (open) { $("rtForm").hidden = true; $("wtTo").focus(); hereNow().then(function (h) { f._near = [h.lat, h.lon]; }, function () {}); }
+  }
+  var hereAt = null;
+  function hereNow() {
+    if (hereAt && Date.now() - hereAt.t < 60000) return Promise.resolve(hereAt);
+    return new Promise(function (ok, no) {
+      if (!navigator.geolocation) { no({ code: 9 }); return; }
+      navigator.geolocation.getCurrentPosition(function (p) { hereAt = { label: "My location", lat: +p.coords.latitude.toFixed(5), lon: +p.coords.longitude.toFixed(5), here: true, t: Date.now() }; ok(hereAt); }, no, { timeout: 15000, maximumAge: 60000 });
+    });
+  }
+  function initWhereTo() {
+    $("whereBtn").addEventListener("click", function () { whereForm(true); });
+    $("wtCancel").addEventListener("click", function () { whereForm(false); });
+    addrSuggest("wtTo", "sgWt", "_wtPick", "wtForm");
+    $("wtForm").addEventListener("submit", function (e) {
+      e.preventDefault();
+      var f = this, to = $("wtTo").value.trim(), pk = f._wtPick && to === f._wtPick.label ? f._wtPick : null;
+      if (!to) { say("wtMsg", "Type where you're headed."); return; }
+      say("wtMsg", "Finding you and the place…");
+      var here;
+      hereNow().then(function (h) { here = h; return pk || geocode(to); }, function (err) { throw { loc: err }; }).then(function (b) {
+        TRIP = { name: "To " + b.label.split(",")[0], from: { label: "My location", lat: here.lat, lon: here.lon, here: true }, to: { label: b.label, lat: b.lat, lon: b.lon }, trip: true };
+        whereForm(false); curRoute = -2; routeButtons(); pickRoute(-2);
+        setTimeout(function () { $("routeCard").scrollIntoView({ block: "start", behavior: "smooth" }); }, 60);
+      }).catch(function (err) {
+        if (err && err.loc) { say("wtMsg", err.loc.code === 9 ? "This browser can't share its location." : locError(err.loc)); return; }
+        var m = String(err && err.message).match(/^notfound:(.*)$/);
+        say("wtMsg", m ? "Couldn't find “" + m[1] + "”. Try adding the city, like 123 Main St, Stuart." : "Couldn't look that place up right now. Try again in a minute.");
+      });
+    });
+    $("rtKeep").addEventListener("click", function () {
+      if (!TRIP) return;
+      var t = TRIP; routeForm(true); var f = $("rtForm");
+      $("rtName").value = "Here " + t.name.charAt(0).toLowerCase() + t.name.slice(1); $("rtFrom").value = "My location"; $("rtTo").value = t.to.label;
+      f._here = t.from; f._toPick = t.to; f._fromTrip = true;
+      say("rtMsg", "Change the name or start if you like, then tap Save route.");
+    });
+    $("rtEnd").addEventListener("click", function () { TRIP = null; curRoute = -1; routeButtons(); pickRoute(-1); });
   }
   function loadIncidents() {
     if (!tmap || !tIncidents) return;
@@ -2969,7 +3027,7 @@ var ROUTES = S.routes;
     if (tab === "ocean") html += '<h3>Tide station</h3><div class="pick" id="pkTide"><span class="muted">Loading…</span></div>' +
       '<h3>Wave buoy</h3><div class="pick" id="pkBuoy"><span class="muted">Loading…</span></div>' +
       '<h3>Water temperature station</h3><div class="pick" id="pkWt"><span class="muted">Loading…</span></div>';
-    if (tab === "traffic") html += '<p>Add, edit and delete your routes right on the Traffic tab with the <b>+ Add route</b> button.</p>' +
+    if (tab === "traffic") html += '<p>Add, edit and delete your routes right on the Traffic tab with the <b>+ Add route</b> button. For a quick trip from where you are, tap <b>Where to?</b></p>' +
       '<h3>Traffic key</h3><form class="frow" id="ttForm"><input id="ttKey" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Paste your TomTom key" aria-label="TomTom traffic key" value="' + esc(TOMTOM_KEY) + '"><button class="btn" type="submit">Save</button></form>' +
       '<p class="small">Turns on live traffic colors, crash icons and the flooded and closed roads layer. Saved on this phone only.</p>';
     if (tab === "planes") html += '<h3>Your airports</h3><div class="pick" id="apSel"></div>' +
