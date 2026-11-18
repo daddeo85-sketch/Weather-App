@@ -4516,6 +4516,7 @@ var ROUTES = S.routes;
     drawMyRide(c);
     drawWheelie(c, t);
     drawCrash(c, t);
+    drawRunners(c, t, true);
   }
   // ---- The house and the palms on fire: flickering flames, window glow and smoke drifting with the wind ----
   // one fire: a few ragged tongues that change shape every frame, deep red outside, orange body, white-hot core, with a soft glow
@@ -4813,13 +4814,16 @@ var ROUTES = S.routes;
     c.lineCap = "butt"; c.lineJoin = "miter";
   }
   // a few people running down the street toward us on fire, arms flailing over their heads (dark silhouettes)
-  function drawRunners(c, t) {
-    var blk = "#060606", lean = slant();
-    // each one runs a small tight circle in place, panicking: [center X, center z, start angle, speed, direction]
-    [[-1.0, 15.5, 0, 1.0, 1], [1.7, 13.2, 2.1, 1.25, -1], [-2.3, 19.5, 4.2, 0.85, 1]].forEach(function (rn, n) {
-      var ang = rn[2] + rn[4] * t * 0.0021 * rn[3], X = rn[0] + Math.cos(ang) * 0.75, z = rn[1] + Math.sin(ang) * 0.75;
-      var fade = 1, p = pz(z), ox = gx(X, z), oy = gy(z), ph = t * 0.017 * rn[3] + n * 1.7, st = Math.sin(ph), bob = Math.abs(Math.cos(ph)) * 0.06;
-      var tilt = -Math.sin(ang) * rn[4] * 0.12;   // lean into the turn
+  // people on fire running loops around the crashed truck: drawn in two passes, the ones behind the truck first, the ones in front after it
+  function drawRunners(c, t, front) {
+    var blk = "#060606";
+    // [start angle, speed]: all loop the same way round the truck, at different speeds so they bunch up and spread out
+    [[0, 1.0], [2.2, 1.18], [4.3, 0.86]].forEach(function (rn, n) {
+      var ang = rn[0] + t * 0.00085 * rn[1], wob = Math.sin(t * 0.0013 * rn[1] + n * 3) * 0.35;
+      var X = -4.35 + Math.cos(ang) * (2.35 + wob), z = 7.7 + Math.sin(ang) * (3.1 + wob);
+      if ((z < 7.7) !== !!front) return;
+      var fade = 1, p = pz(z), ox = gx(X, z), oy = gy(z), ph = t * 0.017 * rn[1] + n * 1.7, st = Math.sin(ph), bob = Math.abs(Math.cos(ph)) * 0.06;
+      var vx = -Math.sin(ang), tilt = vx * 0.12, lean = slant() * 0.5 - vx * 0.7;   // lean into the run, flames trail behind
       function Q(x, y) { var yy = y + bob; return [ox + (x + tilt * yy) * p, oy - yy * p]; }
       c.globalAlpha = fade;
       c.fillStyle = "rgba(0,0,0,0.3)"; c.beginPath(); c.ellipse(ox, oy, 0.4 * p, 0.08 * p, 0, 0, Math.PI * 2); c.fill();
