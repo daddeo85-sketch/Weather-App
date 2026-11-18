@@ -107,13 +107,23 @@ nav.jump a {
 }
 .card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
 .links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-.btn, .links a {
+.cambox { margin-top: 12px; }
+.cambox .card-head { align-items: center; }
+.cambox .card-head h3 { margin: 0; }
+.camgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin: 8px 0; }
+.cam { display: block; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--panel-solid); color: var(--fg); text-decoration: none; }
+.cam img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; background: #1b2a35; }
+.cam .camtx { padding: 6px 8px; font-size: calc(13px * var(--fs)); line-height: 1.3; }
+.cam .camtx b { display: block; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cam .camtx span { color: var(--muted); }
+.cam .camoff { display: flex; align-items: center; justify-content: center; aspect-ratio: 4 / 3; background: #1b2a35; color: #c9d6df; font-size: calc(12px * var(--fs)); text-align: center; padding: 8px; }
+.btn, .links a, .links button {
   appearance: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   min-height: 40px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--line);
   background: var(--panel-solid); color: var(--fg); font: 600 calc(14px * var(--fs)) var(--font); text-decoration: none; cursor: pointer;
 }
 .btn.primary { background: var(--accent); color: var(--accent-fg); border-color: transparent; }
-.btn:focus-visible, .links a:focus-visible, nav.jump a:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.btn:focus-visible, .links a:focus-visible, .links button:focus-visible, nav.jump a:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .btn svg { width: 18px; height: 18px; fill: currentColor; }
 img.wide { display: block; width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--line); background: var(--panel-solid); }
 details > summary { cursor: pointer; font-weight: 600; color: var(--accent); padding: 6px 0; }
@@ -841,9 +851,15 @@ body.hero .streetgap { display: block; }
         <h3>Why are the roads jammed?</h3>
         <div class="links">
           <a class="fl-only" href="https://fl511.com/list/events/traffic" target="_blank" rel="noopener">⚠ Crashes and closures (FL511)</a>
-          <a class="fl-only" href="https://fl511.com/cctv" target="_blank" rel="noopener">📷 Live road cameras</a>
+          <button class="fl-only" type="button" id="camBtn" aria-expanded="false">📷 Road cameras near me</button>
           <a id="wptvT" href="https://www.wptv.com/traffic" target="_blank" rel="noopener">▶ WPTV traffic news</a>
           <a id="gmapsLink" href="https://www.google.com/maps" target="_blank" rel="noopener">Google Maps traffic</a>
+        </div>
+        <div class="cambox" id="camBox" hidden>
+          <div class="card-head"><h3>Cameras near you</h3><button class="btn" type="button" id="camHide">Hide</button></div>
+          <p class="small" id="camMsg"></p>
+          <div class="camgrid" id="camGrid"></div>
+          <p class="small">Pictures from FL511 update every minute. Tap one to see it bigger. <a href="https://fl511.com/cctv" target="_blank" rel="noopener">All cameras on FL511</a></p>
         </div>
       </div>
     </section>
@@ -2259,6 +2275,7 @@ var ROUTES = S.routes;
   function initRoutes() {
     $("addRouteBtn").addEventListener("click", function () { routeForm(true); });
     initWhereTo();
+    initCams();
     $("rtCancel").addEventListener("click", function () { routeForm(false); });
     $("rtEdit").addEventListener("click", function () { if (curRoute >= 0) routeForm(true, curRoute); });
     $("rtDel").addEventListener("click", function () {
@@ -2316,6 +2333,44 @@ var ROUTES = S.routes;
       if (!navigator.geolocation) { no({ code: 9 }); return; }
       navigator.geolocation.getCurrentPosition(function (p) { hereAt = { label: "My location", lat: +p.coords.latitude.toFixed(5), lon: +p.coords.longitude.toFixed(5), here: true, t: Date.now() }; ok(hereAt); }, no, { timeout: 15000, maximumAge: 60000 });
     });
+  }
+  /* Road cameras near me: FL511's camera list, saved weekly to the data branch;
+     the pictures load straight from FL511 and refresh every minute while open. */
+  var camList = null, camTimer = null;
+  function camShow(open) {
+    $("camBox").hidden = !open; $("camBtn").setAttribute("aria-expanded", open ? "true" : "false");
+    clearInterval(camTimer); camTimer = null;
+    if (!open) { $("camGrid").innerHTML = ""; return; }
+    say("camMsg", "Finding cameras near you…"); $("camGrid").innerHTML = "";
+    var where, note = "";
+    hereNow().then(function (h) { where = [h.lat, h.lon]; }, function () { where = HOME; note = " Location is off, so these are near " + (S.name || "your place") + "."; }).then(function () {
+      return camList || getJSON(bust(DATA_URL + "cameras.json", 60)).then(function (d) { camList = d.cams || []; return camList; });
+    }).then(function (list) {
+      var near = list.map(function (c) { return { c: c, mi: miles(where[0], where[1], c[1], c[2]) }; })
+        .sort(function (a, b) { return a.mi - b.mi; }).slice(0, 6).filter(function (x) { return x.mi < 60; });
+      if (!near.length) { say("camMsg", "No FL511 cameras within 60 miles." + note); return; }
+      say("camMsg", "Closest first." + note);
+      $("camGrid").innerHTML = near.map(function (x) {
+        var c = x.c, url = "https://fl511.com/map/Cctv/" + encodeURIComponent(c[0]);
+        return '<a class="cam" href="' + url + '" target="_blank" rel="noopener"><img data-src="' + url + '" alt="' + esc(c[5]) + '" loading="lazy">' +
+          '<div class="camtx"><b>' + esc(c[5] || c[3]) + "</b><span>" + esc([c[3], c[4]].filter(Boolean).join(" ")) + " · " + (x.mi < 10 ? x.mi.toFixed(1) : Math.round(x.mi)) + " mi</span></div></a>";
+      }).join("");
+      Array.prototype.forEach.call($("camGrid").querySelectorAll("img"), function (im) {
+        im.onerror = function () { var d = document.createElement("div"); d.className = "camoff"; d.textContent = "Picture not available right now"; im.replaceWith(d); };
+      });
+      camPics();
+      camTimer = setInterval(function () { if (!document.hidden) camPics(); }, 60000);
+    }).catch(function () {
+      say("camMsg", "Couldn't load the camera list right now. You can still see them all on FL511.");
+    });
+  }
+  function camPics() {
+    var t = Math.floor(Date.now() / 60000);
+    Array.prototype.forEach.call($("camGrid").querySelectorAll("img[data-src]"), function (im) { im.src = im.getAttribute("data-src") + "?t=" + t; });
+  }
+  function initCams() {
+    $("camBtn").addEventListener("click", function () { camShow($("camBox").hidden); });
+    $("camHide").addEventListener("click", function () { camShow(false); });
   }
   function initWhereTo() {
     $("whereBtn").addEventListener("click", function () { whereForm(true); });

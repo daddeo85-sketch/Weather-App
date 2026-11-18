@@ -1,4 +1,4 @@
-"""Fetch the latest NOAA buoy readings, NOAA station lists and a US airport list.
+"""Fetch the latest NOAA buoy readings, NOAA station lists, a US airport list and Florida road cameras.
 
 The web page can't read NOAA's buoy files directly (the browser blocks them),
 so this runs on a schedule in GitHub Actions and saves small JSON files to the
@@ -200,11 +200,51 @@ def storms(out):
     print("storms:", len(d.get("activeStorms") or []))
 
 
+def cameras(out):
+    """Florida road cameras from FL511 (FDOT's public 511 site), refreshed once a
+    week: picture id, place and name only. The page shows the closest few, and
+    each picture loads straight from FL511."""
+    import time
+    import urllib.parse
+    path = os.path.join(out, "cameras.json")
+    if fresh(path, 7):
+        print("cameras: still fresh")
+        return
+    dirs = {"Northbound": "NB", "Southbound": "SB", "Eastbound": "EB", "Westbound": "WB"}
+    rows, start, total = [], 0, None
+    while total is None or start < total:
+        q = {"columns": [{"data": None, "name": ""}, {"name": "sortOrder", "s": True}, {"name": "roadway", "s": True}],
+             "order": [{"column": 1, "dir": "asc"}], "start": start, "length": 500, "search": {"value": ""}}
+        d = json.loads(get("https://fl511.com/List/GetData/Cameras?lang=en&query=" + urllib.parse.quote(json.dumps(q, separators=(",", ":")))))
+        total = d.get("recordsFiltered") or 0
+        got = d.get("data") or []
+        if not got:
+            break
+        start += len(got)
+        for c in got:
+            img = next((i for i in (c.get("images") or []) if not i.get("disabled") and not i.get("blocked")), None)
+            wkt = ((c.get("latLng") or {}).get("geography") or {}).get("wellKnownText") or ""
+            try:
+                lon, lat = [round(float(v), 5) for v in wkt[wkt.index("(") + 1:wkt.index(")")].split()]
+            except ValueError:
+                continue
+            if not img or not c.get("visible", True):
+                continue
+            rows.append([img["id"], lat, lon, (c.get("roadway") or "").strip(),
+                         dirs.get(c.get("direction"), ""), (c.get("location") or "").replace("_", " ").strip()])
+        time.sleep(2)  # go easy on FL511
+    if len(rows) < 1000:
+        raise SystemExit("Camera list looks short; keeping the old file.")
+    with open(path, "w") as f:
+        json.dump({"updated": NOW.strftime("%Y-%m-%dT%H:%M:%SZ"), "cams": rows}, f, separators=(",", ":"))
+    print("cameras:", len(rows))
+
+
 if __name__ == "__main__":
     out = sys.argv[1] if len(sys.argv) > 1 else "out"
     os.makedirs(out, exist_ok=True)
     errors = []
-    for job in (buoys, tides, airports, launches, storms):
+    for job in (buoys, tides, airports, launches, storms, cameras):
         try:
             job(out)
         except BaseException as e:  # keep going so one bad feed doesn't stop the other
