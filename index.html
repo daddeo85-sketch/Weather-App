@@ -4609,11 +4609,11 @@ var ROUTES = S.routes;
   }
   // light gray smoke smoldering up off something that burned out: thin at the base, spreading and fading as it rises
   function smolder(c, x, y, p, t, sd, H, drift, w, dens) {
-    w = w || 1; dens = dens || 1; var n = 20, lo = R.night ? [70, 68, 68] : [112, 110, 108], hi = R.night ? [60, 58, 60] : [176, 176, 178];
+    w = w || 1; dens = dens || 1; var n = 20, lo = R.night ? [70, 68, 68] : [78, 75, 73], hi = R.night ? [60, 58, 60] : [128, 126, 126];
     for (var i = n - 1; i >= 0; i--) {
       var age = (t * 0.00007 + i / n + sd * 0.071) % 1, rise = Math.pow(age, 0.85);
       var px = x + (drift * rise * rise * H * 0.9 + Math.sin(t * 0.0006 + i * 2.3 + sd) * (0.04 + rise * 0.45) * w) * p, py = y - rise * H * p;
-      var r = (0.22 + rise * 1.3) * w * p, a = Math.min(1, 0.85, age * 7 * dens) * 0.5 * dens * (1 - Math.pow(age, 1.3)), col = mix(lo, hi, age);
+      var r = (0.22 + rise * 1.3) * w * p, a = Math.min(0.9, age * 7 * dens) * 0.62 * dens * (1 - Math.pow(age, 1.3)), col = mix(lo, hi, age);
       var g = c.createRadialGradient(px, py, 0, px, py, r);
       g.addColorStop(0, rgba(col, a)); g.addColorStop(0.6, rgba(col, a * 0.6)); g.addColorStop(1, rgba(col, 0));
       c.fillStyle = g; c.beginPath(); c.arc(px, py, r, 0, Math.PI * 2); c.fill();
@@ -4677,16 +4677,16 @@ var ROUTES = S.routes;
       function R2(fr, zz) { return at(RX + (W - RX) * fr, zz, RH - (RH - WH) * fr); }
       var rim = [], hole = [], k2, jag = [0.05, 0.12, 0.02, 0.15, 0.06, 0.13, 0.03, 0.1, 0.04];
       for (k2 = 0; k2 <= 8; k2++) rim.push(R2(0, 12.0 + k2 * 0.95));
-      for (k2 = 8; k2 >= 0; k2--) rim.push(R2(0.62 + 0.1 * Math.sin(k2 * 2.1), 12.0 + k2 * 0.95));
+      for (k2 = 8; k2 >= 0; k2--) rim.push(R2(0.8 + 0.08 * Math.sin(k2 * 2.1), 12.0 + k2 * 0.95));
       c.fillStyle = "rgba(26,21,18,0.92)"; c.beginPath(); rim.forEach(function (q, i) { if (i) c.lineTo(q[0], q[1]); else c.moveTo(q[0], q[1]); }); c.closePath(); c.fill();
       for (k2 = 0; k2 <= 8; k2++) hole.push(R2(jag[k2], 12.7 + k2 * 0.78));
-      for (k2 = 8; k2 >= 0; k2--) hole.push(R2(0.5 + 0.09 * Math.sin(k2 * 2.7 + 1), 12.7 + k2 * 0.78));
+      for (k2 = 8; k2 >= 0; k2--) hole.push(R2(0.68 + 0.1 * Math.sin(k2 * 2.7 + 1), 12.7 + k2 * 0.78));
       var hg = c.createLinearGradient(0, R2(0, 15)[1], 0, R2(0.55, 15)[1]); hg.addColorStop(0, "#050404"); hg.addColorStop(1, "#1a120d");
       c.fillStyle = hg; c.beginPath(); hole.forEach(function (q, i) { if (i) c.lineTo(q[0], q[1]); else c.moveTo(q[0], q[1]); }); c.closePath(); c.fill();
       // broken rafters: some still spanning, some snapped and hanging down into the hole
       c.lineCap = "round"; var rw = Math.max(1.2, 0.12 * pz(15.5));
       for (k2 = 0; k2 < 7; k2++) {
-        var zr = 13.0 + k2 * 0.95, top0 = R2(0, zr), brk = k2 % 3 === 1, end = brk ? at(RX + (W - RX) * 0.22, zr + 0.2, RH - (RH - WH) * 0.22 - 1.1) : R2(0.66, zr);
+        var zr = 13.0 + k2 * 0.95, top0 = R2(0, zr), brk = k2 % 3 === 1, end = brk ? at(RX + (W - RX) * 0.3, zr + 0.2, RH - (RH - WH) * 0.3 - 1.4) : R2(0.84, zr);
         c.strokeStyle = "#2a1d15"; c.lineWidth = rw; c.beginPath(); c.moveTo(top0[0], top0[1]); c.lineTo(end[0], end[1]); c.stroke();
         c.strokeStyle = "rgba(120,82,55,0.55)"; c.lineWidth = rw * 0.35; c.beginPath(); c.moveTo(top0[0], top0[1] - rw * 0.3); c.lineTo(end[0], end[1] - rw * 0.3); c.stroke();
       }
