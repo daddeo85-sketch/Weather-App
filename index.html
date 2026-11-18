@@ -4510,6 +4510,7 @@ var ROUTES = S.routes;
     drawSignal(c, t);
     drawPalms(c, t, 0, 16);
     drawFire(c, t);
+    drawRunners(c, t);
     drawFlag(c, t);
     if (R.nearLamps) R.nearLamps(c);
     drawMyRide(c);
@@ -4810,6 +4811,40 @@ var ROUTES = S.routes;
       if (R.night) { var g = c.createRadialGradient(L[0], L[1], 0, L[0], L[1], 0.32 * p); g.addColorStop(0, "rgba(255,250,225,0.5)"); g.addColorStop(1, "rgba(255,250,225,0)"); c.globalCompositeOperation = "lighter"; c.fillStyle = g; c.beginPath(); c.arc(L[0], L[1], 0.32 * p, 0, Math.PI * 2); c.fill(); c.globalCompositeOperation = "source-over"; }
     });
     c.lineCap = "butt"; c.lineJoin = "miter";
+  }
+  // a few people running down the street toward us on fire, arms flailing over their heads (dark silhouettes)
+  function drawRunners(c, t) {
+    var blk = "#060606", lean = slant();
+    [[-0.7, 0, 1.0], [1.7, 0.37, 0.9], [-2.0, 0.71, 1.1]].forEach(function (rn, n) {
+      var cyc = (t * 0.000032 * rn[2] + rn[1]) % 1, z = 25 - cyc * 12.5, X = rn[0] + Math.sin(t * 0.0009 + n * 2) * 0.35;
+      var fade = Math.min(1, cyc * 8, (1 - cyc) * 8), p = pz(z), ox = gx(X, z), oy = gy(z), ph = t * 0.017 * rn[2] + n * 1.7, st = Math.sin(ph), bob = Math.abs(Math.cos(ph)) * 0.06;
+      function Q(x, y) { return [ox + x * p, oy - (y + bob) * p]; }
+      c.globalAlpha = fade;
+      c.fillStyle = "rgba(0,0,0,0.3)"; c.beginPath(); c.ellipse(ox, oy, 0.4 * p, 0.08 * p, 0, 0, Math.PI * 2); c.fill();
+      var rim = R.night ? rgba([255, 140, 60], 0.5) : rgba([255, 255, 255], 0.25);
+      [true, false].forEach(function (rp) {
+        var dx = rp ? -0.03 : 0;
+        c.strokeStyle = rp ? rim : blk; c.fillStyle = rp ? rim : blk; c.lineCap = "round"; c.lineJoin = "round";
+        function limb(pts, w) { c.lineWidth = w * p; c.beginPath(); pts.forEach(function (q, i) { var a = Q(q[0] + dx, q[1]); if (i) c.lineTo(a[0], a[1]); else c.moveTo(a[0], a[1]); }); c.stroke(); }
+        // legs mid-stride (seen from the front: knees lift and drop in turn)
+        limb([[-0.1, 0.95], [-0.14, 0.55 + Math.max(0, st) * 0.25], [-0.13, 0.05 + Math.max(0, st) * 0.3]], 0.13);
+        limb([[0.1, 0.95], [0.14, 0.55 + Math.max(0, -st) * 0.25], [0.13, 0.05 + Math.max(0, -st) * 0.3]], 0.13);
+        limb([[0, 0.98], [0, 1.45]], 0.32);
+        // arms flailing over the head
+        var w1 = Math.sin(ph * 1.3) * 0.12, w2 = Math.sin(ph * 1.3 + 2) * 0.12;
+        limb([[-0.15, 1.45], [-0.36, 1.72 + w1], [-0.28 + w1, 2.08]], 0.09);
+        limb([[0.15, 1.45], [0.36, 1.72 + w2], [0.28 - w2, 2.08]], 0.09);
+        var hd = Q(dx, 1.68); c.beginPath(); c.arc(hd[0], hd[1], 0.12 * p, 0, Math.PI * 2); c.fill();
+      });
+      c.lineCap = "butt"; c.lineJoin = "miter";
+      // on fire: off the shoulders, head and arms
+      var gq = Q(0, 1.4); fireGlow(c, gq[0], gq[1], 2.6 * p);
+      var g2 = Q(0, 0); c.save(); c.translate(g2[0], g2[1]); c.scale(1, 0.25); fireGlow(c, 0, 0, 2.2 * p); c.restore();
+      fireSheet(c, [Q(-0.3, 1.5), Q(-0.12, 1.62), Q(0.12, 1.62), Q(0.3, 1.5)], 1.3 * p, t, 80 + n * 7, lean);
+      fireSheet(c, [Q(-0.36, 1.72), Q(-0.3, 2.0)], 0.7 * p, t, 90 + n * 5, lean);
+      fireSheet(c, [Q(0.36, 1.72), Q(0.3, 2.0)], 0.7 * p, t, 95 + n * 5, lean);
+      c.globalAlpha = 1;
+    });
   }
   var PALMS = [[24, 9.2, 11.5, 0.02], [18, 10.8, 12.5, 0.04], [14, 8.8, 10.5, -0.02]];   // far to near: z, X, height, lean
   // a white pickup nosed into the nearest light pole, facing us: grille and front end crushed around the pole and on fire,
