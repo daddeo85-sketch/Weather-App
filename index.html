@@ -4438,7 +4438,7 @@ var ROUTES = S.routes;
   }
   // US flag on a pole by the sidewalk, in front of the house.
   function drawFlag(c, t) {
-    var X = -5.95, z = 12.2, p = pz(z), H = 8.4, dim = R.dimv || 1;
+    var X = -5.95, z = 12.2, p = pz(z), H = 9.4, dim = R.dimv || 1;
     var col = function (h) { return css(mix(hex(h), [0, 0, 0], 1 - dim)); };
     var xb = gx(X, z), yb = gy(z), yt = gy(z, H);
     c.fillStyle = "rgba(0,0,0,0.25)"; c.beginPath(); c.ellipse(xb, yb, 0.35 * p, 0.09 * p, 0, 0, Math.PI * 2); c.fill();
@@ -4450,7 +4450,7 @@ var ROUTES = S.routes;
     var w = Math.min(mph, 30) / 30, dx = wdir == null ? 1 : -Math.sin(wdir * Math.PI / 180);
     var dir = dx < -0.05 ? -1 : 1, fs = wdir == null ? 1 : 0.45 + 0.55 * Math.abs(dx);   // wind toward or away from you shortens it
     var lift = Math.pow(Math.max(0, Math.min(1, (mph - 2) / 16)), 0.8), droop = 1.45 * (1 - lift);
-    var L = 2.5 * p, Ht = 1.32 * p, N = 14, amp = (0.02 + w * 0.16) * Ht, sp = 0.0012 + w * 0.016;
+    var L = 3.3 * p, Ht = 1.75 * p, N = 14, amp = (0.02 + w * 0.16) * Ht, sp = 0.0012 + w * 0.016;
     var gath = 0.55 + 0.45 * Math.cos(droop);   // cloth bunches up as it hangs
     var pts = [];
     for (var i = 0; i <= N; i++) {
@@ -4467,12 +4467,17 @@ var ROUTES = S.routes;
         c.beginPath(); c.moveTo(a[0], a[1] + y0 * a[2]); c.lineTo(b[0] + dir * 0.4, b[1] + y0 * b[2]); c.lineTo(b[0] + dir * 0.4, b[1] + y1 * b[2]); c.lineTo(a[0], a[1] + y1 * a[2]); c.closePath(); c.fill();
       }
     }
-    if (p > 8) {   // a few stars in the blue
-      c.fillStyle = css(mix([255, 255, 255], [0, 0, 0], 1 - dim));
-      for (var si = 1; si < 5; si++) for (var sj = 1; sj < 5; sj++) {
-        var q = pts[Math.round(si / 5 * 0.4 * N)], sy = sj / 5 * 7 / 13 * Ht;
-        c.fillRect(q[0] - 0.5, q[1] + sy * q[2] - 0.5, 1, 1);
-      }
+    // 50 stars in the blue: 9 rows, alternating 6 and 5, following the cloth as it waves
+    c.fillStyle = css(mix([255, 255, 255], [0, 0, 0], 1 - dim));
+    var sr = Math.max(0.45, Ht * 0.016);
+    for (var r = 0; r < 9; r++) for (var u = (r % 2 ? 2 : 1); u <= 11; u += 2) {
+      var fi = u / 12 * 0.4 * N, i0 = Math.floor(fi), tt = fi - i0, A = pts[i0], B = pts[Math.min(N, i0 + 1)];
+      var gx0 = A[0] + (B[0] - A[0]) * tt, gy0 = A[1] + (B[1] - A[1]) * tt, gg = A[2] + (B[2] - A[2]) * tt;
+      var sx = gx0, sy = gy0 + (r + 1) / 10 * 7 / 13 * Ht * gg;
+      if (sr < 1.2) { c.fillRect(sx - sr, sy - sr, sr * 2, sr * 2); continue; }
+      c.beginPath();
+      for (var v = 0; v < 10; v++) { var ra = v % 2 ? sr * 0.42 : sr, an = -Math.PI / 2 + v * Math.PI / 5; c.lineTo(sx + Math.cos(an) * ra, sy + Math.sin(an) * ra); }
+      c.closePath(); c.fill();
     }
   }
   // Rainwater running along both gutters and dropping into the next storm drain
