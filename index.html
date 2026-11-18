@@ -4513,35 +4513,41 @@ var ROUTES = S.routes;
     drawFlag(c, t);
     if (R.nearLamps) R.nearLamps(c);
     drawMyRide(c);
+    drawWheelie(c, t);
     drawCrash(c, t);
   }
   // ---- The house and the palms on fire: flickering flames, window glow and smoke drifting with the wind ----
   // one fire: a few ragged tongues that change shape every frame, deep red outside, orange body, white-hot core, with a soft glow
+  // soft layered flame: several licking tongues with a rounded, faded base so it melts into whatever is burning
   function flame(c, x, y, w, h, t, sd, lean) {
-    var nT = w > 14 ? 3 : 2;
+    var nT = w > 14 ? 4 : 3, N = 9;
     for (var j = 0; j < nT; j++) {
-      var s2 = sd + j * 4.7, off = (j - (nT - 1) / 2) * w * 0.32, f = 0.7 + 0.2 * Math.sin(t * 0.011 + s2 * 3.1) + 0.1 * Math.sin(t * 0.031 + s2 * 7.3);
-      var H = h * f * (j === Math.floor(nT / 2) ? 1 : 0.72), bx = x + off, ww0 = w * (nT > 2 ? 0.55 : 0.68);
-      var tip = bx + lean * H * 0.35 + Math.sin(t * 0.007 + s2 * 5.7) * ww0 * 0.4;
-      [[1, [200, 45, 12], [120, 22, 8], 0.75, "source-over"], [0.78, [255, 125, 28], [235, 65, 12], 0.8, "lighter"], [0.46, [255, 248, 215], [255, 195, 80], 0.9, "lighter"]].forEach(function (L, li) {
-        var ww = ww0 * L[0], hh = H * L[0], g = c.createLinearGradient(0, y, 0, y - hh);
-        g.addColorStop(0, rgba(L[1], L[3])); g.addColorStop(0.5, rgba(L[2], L[3] * 0.8)); g.addColorStop(1, rgba(L[2], 0));
+      var s2 = sd + j * 4.7, hash = (Math.sin(s2 * 12.99) + 1) / 2, mid = j === Math.floor(nT / 2);
+      var off = (j - (nT - 1) / 2) * w * 0.24 + Math.sin(t * 0.005 + s2) * w * 0.05;
+      var f = 0.72 + 0.18 * Math.sin(t * 0.011 + s2 * 3.1) + 0.1 * Math.sin(t * 0.029 + s2 * 7.3);
+      var H = h * f * (mid ? 1 : 0.5 + 0.35 * hash), bx = x + off, ww0 = w * (mid ? 0.55 : 0.42);
+      var tip = bx + lean * H * 0.35 + Math.sin(t * 0.007 + s2 * 5.7) * ww0 * 0.45;
+      [[1.3, [140, 28, 8], [100, 20, 6], 0.28, "source-over"], [1, [205, 58, 14], [150, 32, 8], 0.62, "source-over"], [0.74, [255, 132, 36], [235, 78, 16], 0.7, "lighter"], [0.4, [255, 220, 140], [255, 165, 60], 0.62, "lighter"]].forEach(function (L) {
+        var ww = ww0 * L[0], hh = H * L[0], y0 = y + hh * 0.2, g = c.createLinearGradient(0, y0, 0, y - hh);
+        g.addColorStop(0, rgba(L[1], 0)); g.addColorStop(0.2, rgba(L[1], L[3])); g.addColorStop(0.6, rgba(L[2], L[3] * 0.75)); g.addColorStop(1, rgba(L[2], 0));
         c.globalCompositeOperation = L[4]; c.fillStyle = g;
-        if (li === 0) { c.shadowColor = "rgba(255,90,20,0.7)"; c.shadowBlur = Math.min(18, ww * 0.9); }
-        c.beginPath(); var N = 7, Lp = [], Rp = [];
+        c.beginPath(); var Lp = [], Rp = [];
         for (var k = 0; k <= N; k++) {
-          var u = k / N, cx = bx + (tip - bx) * Math.pow(u, 1.6) + Math.sin(t * 0.016 + u * 6 + s2) * ww * 0.18 * u, cy = y - hh * u;
-          var hw = ww / 2 * Math.pow(1 - u, 0.75) * (1 + 0.28 * Math.sin(t * 0.022 + u * 9 + s2 * 2) * u);
-          Lp.push([cx - hw, cy]); Rp.push([cx + hw, cy]);
+          var v = -0.2 + 1.2 * k / N, u = Math.max(0, v), cx = bx + (tip - bx) * Math.pow(u, 1.6) + Math.sin(t * 0.016 + u * 6 + s2) * ww * 0.2 * u, cy = y - hh * v;
+          var prof = v < 0 ? Math.sqrt(Math.max(0, 1 - (v / 0.2) * (v / 0.2))) : Math.pow(1 - u, 0.8) * (1 + 0.3 * Math.sin(t * 0.022 + u * 9 + s2 * 2) * u);
+          var hw = ww / 2 * prof; Lp.push([cx - hw, cy]); Rp.push([cx + hw, cy]);
         }
         c.moveTo(Lp[0][0], Lp[0][1]);
         for (k = 1; k <= N; k++) c.quadraticCurveTo(Lp[k - 1][0], Lp[k - 1][1], (Lp[k - 1][0] + Lp[k][0]) / 2, (Lp[k - 1][1] + Lp[k][1]) / 2);
         c.lineTo(Lp[N][0], Lp[N][1]);
         for (k = N; k >= 1; k--) c.quadraticCurveTo(Rp[k][0], Rp[k][1], (Rp[k][0] + Rp[k - 1][0]) / 2, (Rp[k][1] + Rp[k - 1][1]) / 2);
         c.lineTo(Rp[0][0], Rp[0][1]); c.closePath(); c.fill();
-        c.shadowBlur = 0;
       });
     }
+    // a soft hot bloom where the fire meets the fuel, so there is no edge at the base
+    var b = c.createRadialGradient(x, y, 0, x, y, w * 0.9), fl = 0.85 + 0.15 * Math.sin(t * 0.02 + sd);
+    b.addColorStop(0, rgba([255, 150, 50], 0.4 * fl)); b.addColorStop(0.5, rgba([230, 80, 20], 0.15 * fl)); b.addColorStop(1, rgba([200, 60, 10], 0));
+    c.globalCompositeOperation = "lighter"; c.fillStyle = b; c.beginPath(); c.ellipse(x, y, w * 0.9, w * 0.45, 0, 0, Math.PI * 2); c.fill();
     c.globalCompositeOperation = "source-over";
   }
   function embers(c, X, z, Y0, t, sd, size) {
@@ -4671,6 +4677,71 @@ var ROUTES = S.routes;
       c.fillStyle = rgba([255, 180 + 50 * (1 - age), 80], (1 - age) * 0.9); c.beginPath(); c.arc(q2[0], q2[1], Math.max(0.8, 0.22 * p * (1 - age * 0.5)), 0, Math.PI * 2); c.fill();
     }
     c.globalCompositeOperation = "source-over";
+  }
+  // a four-wheeler popping a wheelie down the mud ruts toward us, flag flying off the back, rider blacked out
+  function drawWheelie(c, t) {
+    var dim = Math.max(0.5, R.dimv || 1), sh = function (h) { return css(mix(hex(h), [0, 0, 0], 1 - dim)); };
+    var X = 6.1, z = 10, p = pz(z), ox = gx(X, z), oy = gy(z), bob = Math.sin(t * 0.004) * 0.03;
+    function Q(x, y) { return [ox + x * p, oy - y * p]; }
+    function poly(pts, col) { c.fillStyle = col; c.beginPath(); pts.forEach(function (q, i) { var a = Q(q[0], q[1]); if (i) c.lineTo(a[0], a[1]); else c.moveTo(a[0], a[1]); }); c.closePath(); c.fill(); }
+    function rr(x, y, w, h, r, col) { var a = Q(x - w / 2, y + h / 2); c.fillStyle = col; c.beginPath(); if (c.roundRect) c.roundRect(a[0], a[1], w * p, h * p, r * p); else c.rect(a[0], a[1], w * p, h * p); c.fill(); }
+    var tire = "#141414", tread = "#262626", red = sh("#9e1b1b"), redD = sh("#6b1010"), steel = sh("#3a3d42"), blk = "#050505", wind = slant() || 0.4;
+    // shadow and mud flying off the back tires
+    c.fillStyle = "rgba(0,0,0,0.35)"; c.beginPath(); c.ellipse(ox, oy, 0.95 * p, 0.2 * p, 0, 0, Math.PI * 2); c.fill();
+    var rnd = seeded(77);
+    for (var m = 0; m < 22; m++) {
+      var sd = m % 2 ? 1 : -1, age = (t * 0.0012 + rnd()) % 1, mx = sd * (0.6 + age * (1.2 + rnd() * 0.8)), my = 0.15 + Math.sin(age * Math.PI) * (0.5 + rnd() * 0.5);
+      var q = Q(mx, my); c.fillStyle = rgba([58, 40, 26], 0.85 * (1 - age)); c.beginPath(); c.arc(q[0], q[1], Math.max(0.8, (0.03 + rnd() * 0.03) * p), 0, Math.PI * 2); c.fill();
+    }
+    // flag on a whip off the rear rack, streaming back and out with the wind
+    var pb = Q(-0.32, 1.0), pt = Q(-0.42 - wind * 0.15, 3.3);
+    c.strokeStyle = sh("#2a2a2a"); c.lineWidth = Math.max(1, 0.035 * p); c.beginPath(); c.moveTo(pb[0], pb[1]); c.quadraticCurveTo(pb[0] - 0.02 * p, (pb[1] + pt[1]) / 2, pt[0], pt[1]); c.stroke();
+    var fw = 1.05, fh = 0.68, dirx = wind < 0 ? -1 : 1, N = 14;
+    function fp(u, v) { var wv = Math.sin(t * 0.009 - u * 5.5) * 0.12 * u, a = Q(-0.42 - wind * 0.15 + dirx * u * fw, 3.3 - v * fh + wv - u * 0.12); return a; }
+    for (var sI = 0; sI < 13; sI++) {
+      c.fillStyle = sh(sI % 2 ? "#f3f1ec" : "#b3192e"); c.beginPath();
+      for (var k = 0; k <= N; k++) { var a1 = fp(k / N, sI / 13); if (k) c.lineTo(a1[0], a1[1]); else c.moveTo(a1[0], a1[1]); }
+      for (k = N; k >= 0; k--) { var a2 = fp(k / N, (sI + 1) / 13); c.lineTo(a2[0], a2[1]); }
+      c.closePath(); c.fill();
+    }
+    c.fillStyle = sh("#22305e"); c.beginPath();
+    var cN = 6; for (k = 0; k <= cN; k++) { var c1 = fp(0.4 * k / cN, 0); if (k) c.lineTo(c1[0], c1[1]); else c.moveTo(c1[0], c1[1]); }
+    for (k = cN; k >= 0; k--) { var c2 = fp(0.4 * k / cN, 7 / 13); c.lineTo(c2[0], c2[1]); }
+    c.closePath(); c.fill();
+    c.fillStyle = rgba([240, 240, 235], 0.8 * dim);
+    for (var st = 0; st < 12; st++) { var sp = fp(0.04 + (st % 4) * 0.09, 0.07 + Math.floor(st / 4) * 0.16); c.fillRect(sp[0], sp[1], Math.max(0.8, 0.025 * p), Math.max(0.8, 0.025 * p)); }
+    // rear tires on the ground, rear fenders and rack
+    [-0.6, 0.6].forEach(function (x) { rr(x, 0.32, 0.3, 0.62, 0.1, tire); for (var j = 0; j < 5; j++) rr(x, 0.08 + j * 0.12, 0.3, 0.04, 0.01, tread); });
+    poly([[-0.85, 0.62], [-0.35, 0.72], [-0.3, 0.95], [-0.82, 0.86]], redD); poly([[0.85, 0.62], [0.35, 0.72], [0.3, 0.95], [0.82, 0.86]], redD);
+    poly([[-0.45, 0.95], [0.45, 0.95], [0.4, 1.02], [-0.4, 1.02]], steel);
+    // the underside, tipped up toward us
+    poly([[-0.42, 0.55], [0.42, 0.55], [0.36, 1.25 + bob], [-0.36, 1.25 + bob]], sh("#1d1e20"));
+    poly([[-0.3, 0.6], [0.3, 0.6], [0.26, 1.15 + bob], [-0.26, 1.15 + bob]], sh("#2c2e31"));
+    // rider: blacked out, same shape language as the chalk guys, filled solid
+    c.strokeStyle = blk; c.fillStyle = blk; c.lineCap = "round"; c.lineJoin = "round"; c.lineWidth = 0.15 * p;
+    function limb(pts, w) { c.lineWidth = w * p; c.beginPath(); pts.forEach(function (q, i) { var a = Q(q[0], q[1] + bob); if (i) c.lineTo(a[0], a[1]); else c.moveTo(a[0], a[1]); }); c.stroke(); }
+    limb([[-0.16, 1.35], [-0.44, 1.32], [-0.48, 0.95]], 0.15); limb([[0.16, 1.35], [0.44, 1.32], [0.48, 0.95]], 0.15);   // legs out to the pegs
+    poly([[-0.22, 1.3 + bob], [0.22, 1.3 + bob], [0.26, 1.98 + bob], [-0.26, 1.98 + bob]], blk);                        // torso
+    limb([[-0.24, 1.92], [-0.48, 1.74], [-0.52, 1.58]], 0.12); limb([[0.24, 1.92], [0.48, 1.74], [0.52, 1.58]], 0.12);   // arms to the bars
+    var hd = Q(0, 2.17 + bob); c.beginPath(); c.arc(hd[0], hd[1], 0.16 * p, 0, Math.PI * 2); c.fill();
+    if (R.night) { c.strokeStyle = rgba([255, 130, 50], 0.18); c.lineWidth = Math.max(0.6, 0.02 * p); c.beginPath(); c.arc(hd[0], hd[1], 0.16 * p, -2.4, -0.6); c.stroke(); }
+    // handlebars
+    var h1 = Q(-0.58, 1.56 + bob), h2 = Q(0.58, 1.56 + bob), h0 = Q(0, 1.5 + bob);
+    c.strokeStyle = sh("#1a1a1a"); c.lineWidth = Math.max(1, 0.05 * p); c.beginPath(); c.moveTo(h1[0], h1[1]); c.quadraticCurveTo(h0[0], h0[1] + 0.05 * p, h2[0], h2[1]); c.stroke();
+    // front end up in the air: fenders, rack, bumper, headlights, front tires
+    var fy = 1.18 + bob;
+    [-0.66, 0.66].forEach(function (x) { rr(x, fy - 0.1, 0.32, 0.56, 0.11, tire); for (var j = 0; j < 4; j++) rr(x, fy - 0.3 + j * 0.13, 0.32, 0.04, 0.01, tread); });
+    poly([[-0.92, fy + 0.12], [-0.42, fy + 0.2], [-0.36, fy + 0.42], [-0.86, fy + 0.36]], red);
+    poly([[0.92, fy + 0.12], [0.42, fy + 0.2], [0.36, fy + 0.42], [0.86, fy + 0.36]], red);
+    poly([[-0.42, fy + 0.2], [0.42, fy + 0.2], [0.38, fy + 0.45], [-0.38, fy + 0.45]], redD);
+    c.strokeStyle = steel; c.lineWidth = Math.max(1, 0.04 * p); c.beginPath();
+    [[-0.5, fy + 0.5, 0.5, fy + 0.5], [-0.5, fy + 0.62, 0.5, fy + 0.62], [-0.3, fy + 0.45, -0.3, fy + 0.65], [0, fy + 0.45, 0, fy + 0.65], [0.3, fy + 0.45, 0.3, fy + 0.65], [-0.32, fy - 0.15, 0.32, fy - 0.15], [-0.32, fy - 0.15, -0.38, fy + 0.2], [0.32, fy - 0.15, 0.38, fy + 0.2]].forEach(function (l) { var a = Q(l[0], l[1]), b = Q(l[2], l[3]); c.moveTo(a[0], a[1]); c.lineTo(b[0], b[1]); });
+    c.stroke();
+    [-0.22, 0.22].forEach(function (x) {
+      var L = Q(x, fy + 0.3); c.fillStyle = sh("#e9eef2"); c.beginPath(); c.ellipse(L[0], L[1], 0.09 * p, 0.05 * p, 0, 0, Math.PI * 2); c.fill();
+      if (R.night) { var g = c.createRadialGradient(L[0], L[1], 0, L[0], L[1], 0.7 * p); g.addColorStop(0, "rgba(255,250,225,0.55)"); g.addColorStop(1, "rgba(255,250,225,0)"); c.globalCompositeOperation = "lighter"; c.fillStyle = g; c.beginPath(); c.arc(L[0], L[1], 0.7 * p, 0, Math.PI * 2); c.fill(); c.globalCompositeOperation = "source-over"; }
+    });
+    c.lineCap = "butt"; c.lineJoin = "miter";
   }
   var PALMS = [[24, 9.2, 11.5, 0.02], [18, 10.8, 12.5, 0.04], [14, 8.8, 10.5, -0.02]];   // far to near: z, X, height, lean
   // a white pickup nosed into the nearest light pole, facing us: grille and front end crushed around the pole and on fire,
