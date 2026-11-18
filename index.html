@@ -4702,7 +4702,7 @@ var ROUTES = S.routes;
     var roots = [[15.5, -5.6], [15, 7.6]];
     roots.forEach(function (fp, j) {
       var q = P(fp[0], fp[1]); fireGlow(c, q[0], q[1], 9 * p);
-      fireSheet(c, [P(fp[0] + 0.5, fp[1] - 1.5), P(fp[0], fp[1]), P(fp[0] + 0.5, fp[1] + 1.5)], (j ? 17 : 13) * p, t, 60 + j * 3.1, wind * 0.15 + ax * 1.5);
+      fireSheet(c, [P(fp[0] + 0.5, fp[1] - 1.5), P(fp[0], fp[1]), P(fp[0] + 0.5, fp[1] + 1.5)], (j ? 26 : 21) * p, t, 60 + j * 3.1, wind * 0.15 + ax * 1.5);
     });
     c.globalCompositeOperation = "lighter";
     for (var e2 = 0; e2 < 18; e2++) {
@@ -4714,7 +4714,7 @@ var ROUTES = S.routes;
   // a four-wheeler popping a wheelie down the mud ruts toward us, flag flying off the back, rider blacked out
   function drawWheelie(c, t) {
     var dim = Math.max(0.5, R.dimv || 1), sh = function (h) { return css(mix(hex(h), [0, 0, 0], 1 - dim)); };
-    var X = 4.6, z = 6.6, p = pz(z), ox = gx(X, z), oy = gy(z), bob = Math.sin(t * 0.004) * 0.03;
+    var X = 3.95, z = 5.6, p = pz(z), ox = gx(X, z), oy = gy(z), bob = Math.sin(t * 0.004) * 0.03;
     function Q(x, y) { return [ox + x * p, oy - y * p]; }
     function poly(pts, col) { c.fillStyle = col; c.beginPath(); pts.forEach(function (q, i) { var a = Q(q[0], q[1]); if (i) c.lineTo(a[0], a[1]); else c.moveTo(a[0], a[1]); }); c.closePath(); c.fill(); }
     function rr(x, y, w, h, r, col) { var a = Q(x - w / 2, y + h / 2); c.fillStyle = col; c.beginPath(); if (c.roundRect) c.roundRect(a[0], a[1], w * p, h * p, r * p); else c.rect(a[0], a[1], w * p, h * p); c.fill(); }
@@ -4748,21 +4748,26 @@ var ROUTES = S.routes;
     poly([[-0.85, 0.62], [-0.35, 0.72], [-0.3, 0.95], [-0.82, 0.86]], redD); poly([[0.85, 0.62], [0.35, 0.72], [0.3, 0.95], [0.82, 0.86]], redD);
     poly([[-0.45, 0.95], [0.45, 0.95], [0.4, 1.02], [-0.4, 1.02]], steel);
     // the underside, tipped up toward us
-    poly([[-0.42, 0.55], [0.42, 0.55], [0.36, 1.25 + bob], [-0.36, 1.25 + bob]], sh("#1d1e20"));
-    poly([[-0.3, 0.6], [0.3, 0.6], [0.26, 1.15 + bob], [-0.26, 1.15 + bob]], sh("#2c2e31"));
+    poly([[-0.42, 0.55], [0.42, 0.55], [0.36, 1.55 + bob], [-0.36, 1.55 + bob]], sh("#1d1e20"));
+    poly([[-0.3, 0.6], [0.3, 0.6], [0.26, 1.45 + bob], [-0.26, 1.45 + bob]], sh("#2c2e31"));
     // rider: blacked out, same shape language as the chalk guys, filled solid
     c.strokeStyle = blk; c.fillStyle = blk; c.lineCap = "round"; c.lineJoin = "round"; c.lineWidth = 0.15 * p;
-    function limb(pts, w) { c.lineWidth = w * p; c.beginPath(); pts.forEach(function (q, i) { var a = Q(q[0], q[1] + bob); if (i) c.lineTo(a[0], a[1]); else c.moveTo(a[0], a[1]); }); c.stroke(); }
-    limb([[-0.16, 1.35], [-0.44, 1.32], [-0.48, 0.95]], 0.15); limb([[0.16, 1.35], [0.44, 1.32], [0.48, 0.95]], 0.15);   // legs out to the pegs
-    poly([[-0.22, 1.3 + bob], [0.22, 1.3 + bob], [0.26, 1.98 + bob], [-0.26, 1.98 + bob]], blk);                        // torso
-    limb([[-0.24, 1.92], [-0.48, 1.74], [-0.52, 1.58]], 0.12); limb([[0.24, 1.92], [0.48, 1.74], [0.52, 1.58]], 0.12);   // arms to the bars
-    var hd = Q(0, 2.17 + bob); c.beginPath(); c.arc(hd[0], hd[1], 0.16 * p, 0, Math.PI * 2); c.fill();
+    var ry = 0.3, rim = R.night ? rgba([255, 140, 60], 0.45) : rgba([255, 255, 255], 0.25), rimPass = true;
+    function limb(pts, w) { c.lineWidth = w * p; c.beginPath(); pts.forEach(function (q, i) { var a = Q(q[0] + (rimPass ? -0.03 : 0), q[1] + bob + ry); if (i) c.lineTo(a[0], a[1]); else c.moveTo(a[0], a[1]); }); c.stroke(); }
+    [true, false].forEach(function (rp) {
+      rimPass = rp; c.strokeStyle = rp ? rim : blk; c.fillStyle = rp ? rim : blk;
+      limb([[-0.16, 1.35], [-0.44, 1.32], [-0.48, 0.95]], 0.15); limb([[0.16, 1.35], [0.44, 1.32], [0.48, 0.95]], 0.15);   // legs out to the pegs
+      limb([[0, 1.36], [0, 1.9]], 0.46);                        // torso
+      limb([[-0.24, 1.92], [-0.48, 1.74], [-0.52, 1.58]], 0.12); limb([[0.24, 1.92], [0.48, 1.74], [0.52, 1.58]], 0.12);   // arms to the bars
+      var hd = Q(rimPass ? -0.03 : 0, 2.17 + bob + ry); c.beginPath(); c.arc(hd[0], hd[1], 0.17 * p, 0, Math.PI * 2); c.fill();
+    });
+    var hd = Q(0, 2.17 + bob + ry);
     if (R.night) { c.strokeStyle = rgba([255, 130, 50], 0.18); c.lineWidth = Math.max(0.6, 0.02 * p); c.beginPath(); c.arc(hd[0], hd[1], 0.16 * p, -2.4, -0.6); c.stroke(); }
     // handlebars
-    var h1 = Q(-0.58, 1.56 + bob), h2 = Q(0.58, 1.56 + bob), h0 = Q(0, 1.5 + bob);
+    var h1 = Q(-0.58, 1.86 + bob), h2 = Q(0.58, 1.86 + bob), h0 = Q(0, 1.8 + bob);
     c.strokeStyle = sh("#1a1a1a"); c.lineWidth = Math.max(1, 0.05 * p); c.beginPath(); c.moveTo(h1[0], h1[1]); c.quadraticCurveTo(h0[0], h0[1] + 0.05 * p, h2[0], h2[1]); c.stroke();
     // front end up in the air: fenders, rack, bumper, headlights, front tires
-    var fy = 1.18 + bob;
+    var fy = 1.5 + bob;
     [-0.66, 0.66].forEach(function (x) { rr(x, fy - 0.1, 0.32, 0.56, 0.11, tire); for (var j = 0; j < 4; j++) rr(x, fy - 0.3 + j * 0.13, 0.32, 0.04, 0.01, tread); });
     poly([[-0.92, fy + 0.12], [-0.42, fy + 0.2], [-0.36, fy + 0.42], [-0.86, fy + 0.36]], red);
     poly([[0.92, fy + 0.12], [0.42, fy + 0.2], [0.36, fy + 0.42], [0.86, fy + 0.36]], red);
@@ -4772,7 +4777,7 @@ var ROUTES = S.routes;
     c.stroke();
     [-0.22, 0.22].forEach(function (x) {
       var L = Q(x, fy + 0.3); c.fillStyle = sh("#e9eef2"); c.beginPath(); c.ellipse(L[0], L[1], 0.09 * p, 0.05 * p, 0, 0, Math.PI * 2); c.fill();
-      if (R.night) { var g = c.createRadialGradient(L[0], L[1], 0, L[0], L[1], 0.7 * p); g.addColorStop(0, "rgba(255,250,225,0.55)"); g.addColorStop(1, "rgba(255,250,225,0)"); c.globalCompositeOperation = "lighter"; c.fillStyle = g; c.beginPath(); c.arc(L[0], L[1], 0.7 * p, 0, Math.PI * 2); c.fill(); c.globalCompositeOperation = "source-over"; }
+      if (R.night) { var g = c.createRadialGradient(L[0], L[1], 0, L[0], L[1], 0.32 * p); g.addColorStop(0, "rgba(255,250,225,0.5)"); g.addColorStop(1, "rgba(255,250,225,0)"); c.globalCompositeOperation = "lighter"; c.fillStyle = g; c.beginPath(); c.arc(L[0], L[1], 0.32 * p, 0, Math.PI * 2); c.fill(); c.globalCompositeOperation = "source-over"; }
     });
     c.lineCap = "butt"; c.lineJoin = "miter";
   }
