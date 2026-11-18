@@ -870,7 +870,7 @@ body.hero .streetgap { display: block; }
     <div class="content">
     <div class="streetgap" aria-hidden="true"></div>
     <section class="card" id="planes">
-      <div class="card-head"><h2>Planes</h2><span class="small" id="planeCount">Live from adsb.lol</span></div>
+      <div class="card-head"><h2>Planes</h2><span class="small" id="planeCount">Live planes</span></div>
       <div class="pick" id="apChips"></div>
       <div class="mapwrap" id="planeWrap">
       <div class="mapbtns"><button class="btn" id="pFull" type="button" aria-label="Full screen" title="Full screen"><svg viewBox="0 0 24 24"><path d="M4 4h6v2H6v4H4zm10 0h6v6h-2V6h-4zM4 14h2v4h4v2H4zm14 0h2v6h-6v-2h4z"/></svg></button></div>
@@ -984,7 +984,7 @@ body.hero .streetgap { display: block; }
     <div id="alerts"></div>
   </div>
 
-  <p class="foot">Data: NWS, NOAA, NDBC, NHC, Open-Meteo, RainViewer, Iowa State IEM (HRRR future radar), The Space Devs, adsb.lol, OurAirports, OpenStreetMap, Esri, Waze, Wikipedia.<br><a class="fblink" href="https://docs.google.com/forms/d/e/1FAIpQLSfXQwiCIQjHxH4N0HxH15jROSP23En125zYxKyX70hSPsVnLg/viewform" target="_blank" rel="noopener">Send feedback</a></p>
+  <p class="foot">Data: NWS, NOAA, NDBC, NHC, Open-Meteo, RainViewer, Iowa State IEM (HRRR future radar), The Space Devs, adsb.lol, airplanes.live, adsb.fi, OurAirports, OpenStreetMap, Esri, Waze, Wikipedia.<br><a class="fblink" href="https://docs.google.com/forms/d/e/1FAIpQLSfXQwiCIQjHxH4N0HxH15jROSP23En125zYxKyX70hSPsVnLg/viewform" target="_blank" rel="noopener">Send feedback</a></p>
 </div>
 
 <nav class="tabbar" id="tabbar" aria-label="Sections"></nav>
@@ -2710,6 +2710,17 @@ var ROUTES = S.routes;
   /* Planes are drawn on the app's own map from adsb.lol (open data, no key or sign-in),
      because iPhones block the embedded ADS-B Exchange page's cookies. */
   var pmap = null, pLayer, pApLayer, pMarks = {}, pTimer = null, pBusy = false, pMoveT = null;
+  // Free, no-key flight feeds, tried in order; the first one this phone can read is kept.
+  var PSRC = [["adsb.lol", function (la, lo, nm) { return "https://api.adsb.lol/v2/point/" + la + "/" + lo + "/" + nm; }],
+              ["airplanes.live", function (la, lo, nm) { return "https://api.airplanes.live/v2/point/" + la + "/" + lo + "/" + nm; }],
+              ["adsb.fi", function (la, lo, nm) { return "https://opendata.adsb.fi/api/v2/lat/" + la + "/lon/" + lo + "/dist/" + nm; }]], pSrc = 0;
+  function planeGet(la, lo, nm, i) {
+    i = i == null ? pSrc : i;
+    return getJSON(PSRC[i][1](la, lo, nm)).then(function (d) { pSrc = i; return d; }, function (e) {
+      if (i + 1 < PSRC.length) return planeGet(la, lo, nm, i + 1);
+      pSrc = 0; throw e;
+    });
+  }
   var PLANE_SVG = '<path d="M12 2c.8 0 1.3.7 1.3 1.6V9l7.7 4.6v2l-7.7-2.3v4.9l2.2 1.6V21L12 20l-3.5 1v-1.2l2.2-1.6v-4.9L3 15.6v-2L10.7 9V3.6C10.7 2.7 11.2 2 12 2z"/>';
   function planeIcon(a) {
     var low = typeof a.alt_baro === "number" && a.alt_baro < 6000;
@@ -2736,9 +2747,9 @@ var ROUTES = S.routes;
     var c = pmap.getCenter(), b = pmap.getBounds();
     var nm = Math.max(5, Math.min(250, Math.ceil(miles(c.lat, c.lng, b.getNorth(), b.getEast()) / 1.15078)));
     pBusy = true;
-    getJSON("https://api.adsb.lol/v2/point/" + c.lat.toFixed(4) + "/" + c.lng.toFixed(4) + "/" + nm).then(function (d) {
+    planeGet(c.lat.toFixed(4), c.lng.toFixed(4), nm).then(function (d) {
       var seen = {}, n = 0, lowOnly = on("lowonly"), labels = on("labels");
-      (d.ac || []).forEach(function (a) {
+      (d.ac || d.aircraft || []).forEach(function (a) {
         if (typeof a.lat !== "number" || typeof a.lon !== "number" || a.alt_baro === "ground") return;
         if (lowOnly && !(typeof a.alt_baro === "number" && a.alt_baro < 6000)) return;
         seen[a.hex] = 1; n++;
@@ -2753,7 +2764,8 @@ var ROUTES = S.routes;
         else if (m.getTooltip()) m.unbindTooltip();
       });
       Object.keys(pMarks).forEach(function (h) { if (!seen[h]) { pLayer.removeLayer(pMarks[h]); delete pMarks[h]; } });
-      $("planeCount").textContent = n + (n === 1 ? " plane" : " planes") + " in view, live";
+      $("planeCount").textContent = n + (n === 1 ? " plane" : " planes") + " in view, live from " + PSRC[pSrc][0];
+      var at = pmap.attributionControl; if (at && at._pSrc !== pSrc) { if (at._pTxt) at.removeAttribution(at._pTxt); at._pTxt = "Planes &copy; " + PSRC[pSrc][0] + (pSrc ? "" : " (ODbL)"); at.addAttribution(at._pTxt); at._pSrc = pSrc; }
     }).catch(function () {
       $("planeCount").textContent = "Live planes didn't load. Trying again…";
     }).then(function () { pBusy = false; });
@@ -2763,7 +2775,7 @@ var ROUTES = S.routes;
       var d = document.createElement("div"); d.id = "pmap"; $("planeWrap").insertBefore(d, $("planeWrap").firstChild);
       pmap = L.map("pmap", { zoomControl: false });
       var esri = "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_" + (dark ? "Dark" : "Light") + "_Gray_";
-      L.tileLayer(esri + "Base/MapServer/tile/{z}/{y}/{x}", { maxZoom: 18, maxNativeZoom: 16, attribution: "Map &copy; Esri, OpenStreetMap | Planes &copy; adsb.lol (ODbL)" }).addTo(pmap);
+      L.tileLayer(esri + "Base/MapServer/tile/{z}/{y}/{x}", { maxZoom: 18, maxNativeZoom: 16, attribution: "Map &copy; Esri, OpenStreetMap" }).addTo(pmap);
       pmap.createPane("plabels"); pmap.getPane("plabels").style.zIndex = 450; pmap.getPane("plabels").style.pointerEvents = "none";
       L.tileLayer(esri + "Reference/MapServer/tile/{z}/{y}/{x}", { maxZoom: 18, maxNativeZoom: 16, pane: "plabels" }).addTo(pmap);
       pApLayer = L.layerGroup().addTo(pmap); pLayer = L.layerGroup().addTo(pmap);
