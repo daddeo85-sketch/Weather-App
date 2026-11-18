@@ -1294,6 +1294,7 @@ var ROUTES = S.routes;
       var ws = p.windSpeed && p.windSpeed.value, wg = p.windGust && p.windGust.value, wd = p.windDirection && p.windDirection.value;
       D.windMph = ws != null ? Math.round(kmh2mph(ws)) : null; D.gustMph = wg ? Math.round(kmh2mph(wg)) : null; D.obs.ws = D.windMph;
       renderScore();
+      D.obsText = p.textDescription || ""; if (D.om) { rainAhead(); if (typeof homeLinks === "function") homeLinks(); }
       if (window.SKY) { try { window.SKY.obs(p.textDescription || ""); if (ws != null) window.SKY.wind(kmh2mph(ws), wg ? kmh2mph(wg) : 0, wd); } catch (e) {} }
       if (ws != null) {
         $("windNow").textContent = ws < 1 ? "Calm" : (wd != null ? dir16(wd) + " " : "") + Math.round(kmh2mph(ws)) + " mph";
@@ -1626,7 +1627,7 @@ var ROUTES = S.routes;
         var g = c.getContext("2d"); g.drawImage(img, 0, 0);
         var d = g.getImageData(Math.max(0, px - 2), Math.max(0, py - 2), 5, 5).data, hit = 0, heavy = 0;
         for (var i = 0; i < d.length; i += 4) if (d[i + 3] > 40) { hit++; if (d[i] > 200 && d[i + 2] < 120) heavy++; }
-        window.SKY.radar(hit / 25, heavy > 2); D.radarFrac = hit / 25; D.radarHeavy = heavy > 2; renderRide();
+        D.radarFrac = hit / 25; D.radarHeavy = heavy > 2; window.SKY.radar(hit / 25, heavy > 2); renderRide(); if (D.om) { rainAhead(); homeLinks(); }
       } catch (e) {}
     };
     img.src = host + f.path + "/256/" + z + "/" + tx + "/" + ty + "/2/1_1.png";
@@ -2443,12 +2444,19 @@ var ROUTES = S.routes;
     var nowKey = new Intl.DateTimeFormat("sv-SE", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", hourCycle: "h23" }).format(new Date()).replace(" ", "T").slice(0, 13) + ":00";
     var i = h.time.indexOf(nowKey); if (i < 0) i = 0;
     var s8 = 0; for (var j = i; j < i + 8 && j < h.time.length; j++) s8 += h.precipitation[j] || 0;
-    var c = d.current || {}, wetNow = (c.precipitation || 0) + (c.rain || 0) + (c.showers || 0) > 0 || isRainCodeW(c.weather_code) || (h.precipitation[i] || 0) >= 0.01;
+    var c = d.current || {}, wetNow = rainingNow((c.precipitation || 0) + (c.rain || 0) + (c.showers || 0) > 0 || isRainCodeW(c.weather_code) || (h.precipitation[i] || 0) >= 0.01);
     var end = null;
     if (wetNow) for (var k = i + 1; k < h.time.length; k++) if ((h.precipitation[k] || 0) < 0.01 && (h.precipitation_probability[k] || 0) < 40) { end = h.time[k]; break; }
     D.rain8 = s8; D.rainNow = wetNow; D.rainEnd = end; D.rainLast = h.time[h.time.length - 1];
     var t8 = s8 < 0.01 ? "No rain expected in the next 8 hours." : "🌧 Rain expected in the next 8 hours: " + (s8 < 0.1 ? s8.toFixed(2) : s8.toFixed(2)) + " in";
     if ($("rain8")) $("rain8").textContent = t8;
+  }
+  // Is it actually raining at your place right now? The radar over your spot and the airport's
+  // latest reading decide. The forecast model only counts until the radar has loaded.
+  function rainingNow(modelSays) {
+    if (/rain|drizzle|shower|thunder|t-storm/i.test(D.obsText || "")) return true;
+    if (D.radarFrac != null) return D.radarFrac >= 0.3;
+    return !!modelSays;
   }
   function isRainCodeW(code) { return (code >= 51 && code <= 67) || (code >= 80 && code <= 82) || code >= 95; }
   var SUP = [
@@ -3414,8 +3422,8 @@ var ROUTES = S.routes;
     var visU = (d.hourly_units && d.hourly_units.visibility) || "m";
     function vmi(v) { return v == null ? null : /ft/.test(visU) ? v / 5280 : v / 1609.34; }
     var radar = D.radarFrac || 0, nowP = (c.precipitation || 0) + (c.rain || 0) + (c.showers || 0);
-    var raining = nowP > 0 || isRainCode(c.weather_code) || radar >= 0.3;
-    var heavy = nowP >= 0.1 || c.weather_code >= 63 && c.weather_code <= 67 || c.weather_code === 81 || c.weather_code === 82 || D.radarHeavy;
+    var raining = rainingNow(nowP > 0 || isRainCode(c.weather_code));
+    var heavy = D.radarFrac != null ? D.radarHeavy : nowP >= 0.1 || c.weather_code >= 63 && c.weather_code <= 67 || c.weather_code === 81 || c.weather_code === 82 || D.radarHeavy;
     var l3 = sumP(i - 2, i), l6 = sumP(i - 5, i);
     var road = raining ? [heavy ? 2 : 1, "Wet and slick", "pavement and sidewalks wet and slick"] : l3 >= 0.1 ? [1, "Wet, puddles on the sidewalks", "wet pavement, puddles on the sidewalks"] : l3 > 0.01 ? [1, "Damp, slick in spots", "damp pavement, slick in spots"] : l6 >= 0.25 ? [1, "Drying, puddles in low spots", "puddles in low spots"] : [0, "Dry", "dry pavement"];
     var storm = isStorm(c.weather_code), gust = Math.round(c.wind_gusts_10m || 0), ws = Math.round(c.wind_speed_10m || 0);
@@ -3955,14 +3963,14 @@ var ROUTES = S.routes;
   var sky = document.getElementById("skybg"), cv = document.getElementById("skyfx"), cx = cv.getContext && cv.getContext("2d");
   var sunEl = document.getElementById("sunEl"), moonEl = document.getElementById("moonEl"), glint = document.getElementById("glint");
   var root = document.documentElement.style, still = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  var WX = { kind: "clear", cover: 0, heavy: false, obsText: "", code: null, wet: 0, mph: 0, dir: null, radar: 0, radarHeavy: false };
+  var WX = { kind: "clear", cover: 0, heavy: false, obsText: "", code: null, wet: 0, mph: 0, dir: null, radar: 0, radarHeavy: false, radarOk: false };
   var drops = [], stars = [], raf = 0, W = 0, H = 0, lampOn = false;
   // Ground from real rainfall: wet = puddles and mud, dry = brown grass and no water
   var GROUND = { r24: 0, r72: 0, r14: 1, ok: false };
   function groundWet() { return GROUND.ok ? Math.min(1, GROUND.r24 / 0.5 + GROUND.r72 / 2) : 0; }
   // Puddles on the road: only while it's raining or for a few hours after, bigger with more rain
   function puddleLevel() {
-    var r3 = GROUND.ok ? GROUND.r3 || 0 : 0, now = Math.max(WX.wet || 0, 0), raining = now > 0 || WX.kind === "rain" || WX.kind === "storm";
+    var raining = WX.kind === "rain" || WX.kind === "storm", r3 = GROUND.ok ? GROUND.r3 || 0 : 0, now = raining ? Math.max(WX.wet || 0, 0) : 0;
     if (!raining && r3 < 0.02) return 0;
     return Math.min(1, (raining ? 0.25 : 0.1) + now * 6 + r3 * 2.5);
   }
@@ -4027,13 +4035,17 @@ var ROUTES = S.routes;
     if (/partly|few|scattered/.test(o)) k = "partly"; else if (/mostly cloudy|overcast|cloudy/.test(o)) k = "cloudy"; else if (/clear|fair|sunny/.test(o)) k = "clear";
     if (c === 45 || c === 48 || /fog|mist|haze/.test(o)) k = "fog";
     // Raining right now: the airport's latest reading says so, or the current model hour has rain falling
-    if ((c >= 51 && c <= 67) || (c >= 80 && c <= 82) || WX.wet > 0 || WX.radar >= 0.3 || /rain|drizzle|shower/.test(o)) k = "rain";
-    if ((c >= 95) || /thunder|t-storm/.test(o)) k = "storm";
+    // Falling rain only when it's really raining here: the radar over your spot or the airport says so.
+    // The forecast model counts only until the radar has loaded.
+    var modelRain = (c >= 51 && c <= 67) || (c >= 80 && c <= 82) || c >= 95 || WX.wet > 0, obsRain = /rain|drizzle|shower|thunder|t-storm/.test(o);
+    var wetHere = obsRain || (WX.radarOk ? WX.radar >= 0.3 : modelRain);
+    if (wetHere) k = "rain";
+    if (/thunder|t-storm/.test(o) || (wetHere && c >= 95)) k = "storm";
     WX.kind = k;
     // How much of the sky the clouds hide: a full overcast deck hides the sun and moon completely
     WX.overcast = k === "cloudy" && (WX.cover >= 85 || /overcast/.test(o) || (/cloudy/.test(o) && !/mostly|partly/.test(o)));
     WX.veil = { clear: 0, partly: 0.1, cloudy: WX.overcast ? 1 : 0.7, fog: 0.9, rain: 1, storm: 1 }[k];
-    WX.heavy = k === "storm" || c === 65 || c === 82 || (c === 63 && !/light/.test(o)) || WX.wet >= 2.5 || WX.radarHeavy || /heavy/.test(o);
+    WX.heavy = wetHere && (k === "storm" || /heavy/.test(o) || (WX.radarOk ? WX.radarHeavy : c === 65 || c === 82 || (c === 63 && !/light/.test(o)) || WX.wet >= 2.5));
   }
   var WINDTEST = (location.search.match(/windtest=([\d.]+)(?:,(\d+))?/) || []);   // preview only: ?windtest=mph,direction
   var SKYSHIFT = +((location.search.match(/skyshift=(-?\d+(?:\.\d+)?)/) || [])[1] || 0);   // preview only: move the scene's clock by N hours
@@ -4543,7 +4555,7 @@ var ROUTES = S.routes;
       if (WX.mph === 0 && c.wind_speed_10m != null) { WX.mph = Math.max(c.wind_speed_10m, 0.7 * (c.wind_gusts_10m || 0)); WX.dir = c.wind_direction_10m; }
       classify(); safeUpdate();
     },
-    radar: function (frac, heavy) { WX.radar = frac; WX.radarHeavy = heavy; classify(); safeUpdate(); },
+    radar: function (frac, heavy) { WX.radar = frac; WX.radarHeavy = heavy; WX.radarOk = true; classify(); safeUpdate(); },
     wind: function (mph, gust, dir) { if (mph == null) return; WX.mph = Math.max(mph, 0.7 * (gust || 0)); WX.dir = dir; safeUpdate(); },
     obs: function (text) { WX.obsText = text || ""; classify(); safeUpdate(); },
     set: function (kind) { WX.kind = kind; safeUpdate(); }   // for testing: SKY.set("storm")
