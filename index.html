@@ -1435,9 +1435,24 @@ var ROUTES = S.routes;
   /* ---------------- Waves ---------------- */
   // Buoy readings come from NOAA's buoy network through this repo's GitHub Action (the browser
   // can't read NOAA's buoy files directly). The model estimate is Open-Meteo at the same spot.
-  function buoyLink() {
-    return '<a href="https://www.ndbc.noaa.gov/station_page.php?station=' + encodeURIComponent(S.buoy.id) + '" target="_blank" rel="noopener">' +
-      esc(S.buoy.name || "Buoy " + S.buoy.id) + "</a>";
+  function buoyLink(alt) {
+    var id = alt ? alt.id : S.buoy.id, nm = alt ? "Buoy " + alt.id : S.buoy.name || "Buoy " + S.buoy.id;
+    return '<a href="https://www.ndbc.noaa.gov/station_page.php?station=' + encodeURIComponent(id) + '" target="_blank" rel="noopener">' + esc(nm) + "</a>";
+  }
+  function agoText(t) {
+    var m = Math.max(0, Math.round((Date.now() - t) / 60000)), h = Math.floor(m / 60);
+    return m < 2 ? "just now" : m < 60 ? m + " min ago" : h + " hr" + (m % 60 ? " " + (m % 60) + " min" : "") + " ago";
+  }
+  // Next closest buoy that has reported in the last 3 hours, within 60 miles of the chosen one.
+  function freshAltBuoy(d) {
+    if (!d || !S.buoy) return null;
+    var best = null;
+    (d.buoys || []).forEach(function (x) {
+      if (x.id === S.buoy.id || x.ft == null || Date.now() - new Date(x.t).getTime() >= 3 * 3600000) return;
+      var mi = miles(S.buoy.lat, S.buoy.lon, x.lat, x.lon);
+      if (mi <= 60 && (!best || mi < best.mi)) best = { b: x, id: x.id, mi: Math.round(mi) };
+    });
+    return best;
   }
   function loadWaves() {
     var wp = S.buoy ? [S.buoy.lat, S.buoy.lon] : HOME;
@@ -1447,7 +1462,9 @@ var ROUTES = S.routes;
     // undefined = feed unreachable, null = this buoy isn't in the feed
     var feed = S.buoy ? buoyFeed().then(function (d) {
       if (!d) return undefined;
-      return (d.buoys || []).filter(function (b) { return b.id === S.buoy.id; })[0] || null;
+      var own = (d.buoys || []).filter(function (b) { return b.id === S.buoy.id; })[0] || null;
+      D.buoyAlt = own && Date.now() - new Date(own.t).getTime() < 3 * 3600000 ? null : freshAltBuoy(d);
+      return own;
     }) : Promise.resolve(null);
     var model = getJSON(api).catch(function () { return null; });
     Promise.all([feed, model]).then(function (r) {
@@ -1456,7 +1473,8 @@ var ROUTES = S.routes;
       function sub(per, dir) { return (per ? "Every " + Math.round(per) + " sec" : "") + (dir != null ? (per ? " from the " : "From the ") + dir16(dir) : ""); }
       D.buoy = b; D.model = m;
       var bLive = b && Date.now() - new Date(b.t).getTime() < 3 * 3600000;
-      D.waveFt = bLive ? b.ft : mc ? mc.wave_height : null;
+      var alt = !bLive && D.buoyAlt;
+      D.waveFt = bLive ? b.ft : alt ? alt.b.ft : mc ? mc.wave_height : null;
       renderScore(); homeLinks();
       function tile(k, v, s) { return '<div class="tile tap" data-d="waves"><div class="k">' + esc(k) + '</div><div class="v">' + esc(v) + '</div><div class="s">' + s + "</div></div>"; }
       if (!S.buoy && !mc) {
@@ -1466,9 +1484,12 @@ var ROUTES = S.routes;
       var tiles = "";
       if (S.buoy) {
         var bt = b ? new Date(b.t) : null, live = b && Date.now() - bt.getTime() < 3 * 3600000;
+        var ab = !live && D.buoyAlt, at = ab ? new Date(ab.b.t) : null;
         tiles += live
-          ? tile("Buoy (measured)", b.ft.toFixed(1) + " ft", esc(sub(b.dpd, b.mwd)) + "<br>" + buoyLink() + ", " + esc(fmtTime.format(bt)))
-          : tile("Buoy (measured)", "N/A", (b === undefined ? "Couldn't reach the buoy feed. " : "Not reporting right now. ") + buoyLink());
+          ? tile("Buoy (measured)", b.ft.toFixed(1) + " ft", esc(sub(b.dpd, b.mwd)) + "<br>" + buoyLink() + ", " + esc(fmtTime.format(bt)) + " (" + agoText(bt.getTime()) + ")")
+          : ab ? tile("Buoy (measured)", ab.b.ft.toFixed(1) + " ft", esc(sub(ab.b.dpd, ab.b.mwd)) + "<br>" + buoyLink(ab) + ", " + ab.mi + " mi from yours, " + esc(fmtTime.format(at)) + " (" + agoText(at.getTime()) + ")<br>" +
+              esc(S.buoy.name || "Buoy " + S.buoy.id) + (b ? " last reported " + agoText(new Date(b.t).getTime()) : " isn't reporting"))
+          : tile("Buoy (measured)", "N/A", (b === undefined ? "Couldn't reach the buoy feed. " : b ? "Last reported " + agoText(bt.getTime()) + ". " : "Not reporting right now. ") + buoyLink());
       }
       tiles += mc ? tile("Model estimate", mc.wave_height.toFixed(1) + " ft", esc(sub(mc.wave_period, mc.wave_direction)) + "<br>Open-Meteo wave model" + (S.buoy ? ", same spot" : ""))
                   : tile("Model estimate", "N/A", "Wave model unavailable right now");
@@ -3258,9 +3279,14 @@ var ROUTES = S.routes;
       if (S.buoy) {
         var live = b && Date.now() - new Date(b.t).getTime() < 3 * 3600000;
         html += "<h3>Buoy (measured)</h3>" + (live ? rows([["Wave height", b.ft.toFixed(1) + " ft"], ["Time between waves", b.dpd ? Math.round(b.dpd) + " sec (biggest)" + (b.apd ? ", " + Math.round(b.apd) + " sec average" : "") : null],
-          ["Coming from", b.mwd != null ? "the " + dir16(b.mwd) + " (" + Math.round(b.mwd) + "°)" : null], ["Water", b.wtf != null ? b.wtf + "°" : null], ["Measured", esc(fmtDay.format(new Date(b.t)) + " " + fmtTime.format(new Date(b.t)))],
+          ["Coming from", b.mwd != null ? "the " + dir16(b.mwd) + " (" + Math.round(b.mwd) + "°)" : null], ["Water", b.wtf != null ? b.wtf + "°" : null], ["Measured", esc(fmtDay.format(new Date(b.t)) + " " + fmtTime.format(new Date(b.t)) + " (" + agoText(new Date(b.t).getTime()) + ")")],
           ["Buoy", buoyLink() + (S.buoy.mi != null ? ", " + S.buoy.mi + " mi from " + esc(S.name) : "")]])
-          : "<p><b>N/A.</b> " + (b === undefined ? "Couldn't reach the buoy feed. " : "The buoy isn't reporting right now. ") + buoyLink() + "</p>");
+          : D.buoyAlt ? "<p>" + buoyLink() + (b ? " last reported " + agoText(new Date(b.t).getTime()) : " isn't reporting") + ", so this is the next closest buoy.</p>" +
+            rows([["Wave height", D.buoyAlt.b.ft.toFixed(1) + " ft"], ["Time between waves", D.buoyAlt.b.dpd ? Math.round(D.buoyAlt.b.dpd) + " sec (biggest)" : null],
+              ["Coming from", D.buoyAlt.b.mwd != null ? "the " + dir16(D.buoyAlt.b.mwd) : null],
+              ["Measured", esc(fmtTime.format(new Date(D.buoyAlt.b.t)) + " (" + agoText(new Date(D.buoyAlt.b.t).getTime()) + ")")],
+              ["Buoy", buoyLink(D.buoyAlt) + ", " + D.buoyAlt.mi + " mi from yours"]])
+          : "<p><b>N/A.</b> " + (b === undefined ? "Couldn't reach the buoy feed. " : b ? "The buoy last reported " + agoText(new Date(b.t).getTime()) + ". " : "The buoy isn't reporting right now. ") + buoyLink() + "</p>");
       }
       var mc = m && m.current;
       html += "<h3>Model estimate</h3>" + (mc && mc.wave_height != null ? rows([["Wave height", mc.wave_height.toFixed(1) + " ft"], ["Time between waves", mc.wave_period ? Math.round(mc.wave_period) + " sec" : null], ["Coming from", mc.wave_direction != null ? "the " + dir16(mc.wave_direction) : null], ["Source", "Open-Meteo wave model" + (S.buoy ? ", at the buoy's spot" : "")]])
