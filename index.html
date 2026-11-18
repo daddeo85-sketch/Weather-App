@@ -1627,9 +1627,10 @@ var ROUTES = S.routes;
         var g = c.getContext("2d"); g.drawImage(img, 0, 0);
         var d = g.getImageData(Math.max(0, px - 2), Math.max(0, py - 2), 5, 5).data, hit = 0, heavy = 0;
         for (var i = 0; i < d.length; i += 4) if (d[i + 3] > 40) { hit++; if (d[i] > 200 && d[i + 2] < 120) heavy++; }
-        D.radarFrac = hit / 25; D.radarHeavy = heavy > 2; window.SKY.radar(hit / 25, heavy > 2); renderRide(); if (D.om) { rainAhead(); homeLinks(); }
-      } catch (e) {}
+        D.radarFrac = hit / 25; D.radarHeavy = heavy > 2; if (/debug/.test(location.search)) document.title = "radar here " + D.radarFrac; window.SKY.radar(hit / 25, heavy > 2); renderRide(); if (D.om) { rainAhead(); homeLinks(); }
+      } catch (e) { if (/debug/.test(location.search)) document.title = "radar here failed: " + e.message; }
     };
+    img.onerror = function () { if (/debug/.test(location.search)) document.title = "radar here: image failed"; };
     img.src = host + f.path + "/256/" + z + "/" + tx + "/" + ty + "/2/1_1.png";
   }
   function loadRadar() {
@@ -2456,6 +2457,7 @@ var ROUTES = S.routes;
   function rainingNow(modelSays) {
     if (/rain|drizzle|shower|thunder|t-storm/i.test(D.obsText || "")) return true;
     if (D.radarFrac != null) return D.radarFrac >= 0.3;
+    if (D.obsText) return false;          // the airport reading says no rain, and there's no radar to say otherwise
     return !!modelSays;
   }
   function isRainCodeW(code) { return (code >= 51 && code <= 67) || (code >= 80 && code <= 82) || code >= 95; }
@@ -4038,7 +4040,7 @@ var ROUTES = S.routes;
     // Falling rain only when it's really raining here: the radar over your spot or the airport says so.
     // The forecast model counts only until the radar has loaded.
     var modelRain = (c >= 51 && c <= 67) || (c >= 80 && c <= 82) || c >= 95 || WX.wet > 0, obsRain = /rain|drizzle|shower|thunder|t-storm/.test(o);
-    var wetHere = obsRain || (WX.radarOk ? WX.radar >= 0.3 : modelRain);
+    var wetHere = obsRain || (WX.radarOk ? WX.radar >= 0.3 : o ? false : modelRain);
     if (wetHere) k = "rain";
     if (/thunder|t-storm/.test(o) || (wetHere && c >= 95)) k = "storm";
     WX.kind = k;
