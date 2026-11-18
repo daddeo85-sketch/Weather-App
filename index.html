@@ -4593,10 +4593,10 @@ var ROUTES = S.routes;
     for (var i = n - 1; i >= 0; i--) {
       var age = (t * 0.00011 + i / n + sd * 0.07) % 1, rise = Math.pow(age, 0.8);
       var px = x + (drift * rise * rise * H * 0.9 + Math.sin(t * 0.0008 + i * 2.3 + sd) * (0.06 + rise * 0.35)) * p, py = y - rise * H * p;
-      var r = (0.32 + rise * 1.0) * p * (0.85 + 0.15 * Math.sin(i * 7.1)), a = Math.min(1, age * 8) * (0.92 - 0.5 * Math.pow(age, 1.6));
+      var r = (0.32 + rise * 1.0) * p * (0.85 + 0.15 * Math.sin(i * 7.1)), a = Math.min(1, age * 8) * (0.98 - 0.45 * Math.pow(age, 1.6));
       var col = age < 0.12 ? mix(hotC, dk, age / 0.12) : mix(dk, top, Math.min(1, (age - 0.12) / 0.88));
       var g = c.createRadialGradient(px - r * 0.2, py - r * 0.25, 0, px, py, r);
-      g.addColorStop(0, rgba(col, a)); g.addColorStop(0.55, rgba(col, a * 0.85)); g.addColorStop(0.8, rgba(col, a * 0.4)); g.addColorStop(1, rgba(col, 0));
+      g.addColorStop(0, rgba(col, a)); g.addColorStop(0.6, rgba(col, a * 0.97)); g.addColorStop(0.85, rgba(col, a * 0.45)); g.addColorStop(1, rgba(col, 0));
       c.fillStyle = g; c.beginPath(); c.arc(px, py, r, 0, Math.PI * 2); c.fill();
     }
     // fire light on the underside of the column
