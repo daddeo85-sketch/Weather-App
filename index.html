@@ -1205,6 +1205,14 @@ var ROUTES = S.routes;
   }
 
   /* ---------------- Heat index (NWS formula) ---------------- */
+  // Feels-like the way the National Weather Service figures it: heat index at 80° and up,
+  // wind chill at 50° and below with wind, otherwise the air temperature.
+  function feelsF(T, RH, mph) {
+    if (T == null) return null;
+    if (T >= 80 && RH != null) return heatIndex(T, RH);
+    if (T <= 50 && mph > 3) { var v = Math.pow(mph, 0.16); return 35.74 + 0.6215 * T - 35.75 * v + 0.4275 * T * v; }
+    return T;
+  }
   function heatIndex(T, RH) {
     var HI = 0.5 * (T + 61 + (T - 68) * 1.2 + RH * 0.094);
     if ((HI + T) / 2 < 80) return (HI + T) / 2;
@@ -3177,10 +3185,10 @@ var ROUTES = S.routes;
   var DET = {
     feels: function () {
       var o = D.obs; if (!o) return ["Feels like", LOADING];
-      return ["Feels like", rows([["Air temperature", Math.round(o.tf) + "°"], ["Feels like", Math.round(o.feels) + "° (" + esc(o.feelsKind) + ")"], ["Humidity", o.rh != null ? Math.round(o.rh) + "%" : null], ["Wind", o.ws != null ? o.ws + " mph" : null]]) +
+      return ["Feels like", rows([["Air temperature", Math.round(o.tf) + "°"], ["Feels like", Math.round(o.feels) + "° (" + esc(o.feelsKind) + ")"], ["Humidity", o.rh != null ? Math.round(o.rh) + "%" : null], ["Wind", o.ws != null ? o.ws + " mph" : null], ["Rain today", D.rainToday != null ? rainAmt(D.rainToday) + " in" : null]]) +
         "<p>" + esc(o.feelsKind === "heat index" ? (hiNote(o.feels) || "Heat index adds the humidity to the temperature. It starts to matter at 80° and up.") :
           o.feelsKind === "wind chill" ? "Wind chill is how cold the wind makes it feel on bare skin." : "Right now it feels about like the thermometer reads.") + "</p>" +
-        "<h3>Next 12 hours</h3>" + hours("apparent_temperature", 12, function (v) { return Math.round(v) + "°"; })];
+        "<h3>Feels like, next 12 hours</h3>" + hours("temperature_2m", 12, function (v, k) { var h = D.om.hourly; return Math.round(feelsF(v, h.relative_humidity_2m[k], h.wind_speed_10m[k])) + "°"; })];
     },
     humidity: function () {
       var o = D.obs; if (!o) return ["Humidity", LOADING];
@@ -3329,7 +3337,7 @@ var ROUTES = S.routes;
   function loadRide() {
     getJSON("https://api.open-meteo.com/v1/forecast?latitude=" + S.lat + "&longitude=" + S.lon +
       "&current=temperature_2m,apparent_temperature,weather_code,precipitation,rain,showers,wind_speed_10m,wind_gusts_10m,wind_direction_10m,is_day" +
-      "&hourly=precipitation,precipitation_probability,weather_code,visibility,apparent_temperature,temperature_2m,wind_speed_10m,wind_gusts_10m" +
+      "&hourly=precipitation,precipitation_probability,weather_code,visibility,apparent_temperature,temperature_2m,relative_humidity_2m,wind_speed_10m,wind_gusts_10m" +
       "&daily=weather_code,temperature_2m_max,apparent_temperature_max,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,wind_gusts_10m_max,sunrise,sunset" +
       "&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=" + encodeURIComponent(TZ) + "&past_days=2&forecast_days=5").then(function (d) {
       D.ride = d; renderRide(); redrawDetail();
@@ -3396,7 +3404,7 @@ var ROUTES = S.routes;
     var l3 = sumP(i - 2, i), l6 = sumP(i - 5, i);
     var road = raining ? [heavy ? 2 : 1, "Wet and slick", "pavement and sidewalks wet and slick"] : l3 >= 0.1 ? [1, "Wet, puddles on the sidewalks", "wet pavement, puddles on the sidewalks"] : l3 > 0.01 ? [1, "Damp, slick in spots", "damp pavement, slick in spots"] : l6 >= 0.25 ? [1, "Drying, puddles in low spots", "puddles in low spots"] : [0, "Dry", "dry pavement"];
     var storm = isStorm(c.weather_code), gust = Math.round(c.wind_gusts_10m || 0), ws = Math.round(c.wind_speed_10m || 0);
-    var vis = vmi(h.visibility[i]), feel = Math.round(c.apparent_temperature), temp = Math.round(c.temperature_2m);
+    var vis = vmi(h.visibility[i]), feel = Math.round(feelsF(c.temperature_2m, h.relative_humidity_2m && h.relative_humidity_2m[i], c.wind_speed_10m)), temp = Math.round(c.temperature_2m);
     var st0 = SunCalc.getTimes(new Date(), HOME[0], HOME[1]), now = Date.now(), ss = st0.sunset.getTime(), sr = st0.sunrise.getTime(), dark = now >= ss || now < sr;
     var left = (ss - now) / 60000;
     var nowR = [road, storm ? [2, "Lightning in the area", "lightning nearby"] : raining ? [heavy ? 2 : 1, heavy ? "Heavy rain" : "Light rain", heavy ? "heavy rain" : "light rain"] : [0, "No rain", "no rain"],
@@ -3488,7 +3496,7 @@ var ROUTES = S.routes;
     if (!D.ride) return ["Go-karts and street riding", LOADING];
     var s = street(), h = D.ride.hourly, out = [];
     for (var j = s.i; j <= s.i + 6 && j < h.time.length; j++)
-      out.push([j === s.i ? "Now" : hourLabel(h.time[j]), (h.precipitation_probability[j] || 0) + "% rain · gusts " + Math.round(h.wind_gusts_10m[j] || 0) + " mph · feels " + Math.round(h.apparent_temperature[j]) + "°" + (isStorm(h.weather_code[j]) ? " · storms" : "")]);
+      out.push([j === s.i ? "Now" : hourLabel(h.time[j]), (h.precipitation_probability[j] || 0) + "% rain · gusts " + Math.round(h.wind_gusts_10m[j] || 0) + " mph · feels " + Math.round(feelsF(h.temperature_2m[j], h.relative_humidity_2m && h.relative_humidity_2m[j], h.wind_speed_10m[j])) + "°" + (isStorm(h.weather_code[j]) ? " · storms" : "")]);
     return ["Go-karts and street riding", '<div class="score ' + LV[s.lvNow][0] + '">' + LV[s.lvNow][1] + "</div><p>" + esc(s.lineNow) + "</p><p>" + esc(s.lineNext) + "</p>" +
       rows([["Rain, last 3 hours", inch(s.l3)], ["Rain, last 6 hours", inch(s.l6)]]) + "<h3>Hour by hour</h3>" + rows(out) +
       (on("electric") ? s.ev.map(function (x) { return "<p>⚡ " + esc(x[1]) + "</p>"; }).join("") : "") +
