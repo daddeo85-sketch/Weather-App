@@ -1,7 +1,7 @@
 // Full Send Weather: lets the app open like a regular app and load without signal.
 // The app's own files are fetched fresh from the internet first, so updates show up right away;
 // the saved copy is only used when there's no connection. Weather data is never saved here.
-var CACHE = "fullsend-weather-v45";
+var CACHE = "fullsend-weather-v46";
 var SHELL = ["./", "index.html", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "icons/apple-touch-icon.png"];
 self.addEventListener("install", function (e) {
   e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(SHELL); }).then(function () { return self.skipWaiting(); }));

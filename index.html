@@ -249,7 +249,9 @@ input[type=range] { width: 100%; accent-color: var(--accent); height: 26px; marg
 .routeinfo { font-weight: 600; margin-top: 6px; }
 .rmapwrap { height: 34vh; min-height: 220px; margin: 8px 0; }
 #rmap { position: absolute; inset: 0; background: var(--panel-solid); }
-.routeform input { width: 100%; }
+.routeform input { width: 100%; box-sizing: border-box; min-height: 42px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line);
+  background: var(--panel-solid); color: var(--fg); font: calc(16px * var(--fs)) var(--font); }
+.routeform .frow input { width: auto; }
 .rthead { align-items: center; flex-wrap: wrap; }
 .rtbtns { display: flex; gap: 6px; flex-wrap: wrap; }
 a.btn { text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
@@ -2308,6 +2310,8 @@ var ROUTES = S.routes;
   var hereAt = null;
   function hereNow() {
     if (hereAt && Date.now() - hereAt.t < 60000) return Promise.resolve(hereAt);
+    var tq = location.search.match(/testhere=(-?[\d.]+),(-?[\d.]+)/);   // preview only: ?testhere=lat,lon stands in for the phone's GPS
+    if (tq) return Promise.resolve({ label: "My location", lat: +tq[1], lon: +tq[2], here: true, t: Date.now() });
     return new Promise(function (ok, no) {
       if (!navigator.geolocation) { no({ code: 9 }); return; }
       navigator.geolocation.getCurrentPosition(function (p) { hereAt = { label: "My location", lat: +p.coords.latitude.toFixed(5), lon: +p.coords.longitude.toFixed(5), here: true, t: Date.now() }; ok(hereAt); }, no, { timeout: 15000, maximumAge: 60000 });
@@ -2328,7 +2332,13 @@ var ROUTES = S.routes;
         whereForm(false); curRoute = -2; routeButtons(); pickRoute(-2);
         setTimeout(function () { $("routeCard").scrollIntoView({ block: "start", behavior: "smooth" }); }, 60);
       }).catch(function (err) {
-        if (err && err.loc) { say("wtMsg", err.loc.code === 9 ? "This browser can't share its location." : locError(err.loc)); return; }
+        if (err && err.loc) {
+          var c = err.loc.code;
+          say("wtMsg", c === 9 ? "This browser can't share its location, so Where to? can't start from you. Use + Add route instead." :
+            c === 1 ? "Location is blocked for this app. Turn it on in your phone's settings for this site, then tap Go again." :
+            "Couldn't find where you are right now. Make sure location is on, then tap Go again.");
+          return;
+        }
         var m = String(err && err.message).match(/^notfound:(.*)$/);
         say("wtMsg", m ? "Couldn't find “" + m[1] + "”. Try adding the city, like 123 Main St, Stuart." : "Couldn't look that place up right now. Try again in a minute.");
       });
