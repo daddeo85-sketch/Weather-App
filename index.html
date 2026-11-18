@@ -4721,7 +4721,7 @@ var ROUTES = S.routes;
     }
     c.globalCompositeOperation = "source-over";
     // fire pouring out the back of both engines, streaming up behind the wings into the smoke trail
-    var roots = [[25.1, -7.6], [25.1, 7.6]];   // the back (exhaust end) of each engine
+    var roots = [[26.1, -7.6], [26.1, 7.6]];   // the back (exhaust end) of each engine
     c.globalCompositeOperation = "lighter";
     for (var e2 = 0; e2 < 18; e2++) {
       var age = (t * 0.0005 + e2 / 18) % 1, sp = roots[e2 % roots.length], q2 = P(sp[0] + 8 + age * 22, sp[1] + Math.sin(e2 * 5.3) * 3 * age + wind * age * 4);
@@ -4729,6 +4729,21 @@ var ROUTES = S.routes;
     }
     c.globalCompositeOperation = "source-over";
     var white = sh("#eef0f2"), whiteS = sh("#cfd3d8"), belly = sh("#a9afb6"), stripe = sh("#24406b"), fin = sh("#1f3a63"), grey = sh("#8a9199"), dark = "#121314";
+    // engines hang UNDER the wings, on the face we can't see: drawn before the wings so the wing covers them, only the back
+    // (exhaust) end of each pod sticks out past the trailing edge, with fire shooting out of it up into the smoke trail
+    roots.forEach(function (fp, j) {
+      var q = P(fp[0] + 2.5, fp[1]); fireGlow(c, q[0], q[1], 9 * p);
+      fireSheet(c, [P(fp[0] - 0.6, fp[1] - 1.2), P(fp[0] - 0.9, fp[1]), P(fp[0] - 0.6, fp[1] + 1.2)], (j ? 24 : 22) * p, t, 60 + j * 3.1, wind * 0.12 + ax * 1.5);
+    });
+    // engine pods slung under the wings on pylons, inlet toward the nose (down), exhaust end toward the tail (up)
+    [-7.6, 7.6].forEach(function (v) {
+      var pyl = P(22.6, v), eN = P(23.4, v), ei = P(20.7, v), ex = P(25.9, v), er = p;
+      c.fillStyle = sh("#5d646c"); c.beginPath(); c.ellipse(pyl[0], pyl[1], 0.45 * er, 2.0 * er, ang, 0, Math.PI * 2); c.fill();
+      c.fillStyle = grey; c.beginPath(); c.ellipse(eN[0], eN[1], 1.5 * er, 2.9 * er, ang, 0, Math.PI * 2); c.fill();
+      c.fillStyle = sh("#b7bcc2"); c.beginPath(); c.ellipse(eN[0] - bx * 0.5 * er, eN[1] - by * 0.5 * er, 0.5 * er, 2.4 * er, ang, 0, Math.PI * 2); c.fill();
+      c.fillStyle = dark; c.beginPath(); c.ellipse(ei[0], ei[1], 1.25 * er, 0.7 * er, ang, 0, Math.PI * 2); c.fill();
+      c.fillStyle = "rgba(15,12,10,0.8)"; c.beginPath(); c.ellipse(ex[0], ex[1], 1.0 * er, 0.55 * er, ang, 0, Math.PI * 2); c.fill();
+    });
     // far wing (foreshortened, behind the fuselage) and far stabilizer
     poly([[14, -2.6], [21.5, -2.6], [29.5, -19.5], [26.8, -19.8]], sh("#b4b9bf"));
     poly([[21.5, -2.6], [22.5, -2.6], [30, -19.3], [29.5, -19.5]], sh("#868c93"));
@@ -4762,20 +4777,6 @@ var ROUTES = S.routes;
     poly([[21.5, 2.6], [22.5, 2.6], [30, 19.3], [29.5, 19.5]], sh("#8f959c"));
     poly([[26.8, 19.8], [29.5, 19.5], [31.2, 20.6], [29.8, 21.4]], sh("#c3c7cc"));   // winglet
     poly([[33.5, 1.4], [38, 1.2], [42, 7.4], [40, 7.8]], whiteS);                   // near stabilizer
-    // fire shooting out of the back of each engine and streaming up toward the tail; drawn before the pods so the engine hides its base
-    roots.forEach(function (fp, j) {
-      var q = P(fp[0] + 2.5, fp[1]); fireGlow(c, q[0], q[1], 9 * p);
-      fireSheet(c, [P(fp[0] - 0.6, fp[1] - 1.2), P(fp[0] - 0.9, fp[1]), P(fp[0] - 0.6, fp[1] + 1.2)], (j ? 24 : 22) * p, t, 60 + j * 3.1, wind * 0.12 + ax * 1.5);
-    });
-    // engine pods slung under the wings on pylons, inlet toward the nose (down), exhaust end toward the tail (up)
-    [-7.6, 7.6].forEach(function (v) {
-      var pyl = P(21.6, v), eN = P(22.4, v), ei = P(19.7, v), ex = P(24.9, v), er = p;
-      c.fillStyle = sh("#5d646c"); c.beginPath(); c.ellipse(pyl[0], pyl[1], 0.45 * er, 2.0 * er, ang, 0, Math.PI * 2); c.fill();
-      c.fillStyle = grey; c.beginPath(); c.ellipse(eN[0], eN[1], 1.5 * er, 2.9 * er, ang, 0, Math.PI * 2); c.fill();
-      c.fillStyle = sh("#b7bcc2"); c.beginPath(); c.ellipse(eN[0] - bx * 0.5 * er, eN[1] - by * 0.5 * er, 0.5 * er, 2.4 * er, ang, 0, Math.PI * 2); c.fill();
-      c.fillStyle = dark; c.beginPath(); c.ellipse(ei[0], ei[1], 1.25 * er, 0.7 * er, ang, 0, Math.PI * 2); c.fill();
-      c.fillStyle = "rgba(15,12,10,0.8)"; c.beginPath(); c.ellipse(ex[0], ex[1], 1.0 * er, 0.55 * er, ang, 0, Math.PI * 2); c.fill();
-    });
   }
   // the morning after: the airliner nose-first in the ground at the end of the street, buried to the wing roots,
   // both wings torn off and lying where they were thrown, an engine in the grass, gray smoke smoldering off all of it
