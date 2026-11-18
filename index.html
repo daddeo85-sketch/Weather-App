@@ -1294,8 +1294,8 @@ var ROUTES = S.routes;
       var ws = p.windSpeed && p.windSpeed.value, wg = p.windGust && p.windGust.value, wd = p.windDirection && p.windDirection.value;
       D.windMph = ws != null ? Math.round(kmh2mph(ws)) : null; D.gustMph = wg ? Math.round(kmh2mph(wg)) : null; D.obs.ws = D.windMph;
       renderScore();
-      D.obsText = p.textDescription || ""; if (D.om) { rainAhead(); if (typeof homeLinks === "function") homeLinks(); }
-      if (window.SKY) { try { window.SKY.obs(p.textDescription || ""); if (ws != null) window.SKY.wind(kmh2mph(ws), wg ? kmh2mph(wg) : 0, wd); } catch (e) {} }
+      D.obsText = p.textDescription || ""; D.obsTime = new Date(p.timestamp).getTime(); if (D.om) { rainAhead(); if (typeof homeLinks === "function") homeLinks(); }
+      if (window.SKY) { try { window.SKY.obs(p.textDescription || "", Date.now() - D.obsTime < 90 * 60000); if (ws != null) window.SKY.wind(kmh2mph(ws), wg ? kmh2mph(wg) : 0, wd); } catch (e) {} }
       if (ws != null) {
         $("windNow").textContent = ws < 1 ? "Calm" : (wd != null ? dir16(wd) + " " : "") + Math.round(kmh2mph(ws)) + " mph";
         $("windNowSub").textContent = (wg ? "Gusts to " + Math.round(kmh2mph(wg)) + " mph" : "No gusts reported") +
@@ -2452,12 +2452,15 @@ var ROUTES = S.routes;
     var t8 = s8 < 0.01 ? "No rain expected in the next 8 hours." : "🌧 Rain expected in the next 8 hours: " + (s8 < 0.1 ? s8.toFixed(2) : s8.toFixed(2)) + " in";
     if ($("rain8")) $("rain8").textContent = t8;
   }
-  // Is it actually raining at your place right now? The radar over your spot and the airport's
-  // latest reading decide. The forecast model only counts until the radar has loaded.
+  // Is it actually raining at your place right now? The airport's rain gauge reading comes first.
+  // Light radar echoes often never reach the ground, so when the airport's latest reading (under
+  // 90 minutes old) says dry, only solid rain on the radar right over you counts.
+  // The forecast model is the last resort, when there's neither.
+  function obsFresh() { return !!D.obsText && D.obsTime && Date.now() - D.obsTime < 90 * 60000; }
   function rainingNow(modelSays) {
     if (/rain|drizzle|shower|thunder|t-storm/i.test(D.obsText || "")) return true;
-    if (D.radarFrac != null) return D.radarFrac >= 0.3;
-    if (D.obsText) return false;          // the airport reading says no rain, and there's no radar to say otherwise
+    if (D.radarFrac != null) return obsFresh() ? !!D.radarHeavy : D.radarFrac >= 0.3;
+    if (D.obsText) return false;
     return !!modelSays;
   }
   function isRainCodeW(code) { return (code >= 51 && code <= 67) || (code >= 80 && code <= 82) || code >= 95; }
@@ -4036,11 +4039,10 @@ var ROUTES = S.routes;
     if (WX.cover >= 85) k = "cloudy"; else if (WX.cover >= 35) k = "partly";
     if (/partly|few|scattered/.test(o)) k = "partly"; else if (/mostly cloudy|overcast|cloudy/.test(o)) k = "cloudy"; else if (/clear|fair|sunny/.test(o)) k = "clear";
     if (c === 45 || c === 48 || /fog|mist|haze/.test(o)) k = "fog";
-    // Raining right now: the airport's latest reading says so, or the current model hour has rain falling
-    // Falling rain only when it's really raining here: the radar over your spot or the airport says so.
+        // Falling rain only when it's really raining here: the radar over your spot or the airport says so.
     // The forecast model counts only until the radar has loaded.
     var modelRain = (c >= 51 && c <= 67) || (c >= 80 && c <= 82) || c >= 95 || WX.wet > 0, obsRain = /rain|drizzle|shower|thunder|t-storm/.test(o);
-    var wetHere = obsRain || (WX.radarOk ? WX.radar >= 0.3 : o ? false : modelRain);
+    var wetHere = obsRain || (WX.radarOk ? (WX.obsFresh && o ? WX.radarHeavy : WX.radar >= 0.3) : o ? false : modelRain);
     if (wetHere) k = "rain";
     if (/thunder|t-storm/.test(o) || (wetHere && c >= 95)) k = "storm";
     WX.kind = k;
@@ -4559,7 +4561,7 @@ var ROUTES = S.routes;
     },
     radar: function (frac, heavy) { WX.radar = frac; WX.radarHeavy = heavy; WX.radarOk = true; classify(); safeUpdate(); },
     wind: function (mph, gust, dir) { if (mph == null) return; WX.mph = Math.max(mph, 0.7 * (gust || 0)); WX.dir = dir; safeUpdate(); },
-    obs: function (text) { WX.obsText = text || ""; classify(); safeUpdate(); },
+    obs: function (text, fresh) { WX.obsText = text || ""; WX.obsFresh = !!fresh; classify(); safeUpdate(); },
     set: function (kind) { WX.kind = kind; safeUpdate(); }   // for testing: SKY.set("storm")
   };
   // A drawing hiccup in the street scene must never knock out the weather numbers
