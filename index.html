@@ -4671,7 +4671,7 @@ var ROUTES = S.routes;
     var roots = [[16.2, -7.6], [16.2, 7.6]];
     roots.forEach(function (fp, j) {
       var q = P(fp[0] + 4, fp[1]); fireGlow(c, q[0], q[1], 10 * p);
-      fireSheet(c, [P(fp[0], fp[1] - 1.4), P(fp[0] - 0.4, fp[1]), P(fp[0], fp[1] + 1.4)], (j ? 24 : 22) * p, t, 60 + j * 3.1, wind * 0.15 + ax * 1.5);
+      fireSheet(c, [P(fp[0], fp[1] - 2.2), P(fp[0] - 0.4, fp[1]), P(fp[0], fp[1] + 2.2)], (j ? 36 : 33) * p, t, 60 + j * 3.1, wind * 0.15 + ax * 1.5);
     });
     c.globalCompositeOperation = "lighter";
     for (var e2 = 0; e2 < 18; e2++) {
