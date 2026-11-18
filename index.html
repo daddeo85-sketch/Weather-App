@@ -4240,10 +4240,54 @@ var ROUTES = S.routes;
       c.fillStyle = "#0e0f11"; c.beginPath();                                                                          // curb opening
       c.moveTo(gx(e, z - 0.3), gy(z - 0.3, 0.015)); c.lineTo(gx(e, z + 1.3), gy(z + 1.3, 0.015)); c.lineTo(gx(e, z + 1.3), gy(z + 1.3, 0.075)); c.lineTo(gx(e, z - 0.3), gy(z - 0.3, 0.075)); c.closePath(); c.fill();
     });
+    // muddy four-wheeler ruts cut through the grass
+    var mudC = css(mix(hex("#4b3624"), [0, 0, 0], 1 - dim)), mudL = css(mix(hex("#7a5c3c"), [0, 0, 0], 1 - dim));
+    function rut(path, z1, z2, gap) {
+      function band(off, w, col, al) {
+        var Lp = [], Rp = [];
+        for (var zz = z1; zz <= z2 + 1e-6; zz += 0.35) { var X = path(zz) + off; Lp.push([gx(X - w, zz), gy(zz)]); Rp.push([gx(X + w, zz), gy(zz)]); }
+        c.globalAlpha = al; c.fillStyle = col; c.beginPath();
+        Lp.forEach(function (q, i) { if (i) c.lineTo(q[0], q[1]); else c.moveTo(q[0], q[1]); });
+        for (var i = Rp.length - 1; i >= 0; i--) c.lineTo(Rp[i][0], Rp[i][1]);
+        c.closePath(); c.fill();
+      }
+      band(0, gap / 2 + 0.45, mudL, 0.18); band(0, gap / 2 + 0.28, mudL, 0.22);     // churned dirt, soft at the edges
+      [-gap / 2, gap / 2].forEach(function (o) { band(o, 0.3, mudC, 0.3); band(o, 0.21, mudC, 0.55); band(o, 0.12, mudC, 0.6); });
+      c.globalAlpha = 1;
+    }
+    rut(function (z) { return H2 + 3.2 + 0.9 * Math.sin(z * 0.3); }, 1.2, 31, 1.1);
+    rut(function (z) { return -(H2 + 4.0 + 0.8 * Math.sin(z * 0.35)); }, 21.6, 33, 1.1);
     // lane lines: solid white edges, dashed yellow center
     c.fillStyle = rgba([235, 235, 230], n ? 0.45 : 0.85); quad(c, -H2 + 0.75, -H2 + 0.9, zn, zf - 4); quad(c, H2 - 0.9, H2 - 0.75, zn, zf - 4);
     c.fillStyle = rgba([242, 201, 76], n ? 0.55 : 0.9);
     for (var z = 1; z < zf - 6; z += 9) quad(c, -0.09, 0.09, Math.max(zn, z), z + 3);
+    // four-wheeler donuts burned into the middle of the street
+    function ring(cx, cz, r, hw) {
+      c.beginPath();
+      for (var s = 0; s <= 56; s++) { var a = s / 56 * Math.PI * 2, X = cx + (r + hw) * Math.cos(a), zz = cz + (r + hw) * Math.sin(a); if (s) c.lineTo(gx(X, zz), gy(zz)); else c.moveTo(gx(X, zz), gy(zz)); }
+      for (s = 56; s >= 0; s--) { a = s / 56 * Math.PI * 2; X = cx + (r - hw) * Math.cos(a); zz = cz + (r - hw) * Math.sin(a); c.lineTo(gx(X, zz), gy(zz)); }
+      c.closePath(); c.fill();
+    }
+    [[0.16, 0.14], [0.1, 0.22], [0.05, 0.3]].forEach(function (L) {
+      c.fillStyle = rgba([14, 12, 11], (n ? 1.2 : 1) * L[1]);
+      [[1.0, 10.2, 1.45], [1.5, 10.6, 1.6], [0.6, 10.5, 1.55], [1.1, 9.9, 1.35]].forEach(function (d) { ring(d[0], d[1], d[2], L[0]); ring(d[0], d[1], d[2] + 0.6, L[0]); });
+    });
+    // chalk outlines: a person in the street and an animal on the sidewalk
+    function chalk(pts, cx, cz, Y, sx, sz, lw) {
+      c.beginPath();
+      pts.forEach(function (q, i) { var X = cx + q[0] * sx, zz = cz + q[1] * sz; if (i) c.lineTo(gx(X, zz), gy(zz, Y)); else c.moveTo(gx(X, zz), gy(zz, Y)); });
+      c.closePath(); var w0 = Math.max(1, lw * pz(cz));
+      c.lineWidth = w0; c.setLineDash([w0 * 4, w0 * 0.8, w0 * 2, w0 * 0.6]); c.stroke();
+      c.save(); c.globalAlpha = 0.45; c.translate(0.6, 0.4); c.lineWidth = w0 * 0.7; c.setLineDash([w0 * 1.5, w0 * 1.2]); c.stroke(); c.restore();
+      c.setLineDash([]);
+    }
+    c.strokeStyle = rgba([240, 240, 234], n ? 0.5 : 0.78); c.lineJoin = "round"; c.lineCap = "round";
+    chalk([[-0.66, 0.07], [-0.58, 0.13], [-0.72, 0.36], [-0.8, 0.5], [-0.72, 0.55], [-0.5, 0.24], [-0.2, 0.15], [0.08, 0.14], [0.5, 0.3], [0.86, 0.36], [0.9, 0.27], [0.5, 0.17], [0.14, 0.02],
+      [0.5, -0.08], [0.9, -0.14], [0.88, -0.24], [0.46, -0.2], [0.06, -0.15], [-0.28, -0.15], [-0.42, -0.17], [-0.36, -0.46], [-0.42, -0.54], [-0.5, -0.5], [-0.6, -0.12], [-0.66, -0.06]], -1.2, 7.0, 0, 1, 1.4, 0.05);
+    var hd = []; for (var hI = 0; hI < 20; hI++) { var ha = hI / 20 * Math.PI * 2; hd.push([-0.8 + 0.14 * Math.cos(ha), 0.14 * Math.sin(ha)]); }
+    chalk(hd, -1.2, 7.0, 0, 1, 1.4, 0.05);
+    chalk([[-0.48, 0.05], [-0.42, 0.12], [-0.36, 0.2], [-0.32, 0.12], [-0.2, 0.1], [0.2, 0.12], [0.3, 0.1], [0.48, 0.2], [0.5, 0.17], [0.32, 0.05], [0.3, -0.02], [0.34, -0.2],
+      [0.28, -0.21], [0.22, -0.05], [0, -0.06], [-0.16, -0.22], [-0.22, -0.21], [-0.22, -0.05], [-0.38, -0.04], [-0.48, -0.01]], -(H2 + 1.15), 8.6, 0.1, 1.25, 1.6, 0.04);
     // light pools on the road (and their long reflections when it's wet)
     R.lamps = [];
     var glow = o.glow;
@@ -4322,8 +4366,10 @@ var ROUTES = S.routes;
     poly([[B, Z1, 0], [W, Z1, 0], [W, Z1, WH], [RX, Z1, RH], [B, Z1, WH]], wall);
     poly([[-16.0, Z1, 1.1], [-13.2, Z1, 1.1], [-13.2, Z1, 2.6], [-16.0, Z1, 2.6]], trim);
     poly([[-15.9, Z1, 1.2], [-13.3, Z1, 1.2], [-13.3, Z1, 2.5], [-15.9, Z1, 2.5]], glass);
-    var rf = shade("#4a4744", 0.05), ov = 0.5, th = 0.36;
-    poly([[B - ov, Z1 - 0.3, WH - ov * kL], [RX, Z1 - 0.3, RH + 0.02], [W + ov, Z1 - 0.3, WH + ov * kR], [W + ov, Z1 - 0.3, WH + ov * kR - th], [RX, Z1 - 0.3, RH - th], [B - ov, Z1 - 0.3, WH - ov * kL - th]], rf);
+    var rf = shade("#4a4744", 0.05), ov = 0.5, th = 0.42;
+    poly([[B - ov, Z1 - 0.3, WH - ov * kL], [RX, Z1 - 0.3, RH + 0.02], [W + ov, Z1 - 0.3, WH - ov * kR], [W + ov, Z1 - 0.3, WH - ov * kR - th], [RX, Z1 - 0.3, RH - th], [B - ov, Z1 - 0.3, WH - ov * kL - th]], rf);
+    // close the seam where the gable trim meets the roof slope at the peak
+    poly([[RX - 0.25, Z1 - 0.3, RH + 0.02 - 0.25 * kL], [RX, Z1 - 0.3, RH + 0.02], [RX, Z1 + 0.6, RH + 0.02], [RX + 0.25, Z1 + 0.6, RH + 0.02 - 0.25 * kR], [RX + 0.25, Z1 - 0.3, RH + 0.02 - 0.25 * kR]], rf);
     // deep front porch: slab, front edge, chairs, posts, railing and a roof
     var PZ1 = 13.2, PZ2 = 18.2, PH = 0.4;
     poly([[W, PZ1, PH], [PX, PZ1, PH], [PX, PZ2, PH], [W, PZ2, PH]], shade("#b9b2a5"));
@@ -4421,10 +4467,111 @@ var ROUTES = S.routes;
       });
       c.lineWidth = 1.1; c.stroke();
     }
+    drawPalms(c, t);
+    drawFire(c, t);
     drawFlag(c, t);
     if (WX.kind === "rain" || WX.kind === "storm" || (WX.wet || 0) > 0) gutterFlow(c, t);
     drawSignal(c, t);
     drawMyRide(c);
+  }
+  // ---- The house and the palms on fire: flickering flames, window glow and smoke drifting with the wind ----
+  function flame(c, x, y, w, h, t, sd, lean) {
+    var f = 0.78 + 0.16 * Math.sin(t * 0.011 + sd * 3.1) + 0.08 * Math.sin(t * 0.029 + sd * 7.3), H = h * f;
+    var tip = x + lean * H * 0.35 + Math.sin(t * 0.007 + sd * 5.7) * w * 0.35, wob = Math.sin(t * 0.013 + sd * 2.3) * w * 0.12;
+    // three layers: a deep red outer flame, an orange body, and a hot white-yellow core, each fading toward its tip
+    [[1, [190, 40, 12], [110, 20, 8], 0.8, "source-over"], [0.74, [255, 120, 25], [230, 60, 10], 0.85, "lighter"], [0.42, [255, 246, 205], [255, 190, 70], 0.95, "lighter"]].forEach(function (L) {
+      var ww = w * L[0], hh = H * L[0], tx = x + (tip - x) * L[0], g = c.createLinearGradient(0, y, 0, y - hh);
+      g.addColorStop(0, rgba(L[1], L[3])); g.addColorStop(0.55, rgba(L[2], L[3] * 0.75)); g.addColorStop(1, rgba(L[2], 0));
+      c.globalCompositeOperation = L[4]; c.fillStyle = g; c.beginPath(); c.moveTo(x - ww / 2, y);
+      c.bezierCurveTo(x - ww * 0.66 + wob, y - hh * 0.4, tx - ww * 0.25, y - hh * 0.72, tx, y - hh);
+      c.bezierCurveTo(tx + ww * 0.25, y - hh * 0.72, x + ww * 0.66 + wob, y - hh * 0.4, x + ww / 2, y);
+      c.closePath(); c.fill();
+    });
+    c.globalCompositeOperation = "source-over";
+  }
+  function embers(c, X, z, Y0, t, sd, size) {
+    var lean = slant(), p = pz(z);
+    c.globalCompositeOperation = "lighter";
+    for (var i = 0; i < 14; i++) {
+      var age = (t * 0.00035 + i / 14 + sd * 0.17) % 1, X2 = X + (Math.sin(i * 12.9 + sd) * 1.2 + lean * age * 5) * size + Math.sin(t * 0.004 + i) * 0.25 * size, Y = Y0 + age * 7 * size;
+      var r = Math.max(0.7, 0.05 * p * size) * (1 - age * 0.5), a = (1 - age) * (0.6 + 0.4 * Math.sin(t * 0.03 + i * 3));
+      c.fillStyle = rgba([255, 170 + 60 * (1 - age), 70], Math.max(0, a)); c.beginPath(); c.arc(gx(X2, z), gy(z, Y), r, 0, Math.PI * 2); c.fill();
+    }
+    c.globalCompositeOperation = "source-over";
+  }
+  function fireGlow(c, x, y, r) {
+    var g = c.createRadialGradient(x, y, 0, x, y, r), a = (R.night ? 0.38 : 0.16) * (0.85 + 0.15 * Math.sin(Date.now() * 0.009 + x));
+    g.addColorStop(0, rgba([255, 130, 40], a)); g.addColorStop(0.5, rgba([255, 100, 30], a * 0.4)); g.addColorStop(1, rgba([255, 90, 20], 0));
+    c.globalCompositeOperation = "lighter"; c.fillStyle = g; c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill(); c.globalCompositeOperation = "source-over";
+  }
+  function smoke(c, X, z, Y0, t, sd, size) {
+    var lean = slant(), col = R.night ? [48, 44, 42] : [58, 56, 58];
+    for (var i = 0; i < 12; i++) {
+      var age = (t * 0.00016 + i / 12 + sd * 0.13) % 1, X2 = X + lean * age * 9 * size + Math.sin(t * 0.0009 + i * 2.1 + sd) * 0.5 * size, Y = Y0 + age * 11 * size;
+      var p = pz(z), x = gx(X2, z), y = gy(z, Y), r = (0.7 + age * 2.8) * size * p, a = 0.55 * (1 - age) * Math.min(1, age * 5);
+      var g = c.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, rgba(col, a)); g.addColorStop(1, rgba(col, 0));
+      c.fillStyle = g; c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill();
+    }
+  }
+  function drawFire(c, t) {
+    var W = -10.8, RX = -14.6, Z1 = 11.2, WH = 3.6, RH = 6.3, lean = slant(), sd = 0;
+    function at(X, z, Y) { return [gx(X, z), gy(z, Y)]; }
+    var g0 = at(-13, 15.5, 4); fireGlow(c, g0[0], g0[1], 9 * pz(15.5));
+    var g1 = at(-8, 15, 0); c.save(); c.translate(g1[0], g1[1]); c.scale(1, 0.3); fireGlow(c, 0, 0, 10 * pz(15)); c.restore();
+    smoke(c, RX, 14, RH + 1.5, t, 1, 1.1); smoke(c, RX + 1.5, 18.5, RH, t, 4, 0.9);
+    // windows: glowing orange inside, flames licking up out of the top
+    function win(pts, X0, X1, z0, z1, top) {
+      var fl = 0.75 + 0.25 * Math.sin(t * 0.017 + X0 + z0), a = pts.map(function (q) { return at(q[0], q[1], q[2]); });
+      c.fillStyle = rgba([255, 120 + 60 * fl, 30], 0.92); c.beginPath(); a.forEach(function (q, i) { if (i) c.lineTo(q[0], q[1]); else c.moveTo(q[0], q[1]); }); c.closePath(); c.fill();
+      for (var k = 0; k < 3; k++) {
+        var f = (k + 0.5) / 3, X = X0 + (X1 - X0) * f, z = z0 + (z1 - z0) * f, q = at(X, z, top), p = pz(z), wd = Math.max(Math.abs(gx(X1, z1) - gx(X0, z0)), (z1 - z0) * p * 0.3) / 2.6;
+        flame(c, q[0], q[1] + 0.1 * p, Math.max(3, wd * 1.4), 1.5 * p, t, X0 * 3 + z0 + k * 1.7, lean);
+      }
+    }
+    win([[-15.9, Z1, 1.2], [-13.3, Z1, 1.2], [-13.3, Z1, 2.5], [-15.9, Z1, 2.5]], -15.9, -13.3, Z1, Z1, 2.5);
+    [[12.2, 13.5], [18.0, 19.3]].forEach(function (w) { win([[W, w[0], 1.15], [W, w[1], 1.15], [W, w[1], 2.5], [W, w[0], 2.5]], W, W, w[0], w[1], 2.5); });
+    // the roof: flames along the ridge and up the slope that faces the street
+    for (var i = 0; i < 7; i++) {
+      var z = 11.6 + i * 1.35, q = at(RX, z, RH), p = pz(z);
+      flame(c, q[0], q[1] + 0.15 * p, 1.5 * p, (2.2 + (i % 3) * 0.7) * p, t, i * 2.3, lean);
+    }
+    [[0.45, 13.2], [0.3, 15.9], [0.55, 18.4], [0.7, 16.8]].forEach(function (s2, j) {
+      var X = RX + (W - RX) * s2[0], Y = RH - (RH - WH) * s2[0], q = at(X, s2[1], Y), p = pz(s2[1]);
+      flame(c, q[0], q[1] + 0.1 * p, 1.2 * p, (1.4 + (j % 2) * 0.6) * p, t, 20 + j * 3.1, lean);
+    });
+    embers(c, RX, 14, RH + 1, t, 2, 1); embers(c, RX + 1, 18, RH, t, 5, 0.9);
+  }
+  var PALMS = [[24, 9.2, 8.2, -0.05], [18, 10.8, 8.8, 0.06], [13, 8.6, 7.6, -0.08]];   // far to near: z, X, height, lean
+  function drawPalms(c, t) {
+    var dim = R.dimv || 1, col = function (h) { return css(mix(hex(h), [0, 0, 0], 1 - dim)); }, wind = slant();
+    PALMS.forEach(function (P, n) {
+      var z = P[0], X = P[1], H = P[2], p = pz(z), x0 = gx(X, z), y0 = gy(z);
+      var sway = (wind * 0.35 + Math.sin(t * 0.0013 + n * 2) * 0.03) * H * p, tx = x0 + P[3] * H * p + sway * 0.4, ty = gy(z, H);
+      c.fillStyle = "rgba(0,0,0,0.25)"; c.beginPath(); c.ellipse(x0, y0, 0.9 * p, 0.22 * p, 0, 0, Math.PI * 2); c.fill();
+      // trunk: tapered and gently curved, with ring marks, scorched near the top
+      var bw = 0.24 * p, tw = 0.14 * p, mx = x0 + (tx - x0) * 0.25 + P[3] * H * p * 0.4, my = (y0 + ty) / 2;
+      var tg = c.createLinearGradient(0, y0, 0, ty); tg.addColorStop(0, col("#8a7052")); tg.addColorStop(0.6, col("#6e5840")); tg.addColorStop(1, col("#2c241c"));
+      c.fillStyle = tg; c.beginPath(); c.moveTo(x0 - bw, y0); c.quadraticCurveTo(mx - (bw + tw) / 2, my, tx - tw, ty); c.lineTo(tx + tw, ty); c.quadraticCurveTo(mx + (bw + tw) / 2, my, x0 + bw, y0); c.closePath(); c.fill();
+      c.strokeStyle = col("#4d3d2c"); c.lineWidth = Math.max(0.6, 0.03 * p); c.beginPath();
+      for (var r = 0.06; r < 0.97; r += 0.07) { var u = r, ix = (1 - u) * (1 - u) * x0 + 2 * (1 - u) * u * mx + u * u * tx, iy = (1 - u) * (1 - u) * y0 + 2 * (1 - u) * u * my + u * u * ty, hw = bw + (tw - bw) * u; c.moveTo(ix - hw, iy); c.lineTo(ix + hw, iy + 0.04 * p); }
+      c.stroke();
+      // fronds: drooping leaves, some green, some burnt brown
+      var L = 3.1 * p, angs = [-172, -145, -118, -92, -64, -36, -8, 160, 20];
+      angs.forEach(function (d, k) {
+        var a = d * Math.PI / 180, ex = tx + Math.cos(a) * L + sway * 0.25, ey = ty + Math.sin(a) * L * 0.45 + L * 0.55, cx = tx + Math.cos(a) * L * 0.55, cy = ty + Math.sin(a) * L * 0.45 * 0.6 - L * 0.32;
+        c.fillStyle = col(["#3d6a2a", "#2a2119", "#6f5a2e", "#4b7a32", "#2a2119", "#3d6a2a", "#5e4a26", "#33281d", "#4b7a32"][(k + n) % 9]);
+        c.beginPath(); c.moveTo(tx, ty); c.quadraticCurveTo(cx, cy - L * 0.1, ex, ey); c.quadraticCurveTo(cx, cy + L * 0.12, tx, ty + 0.12 * p); c.closePath(); c.fill();
+      });
+      // on fire: glow, smoke and flames in the crown and creeping down the trunk
+      fireGlow(c, tx, ty, 6 * p);
+      smoke(c, X + P[3] * H, z, H + 1.2, t, 7 + n * 3, 0.85);
+      embers(c, X + P[3] * H, z, H + 0.5, t, 11 + n * 2, 0.7);
+      for (var f = 0; f < 5; f++) flame(c, tx + (f - 2) * 0.45 * p, ty + (0.3 - Math.abs(f - 2) * 0.12) * p, 0.9 * p, (1.8 + (f % 2) * 0.9) * p, t, n * 9 + f * 1.9, wind);
+      [-150, -30].forEach(function (d, k) { var a = d * Math.PI / 180, fx = tx + Math.cos(a) * L * 0.6, fy = ty + Math.sin(a) * L * 0.25 + L * 0.2; flame(c, fx, fy, 0.6 * p, 1.1 * p, t, n * 5 + k * 4.4, wind); });
+      var tq = 0.8, fx = (1 - tq) * (1 - tq) * x0 + 2 * (1 - tq) * tq * mx + tq * tq * tx, fy = (1 - tq) * (1 - tq) * y0 + 2 * (1 - tq) * tq * my + tq * tq * ty;
+      flame(c, fx, fy, 0.4 * p, 1.0 * p, t, n * 7 + 3, wind);
+    });
   }
   // your photo parked on the street, in the right lane by the light
   function drawMyRide(c) {
