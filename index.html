@@ -4602,66 +4602,75 @@ var ROUTES = S.routes;
     });
     embers(c, RX, 14, RH + 1, t, 2, 1); embers(c, RX + 1, 18, RH, t, 5, 0.9);
   }
-  // an airliner crashed at the far end of the street: tail toward us, nose plowed in, broken behind the wing and burning,
-  // with the long smoke trail it left coming down out of the sky
+  // an airliner frozen a moment before impact at the far end of the street: nose straight down just above the road,
+  // seen three-quarter from below, burning at the wing roots and engines, a thick smoke trail rising straight up behind it
   function drawCrashedPlane(c, t) {
     var dim = Math.max(0.5, R.dimv || 1), sh = function (h) { return css(mix(hex(h), [0, 0, 0], 1 - dim)); };
-    var dir = [0.57, 0.82], side = [0.82, -0.57], C = [2, 37], Lf = 30, A0 = [C[0] - dir[0] * Lf / 2, C[1] - dir[1] * Lf / 2];
-    function at(sx, off, Y) { var X = A0[0] + dir[0] * Lf * sx + side[0] * off, z = A0[1] + dir[1] * Lf * sx + side[1] * off; return [gx(X, z), gy(z, Y), pz(z), X, z]; }
-    function Yc(sx) { return 4.4 - 2.3 * sx; }
-    function rad(sx) { return 2.0 * Math.max(0.25, Math.min(1, sx / 0.2)) * Math.min(1, Math.max(0.35, (1 - sx) / 0.1)); }
-    function poly(pts, col) { c.fillStyle = col; c.beginPath(); pts.forEach(function (q, i) { if (i) c.lineTo(q[0], q[1]); else c.moveTo(q[0], q[1]); }); c.closePath(); c.fill(); }
-    var wind = slant(), crash = at(0.55, 0, 2.5), smk = R.night ? [92, 88, 85] : [60, 58, 60];
-    // the smoke trail from high in the sky down to the wreck
-    var sx0 = -R.w * 0.05, sy0 = R.lift + (R.hy - R.lift) * 0.02, cx0 = R.w * 0.3, cy0 = R.lift + (R.hy - R.lift) * 0.12;
-    for (var k = 46; k >= 0; k--) {
-      var u = k / 46, x = (1 - u) * (1 - u) * crash[0] + 2 * (1 - u) * u * cx0 + u * u * sx0, y = (1 - u) * (1 - u) * crash[1] + 2 * (1 - u) * u * cy0 + u * u * sy0;
-      var r = (6 + u * 26) * Math.max(1, R.w / 500) + Math.sin(t * 0.0006 + k) * 2, a = 0.42 * (1 - u * 0.55);
-      x += wind * u * 40 + Math.sin(t * 0.0004 + k * 0.7) * 3 * u;
-      var g = c.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, rgba(smk, a)); g.addColorStop(1, rgba(smk, 0));
+    var Xn = 0.6, zn = 44, Yn = 2.2, Lf = 40, nose = [gx(Xn, zn), gy(zn, Yn)];
+    var p = Math.min(pz(zn), (nose[1] - R.lift * 0.35) / (Lf + 4)), ang = 0.09, ax = Math.sin(ang), ay = -Math.cos(ang), bx = Math.cos(ang), by = Math.sin(ang);
+    function P(u, v) { return [nose[0] + (ax * u + bx * v) * p, nose[1] + (ay * u + by * v) * p]; }   // u: metres up the fuselage from the nose, v: metres across
+    function poly(pts, col) { c.fillStyle = col; c.beginPath(); pts.forEach(function (q, i) { var a = P(q[0], q[1]); if (i) c.lineTo(a[0], a[1]); else c.moveTo(a[0], a[1]); }); c.closePath(); c.fill(); }
+    function rad(u) { return u < 4 ? 2.9 * Math.sqrt(Math.max(0, u / 4)) * (0.55 + 0.45 * u / 4) + (u > 0 ? 0 : 0) : u < 30 ? 2.9 : 2.9 * Math.max(0.18, 1 - (u - 30) / 11.5); }
+    var wind = slant(), smk = R.night ? [96, 90, 86] : [64, 62, 64], smkHot = R.night ? [130, 80, 50] : [80, 70, 64];
+    // smoke trail: a thick column climbing straight up out of the sky behind the plane, widening and drifting as it goes
+    var top = P(Lf, 0), sy1 = R.lift * -0.2;
+    for (var k = 40; k >= 0; k--) {
+      var u = k / 40, y = top[1] + (sy1 - top[1]) * u, x = top[0] + ax * (top[1] - y) * -1 + wind * u * u * 60 + Math.sin(t * 0.0005 + k * 0.9) * (3 + 8 * u);
+      var r = (5.5 + u * 9) * p + Math.sin(t * 0.0007 + k * 1.7) * 2, a = 0.55 * (1 - u * 0.4), col = mix(smkHot, smk, Math.min(1, u * 3));
+      var g = c.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, rgba(col, a)); g.addColorStop(0.6, rgba(col, a * 0.55)); g.addColorStop(1, rgba(col, 0));
       c.fillStyle = g; c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill();
     }
-    fireGlow(c, crash[0], crash[1], 30 * crash[2]);
-    smoke(c, crash[3], crash[4], 4, t, 21, 3.2); smoke(c, crash[3] + 4, crash[4] + 3, 3, t, 25, 2.6);
-    var white = sh("#eef0f2"), belly = sh("#b9bec4"), stripe = sh("#24406b"), fin = sh("#1f3a63"), grey = sh("#8e959d"), dark = "#121314";
-    function wing(sd, tipY, bend) {
-      var r1 = at(0.6, 0, Yc(0.6) - 1.0), r2 = at(0.44, 0, Yc(0.44) - 1.0);
-      var tTE = at(0.44 - 5 / Lf, sd * 14, tipY), tLE = at(0.44 - 3 / Lf, sd * 14, tipY + bend);
-      poly([r1, tLE, tTE, r2], sd > 0 ? sh("#d9dce0") : sh("#a9aeb4"));
-      var e = at(0.5 - 0.6 / Lf, sd * 5.2, Yc(0.5) - 2.3 + (tipY - Yc(0.5)) * 0.3), er = 1.15 * e[2];
-      c.fillStyle = grey; c.beginPath(); c.ellipse(e[0], e[1], er * 1.35, er, 0, 0, Math.PI * 2); c.fill();
-      c.fillStyle = dark; c.beginPath(); c.ellipse(e[0] - er * 0.25, e[1], er * 0.85, er * 0.7, 0, 0, Math.PI * 2); c.fill();
-      return e;
-    }
-    var eL = wing(-1, 0.4, 0.2);                                                  // far wing, dug into the ground
-    // fuselage: white with a dark blue cheatline, grey belly, a row of windows, scorched and split behind the wing
-    var N = 30, top = [], bot = [], mid = [], low = [];
-    for (var i = 0; i <= N; i++) { var sx = i / N, q = at(sx, 0, Yc(sx)), rr = rad(sx) * q[2]; top.push([q[0], q[1] - rr]); bot.push([q[0], q[1] + rr]); mid.push([q[0], q[1] - rr * 0.02]); low.push([q[0], q[1] + rr * 0.35]); }
-    poly(top.concat(bot.slice().reverse()), white);
-    poly(low.concat(bot.slice().reverse()), belly);
-    var st1 = [], st2 = []; for (i = 2; i <= N - 1; i++) { var sx2 = i / N, q2 = at(sx2, 0, Yc(sx2)), r2 = rad(sx2) * q2[2]; st1.push([q2[0], q2[1] - r2 * 0.08]); st2.push([q2[0], q2[1] + r2 * 0.1]); }
-    poly(st1.concat(st2.reverse()), stripe);
+    // fire light on the road under the nose and on the plane
+    var gl = c.createRadialGradient(nose[0], nose[1], 0, nose[0], nose[1], 30 * p), ga = R.night ? 0.32 : 0.14;
+    gl.addColorStop(0, rgba([255, 120, 40], ga)); gl.addColorStop(1, rgba([255, 90, 20], 0));
+    c.globalCompositeOperation = "lighter"; c.fillStyle = gl; c.beginPath(); c.ellipse(nose[0], nose[1] + 2 * p, 30 * p, 6 * p, 0, 0, Math.PI * 2); c.fill(); c.globalCompositeOperation = "source-over";
+    var white = sh("#eef0f2"), whiteS = sh("#cfd3d8"), belly = sh("#a9afb6"), stripe = sh("#24406b"), fin = sh("#1f3a63"), grey = sh("#8a9199"), dark = "#121314";
+    // far wing (foreshortened, behind the fuselage) and far stabilizer
+    poly([[15, -2.4], [21.5, -2.4], [27.5, -13.5], [25.2, -13.8]], sh("#9da3aa"));
+    poly([[34, -1.6], [38, -1.4], [41.2, -6.2], [39.4, -6.4]], sh("#9da3aa"));
+    var eF = P(14.5, -5.6); c.fillStyle = sh("#7c838b"); c.beginPath(); c.ellipse(eF[0], eF[1], 1.3 * p, 2.6 * p, ang, 0, Math.PI * 2); c.fill();
+    // fuselage: rounded nose at the bottom, tapering up to the tail
+    var L = [], Rr = [], Ls = [], Bl = [];
+    for (var i = 0; i <= 42; i++) { var uu = i, rr = rad(uu); L.push([uu, -rr]); Rr.push([uu, rr]); Ls.push([uu, -rr * 0.25]); Bl.push([uu, rr * 0.45]); }
+    poly(L.concat(Rr.slice().reverse()), white);
+    poly(Bl.concat(Rr.slice().reverse()), belly);                                  // belly in shade on the near side
+    var shd = c.createLinearGradient(P(0, -2.9)[0], 0, P(0, 2.9)[0], 0); shd.addColorStop(0, "rgba(0,0,0,0)"); shd.addColorStop(0.7, "rgba(0,0,0,0.08)"); shd.addColorStop(1, "rgba(0,0,0,0.3)");
+    poly(L.concat(Rr.slice().reverse()), shd);
+    var cl1 = [], cl2 = []; for (i = 3; i <= 37; i++) { var r3 = rad(i); cl1.push([i, -r3 * 0.42]); cl2.push([i, -r3 * 0.22]); }
+    poly(cl1.concat(cl2.slice().reverse()), stripe);                                // cheatline
     var lit = 0.6 + 0.4 * Math.sin(t * 0.013);
-    for (var wI = 0; wI < 30; wI++) {
-      var ws = 0.12 + wI * 0.025; if (Math.abs(ws - 0.55) < 0.03) continue;
-      var qw = at(ws, 0, Yc(ws)), rw = rad(ws) * qw[2], ww = Math.max(1, 0.35 * qw[2]), wh = Math.max(1.2, 0.5 * qw[2]);
-      c.fillStyle = ws > 0.4 && ws < 0.75 ? rgba([255, 150 + 60 * lit, 50], 0.95) : sh("#2a3340"); c.fillRect(qw[0] - ww / 2, qw[1] - rw * 0.36 - wh / 2, ww, wh);
+    for (var wI = 0; wI < 34; wI++) {
+      var wu = 5.5 + wI * 0.8; if (wu > 15.5 && wu < 16.8) continue;
+      var wq = P(wu, -rad(wu) * 0.58); c.fillStyle = wu > 13 && wu < 24 ? rgba([255, 150 + 60 * lit, 50], 0.95) : sh("#26303c");
+      c.beginPath(); c.ellipse(wq[0], wq[1], Math.max(0.8, 0.2 * p), Math.max(1, 0.28 * p), ang, 0, Math.PI * 2); c.fill();
     }
-    var sc = c.createLinearGradient(top[12][0], 0, top[22][0], 0); sc.addColorStop(0, "rgba(20,18,16,0)"); sc.addColorStop(0.5, "rgba(20,18,16,0.7)"); sc.addColorStop(1, "rgba(20,18,16,0)");
-    poly(top.slice(12, 23).concat(bot.slice(12, 23).reverse()), sc);                                    // soot
-    var b1 = at(0.55, 0, Yc(0.55)), br = rad(0.55) * b1[2];
-    poly([[b1[0] - br * 0.15, b1[1] - br * 1.05], [b1[0] + br * 0.25, b1[1] - br * 0.5], [b1[0] - br * 0.1, b1[1]], [b1[0] + br * 0.3, b1[1] + br * 0.5], [b1[0] - br * 0.05, b1[1] + br * 1.05], [b1[0] - br * 0.45, b1[1] + br * 0.3], [b1[0] - br * 0.2, b1[1] - br * 0.3]], dark);   // the break
-    var eR = wing(1, 5.6, 0.4);                                                   // near wing, snapped up
-    // tail: dark blue fin and the stabilizers
-    var f1 = at(0.02, 0, Yc(0.02) + rad(0.02) * 0.6), f2 = at(0.15, 0, Yc(0.15) + rad(0.15) * 0.9), f3 = at(0.06, 0, Yc(0.06) + 8.2), f4 = at(-0.02, 0, Yc(0.0) + 8.0);
-    poly([f1, f2, f3, f4], fin);
-    [-1, 1].forEach(function (sd) { poly([at(0.03, 0, Yc(0.03)), at(0.11, 0, Yc(0.11)), at(0.04, sd * 6.5, Yc(0.04) + 1.2 * sd), at(0.0, sd * 6.5, Yc(0.0) + 1.2 * sd)], sd > 0 ? sh("#d4d7db") : sh("#a3a8ae")); });
-    // fire: the split fuselage, the near wing root and both engines
-    [[0.55, 0, 2.2, 8.5, 3.6], [0.5, 2.5, 2.0, 6, 3], [0.6, -2, 2.2, 7, 3], [0.68, 0, 2.5, 5, 2.4]].forEach(function (fp, j) {
-      var q = at(fp[0], fp[1], Yc(fp[0]) - fp[2] + 2.2), pp = q[2]; flame(c, q[0], q[1], fp[4] * pp, fp[3] * pp, t, 40 + j * 3.3, wind);
-    });
-    [eL, eR].forEach(function (e, j) { flame(c, e[0], e[1], 2.2 * e[2], 5 * e[2], t, 50 + j * 2.2, wind); });
-    embers(c, crash[3], crash[4], 5, t, 23, 2.2);
+    poly([[1.6, -1.9], [2.2, -1.9], [2.6, -0.6], [1.9, -0.5]], sh("#1c242e"));    // cockpit glass
+    poly([[1.6, -0.3], [2.0, -0.2], [2.3, 0.8], [1.7, 0.6]], sh("#1c242e"));
+    var sc = c.createLinearGradient(P(12, 0)[0], P(12, 0)[1], P(28, 0)[0], P(28, 0)[1]);
+    sc.addColorStop(0, "rgba(18,16,14,0)"); sc.addColorStop(0.45, "rgba(18,16,14,0.65)"); sc.addColorStop(1, "rgba(18,16,14,0.15)");
+    poly(L.slice(12, 33).concat(Rr.slice(12, 33).reverse()), sc);                   // soot streaked up the body
+    // tail fin standing off the top side, toward the far side
+    poly([[31, -2.2], [39.5, -1.2], [44.5, -8.6], [40.5, -9.0]], fin);
+    poly([[39.5, -1.2], [40.6, -0.6], [45.2, -8.2], [44.5, -8.6]], sh("#16294a"));
+    // near wing swept back (up), with its engine hanging forward of it
+    poly([[14, 2.6], [21.5, 2.6], [29.5, 19.5], [26.8, 19.8]], whiteS);
+    poly([[21.5, 2.6], [22.5, 2.6], [30, 19.3], [29.5, 19.5]], sh("#8f959c"));
+    poly([[26.8, 19.8], [29.5, 19.5], [31.2, 20.6], [29.8, 21.4]], sh("#c3c7cc"));   // winglet
+    poly([[33.5, 1.4], [38, 1.2], [42, 7.4], [40, 7.8]], whiteS);                   // near stabilizer
+    var eN = P(13.8, 7.6), er = p;
+    c.fillStyle = sh("#5d646c"); c.beginPath(); c.ellipse(P(16.5, 7.4)[0], P(16.5, 7.4)[1], 0.5 * er, 2 * er, ang, 0, Math.PI * 2); c.fill();   // pylon
+    c.fillStyle = grey; c.beginPath(); c.ellipse(eN[0], eN[1], 1.55 * er, 3.0 * er, ang, 0, Math.PI * 2); c.fill();
+    var ei = P(11.6, 7.6); c.fillStyle = dark; c.beginPath(); c.ellipse(ei[0], ei[1], 1.25 * er, 0.75 * er, ang, 0, Math.PI * 2); c.fill();
+    // fire: the wing roots, both engines and a tear in the belly, the flames streaming up and back as it falls
+    var roots = [[17, -2.6, 9, 3.4], [18, 2.8, 11, 3.8], [20, 0.6, 8, 3.0], [15.2, 7.6, 7, 2.4], [16, -5.6, 6, 2.0], [25, 1.2, 5, 2.2]];
+    roots.forEach(function (fp, j) { var q = P(fp[0], fp[1]); fireGlow(c, q[0], q[1], fp[2] * 1.4 * p); flame(c, q[0], q[1] + 0.8 * p, fp[3] * p, fp[2] * p, t, 60 + j * 3.1, wind * 0.4 + ax * 2); });
+    var pb = P(20, 0); smoke(c, Xn + 1, zn, 22, t, 27, 2.4);
+    c.globalCompositeOperation = "lighter";
+    for (var e2 = 0; e2 < 18; e2++) {
+      var age = (t * 0.0005 + e2 / 18) % 1, sp = roots[e2 % roots.length], q2 = P(sp[0] + age * 22, sp[1] + Math.sin(e2 * 5.3) * 3 * age + wind * age * 4);
+      c.fillStyle = rgba([255, 180 + 50 * (1 - age), 80], (1 - age) * 0.9); c.beginPath(); c.arc(q2[0], q2[1], Math.max(0.8, 0.22 * p * (1 - age * 0.5)), 0, Math.PI * 2); c.fill();
+    }
+    c.globalCompositeOperation = "source-over";
   }
   var PALMS = [[24, 9.2, 11.5, 0.02], [18, 10.8, 12.5, 0.04], [14, 8.8, 10.5, -0.02]];   // far to near: z, X, height, lean
   // a white pickup nosed into the nearest light pole, facing us: grille and front end crushed around the pole and on fire,
