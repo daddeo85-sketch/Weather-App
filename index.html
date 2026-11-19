@@ -1349,7 +1349,7 @@ var ROUTES = S.routes;
     var hl = D.hl || [null, null], p = [];
     if (hl[0] != null) p.push("High " + hl[0] + "°");
     if (hl[1] != null) p.push("Low " + hl[1] + "°");
-    if (D.rainToday != null) p.push("Rain " + rainAmt(D.rainToday) + " in");
+    if (D.rainToday != null) p.push("Rain " + rainAmt(D.rainToday) + " in rest of day");
     $("hilo").textContent = p.join(" · ");
   }
   // Hour-by-hour rain: [{t: start of the hour (ms), key: "2026-11-19T07:00", amt: inches, pop: % chance}].
@@ -1379,7 +1379,7 @@ var ROUTES = S.routes;
   }
   function rainSum(from, to) { var hr = rainHours(); if (!hr || hr === "fail") return null; var s = 0, any = false; hr.forEach(function (x) { if (x.t >= from && x.t < to) { s += x.amt; any = true; } }); return any ? s : null; }
   function periodRain(x) { return x && x.startTime ? rainSum(Date.parse(x.startTime), Date.parse(x.endTime)) : null; }
-  function rainRefresh() { rainAhead(); renderPeriods(); rainDay(); redrawDetail(); if (typeof homeLinks === "function") homeLinks(); }
+  function rainRefresh() { rainAhead(); renderPeriods(); rainDay(); if (D.ride && typeof renderRide === "function") renderRide(); redrawDetail(); if (typeof homeLinks === "function") homeLinks(); }
   function rainSrc() { return D.grid ? "National Weather Service forecast" : "Open-Meteo forecast (the Weather Service's wasn't loading)"; }
   // bar graph of rain by hour: bars are inches, the % under each hour is the chance
   function rainGraph(cols) {
@@ -1419,11 +1419,11 @@ var ROUTES = S.routes;
       $("rainDayRow").innerHTML = '<p class="err">Couldn\'t load the rain forecast. Tap reload to try again.</p>';
       return;
     }
-    var m0 = etMidnight().getTime(), tot = rainSum(m0, m0 + 86400000) || 0;
-    D.rainToday = tot; setHilo();
-    if ($("popSub")) $("popSub").textContent = tot >= 0.01 ? rainIn(tot) + " in today" : "No rain today";
-    if (!box) return;
     var h0 = Date.now() - (Date.now() % 3600000);       // start of this hour
+    var m0 = etMidnight().getTime(), tot = rainSum(h0, m0 + 86400000) || 0;   // from this hour to midnight, so hours already gone don't count
+    D.rainToday = tot; setHilo();
+    if ($("popSub")) $("popSub").textContent = tot >= 0.01 ? rainIn(tot) + " in rest of today" : "No rain rest of today";
+    if (!box) return;
     var cols = hr.filter(function (q) { return q.t >= h0; }).slice(0, 12), sum = 0;
     cols.forEach(function (q) { sum += q.amt; });
     if (!cols.length) { box.hidden = false; $("rainDayHead").innerHTML = "<h3>Rain next 12 hours</h3>"; $("rainDayRow").innerHTML = '<p class="err">Couldn\'t load the rain forecast. Tap reload to try again.</p>'; return; }
@@ -2092,7 +2092,9 @@ var ROUTES = S.routes;
       svg += '<line x1="' + X(now).toFixed(1) + '" x2="' + X(now).toFixed(1) + '" y1="' + (T - 10) + '" y2="' + (H - B) + '" stroke="#e24a3b" stroke-width="1.5" stroke-dasharray="3 3"/>' +
         '<text x="' + X(now).toFixed(1) + '" y="' + (T - 13) + '" font-size="10" font-weight="700" text-anchor="middle" fill="#e24a3b">Now</text>';
       $("tidechart").innerHTML = svg;
-    }).catch(function () {});
+    }).catch(function () {
+      $("tidechart").innerHTML = '<text x="170" y="90" font-size="12" text-anchor="middle" fill="currentColor">Couldn\'t draw the tide chart. Tap reload.</text>';
+    });
   }
 
   /* ---------------- Traffic ---------------- */
@@ -2492,7 +2494,7 @@ var ROUTES = S.routes;
         if (closed && g.type === "LineString") L.polyline(g.coordinates.map(function (q) { return [q[1], q[0]]; }), { color: "#8e44ad", weight: 6, opacity: 0.85, dashArray: "8 6" }).bindPopup(pop).addTo(tClosed);
         L.marker([c[1], c[0]], { icon: L.divIcon({ className: "", html: html, iconSize: [30, 30], iconAnchor: [15, 15] }) }).bindPopup(pop).addTo(closed ? tClosed : tIncidents);
       });
-    }).catch(function () {});
+    }).catch(function () { var m = $("tLyrMsg"); m.hidden = false; m.textContent = "Couldn't load crashes and closures right now. Tap reload to try again."; });
   }
 
   /* ---------------- Shared readings ---------------- */
@@ -2563,30 +2565,30 @@ var ROUTES = S.routes;
     return pick(mins < 75 ? SUP_SOON : SUP).replace("{t}", hourLabel(D.rainEnd));
   }
   function loadWaterTemp() {
-    var list = [], jobs = [];
+    var list = [], jobs = [], fails = 0;
     if (S.wt) jobs.push(getJSON("https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?product=water_temperature&date=latest&units=english&time_zone=lst_ldt&format=json&application=WeatherApp&station=" + encodeURIComponent(S.wt.id)).then(function (d) {
       var x = (d.data || [])[0]; if (!x || x.v === "" || isNaN(+x.v)) return;
       var age = Date.now() - new Date(x.t.replace(" ", "T")).getTime();
       if (age > 6 * 3600000) return;
       list.push({ r: 1, src: S.wt.name + " (NOAA)", f: Math.round(+x.v), when: "As of " + hm(x.t) });
-    }).catch(function () {}));
+    }).catch(function () { fails++; }));
     if (S.buoy) jobs.push(buoyFeed().then(function (d) {
       var b = d && (d.buoys || []).filter(function (x) { return x.id === S.buoy.id; })[0];
       if (b && b.wtf != null && Date.now() - new Date(b.t).getTime() < 3 * 3600000)
         list.push({ r: 2, src: (S.buoy.name || "Buoy " + S.buoy.id) + " (offshore)", f: b.wtf, when: "As of " + fmtTime.format(new Date(b.t)) });
-    }));
+    }).catch(function () { fails++; }));
     var wp = S.buoy ? [S.buoy.lat, S.buoy.lon] : HOME;
     jobs.push(getJSON("https://marine-api.open-meteo.com/v1/marine?latitude=" + wp[0] + "&longitude=" + wp[1] + "&current=sea_surface_temperature&timezone=" + encodeURIComponent(TZ)).then(function (d) {
       var v = d.current && d.current.sea_surface_temperature; if (v == null) return;
       var unit = (d.current_units && d.current_units.sea_surface_temperature) || "°C";
       list.push({ r: 3, src: "Ocean model estimate (Open-Meteo)", f: Math.round(/F/.test(unit) ? v : c2f(v)), when: "" });
-    }).catch(function () {}));
+    }).catch(function () { fails++; }));
     Promise.all(jobs).then(function () {
       list.sort(function (a, b) { return a.r - b.r; });
       D.wt = { list: list };
       var b = list[0];
       $("wtNow").textContent = b ? b.f + "°" : "--";
-      $("wtSub").textContent = b ? b.src : "No reading right now";
+      $("wtSub").textContent = b ? b.src : fails === jobs.length ? "Couldn't load. Tap reload." : "No reading right now";
       homeLinks();
     });
   }
@@ -3289,7 +3291,7 @@ var ROUTES = S.routes;
   var DET = {
     feels: function () {
       var o = D.obs; if (!o) return ["Feels like", LOADING];
-      return ["Feels like", rows([["Air temperature", Math.round(o.tf) + "°"], ["Feels like", Math.round(o.feels) + "° (" + esc(o.feelsKind) + ")"], ["Humidity", o.rh != null ? Math.round(o.rh) + "%" : null], ["Wind", o.ws != null ? o.ws + " mph" : null], ["Rain today", D.rainToday != null ? rainAmt(D.rainToday) + " in" : null]]) +
+      return ["Feels like", rows([["Air temperature", Math.round(o.tf) + "°"], ["Feels like", Math.round(o.feels) + "° (" + esc(o.feelsKind) + ")"], ["Humidity", o.rh != null ? Math.round(o.rh) + "%" : null], ["Wind", o.ws != null ? o.ws + " mph" : null], ["Rain rest of today", D.rainToday != null ? rainAmt(D.rainToday) + " in" : null]]) +
         "<p>" + esc(o.feelsKind === "heat index" ? (hiNote(o.feels) || "Heat index adds the humidity to the temperature. It starts to matter at 80° and up.") :
           o.feelsKind === "wind chill" ? "Wind chill is how cold the wind makes it feel on bare skin." : "Right now it feels about like the thermometer reads.") + "</p>" +
         "<h3>Feels like, next 12 hours</h3>" + (D.nwsH && D.nwsH.length ? '<div class="periods hrs">' + D.nwsH.map(function (x) {
@@ -3473,6 +3475,16 @@ var ROUTES = S.routes;
   function isStorm(code) { return code >= 95; }
   function isRainCode(code) { return (code >= 51 && code <= 67) || (code >= 80 && code <= 82) || code >= 95; }
   function windWord(m) { return m < 10 ? "light wind" : m < 18 ? "breezy" : "windy"; }
+  // Rain for one off-road day: the Weather Service grid when it covers the whole day, else Open-Meteo
+  function dayRainNws(k) {
+    var t = todayIdx(); if (k < t || !D.grid) return null;
+    var m0 = etMidnight().getTime() + (k - t) * 864e5, hr = rainHours();
+    if (!hr || hr === "fail" || !hr.some(function (x) { return x.t >= m0 + 23 * 36e5; })) return null;
+    var s = 0, pop = 0; hr.forEach(function (x) { if (x.t >= Math.max(m0, k === t ? Date.now() - Date.now() % 36e5 : m0) && x.t < m0 + 864e5) { s += x.amt; pop = Math.max(pop, x.pop || 0); } });
+    return { amt: s, pop: pop };
+  }
+  function dayRain(k) { var n = dayRainNws(k); return n ? n.amt : D.ride.daily.precipitation_sum[k] || 0; }
+  function dayPop(k) { var n = dayRainNws(k); return n ? n.pop : D.ride.daily.precipitation_probability_max[k] || 0; }
   function todayIdx() { var dd = D.ride.daily, t = ymd(new Date()), k = dd.time.indexOf(t); return k < 0 ? 2 : k; }
 
   // Off-road riding score for one day. k is the daily index (0-1 are the past two days).
@@ -3489,11 +3501,11 @@ var ROUTES = S.routes;
       else if (left < 60) r.push([2, "under an hour of daylight left", "Daylight"]);
       else if (left < 150) r.push([1, Math.floor(left / 60) + " hr " + Math.round(left % 60) + " min of daylight left", "Daylight"]);
     } else {
-      var prev = dd.precipitation_sum[k - 1] || 0;
+      var prev = dayRain(k - 1);
       wet = prev >= 0.5 ? 2 : prev >= 0.15 ? 1 : 0;
       r.push([wet, wet === 2 ? "muddy from the day before (" + prev.toFixed(2) + " in)" : wet === 1 ? "soft spots from rain the day before" : "dry track", "Track"]);
     }
-    var pp = dd.precipitation_probability_max[k] || 0;
+    var pp = dayPop(k);
     if (isStorm(dd.weather_code[k])) r.push([2, "thunderstorms in the forecast", "Storms"]);
     r.push([pp >= 60 ? 2 : pp >= 30 ? 1 : 0, pp + "% rain chance", "Rain"]);
     var g = Math.round(dd.wind_gusts_10m_max[k] || 0), w = Math.round(dd.wind_speed_10m_max[k] || 0);
@@ -3565,7 +3577,7 @@ var ROUTES = S.routes;
       $("rideBody").innerHTML = '<div class="score ' + td.cls + '">' + esc(td.label) + '</div><p class="rideline">' + esc(td.line) + ".</p>" +
         '<div class="tiles">' + days.map(function (x) {
           return '<div class="tile" data-d="rday:' + x[0] + '" role="button" tabindex="0"><div class="k">' + esc(dayName(x[0])) + '</div><div class="v ' + x[1].cls + 'v">' + esc(x[1].label) + '</div><div class="s">' +
-            esc(x[1].reasons.filter(function (r) { return r[0] === x[1].lv; }).slice(0, 2).map(function (r) { return r[1]; }).join(", ")) + '</div><div class="s rainamt">Rain ' + rainAmt(D.ride.daily.precipitation_sum[x[0]]) + " in</div></div>";
+            esc(x[1].reasons.filter(function (r) { return r[0] === x[1].lv; }).slice(0, 2).map(function (r) { return r[1]; }).join(", ")) + '</div><div class="s rainamt">Rain ' + rainAmt(dayRain(x[0])) + " in" + (x[0] === t ? " rest of day" : "") + "</div></div>";
         }).join("") + "</div>";
       var s = street(), L = ["Road", "Rain and lightning", "Wind", "Visibility", "Temperature", "Daylight"];
       $("streetBody").innerHTML = '<div class="score ' + LV[s.lvNow][0] + '">' + LV[s.lvNow][1] + '</div><p class="rideline">' + esc(s.lineNow) + "</p><p>" + esc(s.lineNext) + "</p>" +
@@ -3621,7 +3633,7 @@ var ROUTES = S.routes;
     if (!D.ride) return ["Riding weather", LOADING];
     var x = rideDay(k), dd = D.ride.daily;
     return [dayName(k) + ": riding weather", '<div class="score ' + x.cls + '">' + x.label + "</div><p>" + esc(x.line) + ".</p>" +
-      rows(x.reasons.map(function (r) { return [r[2], '<span class="' + LV[r[0]][0] + 'v">' + esc(r[1]) + "</span>"]; }).concat([["Sunset", fmtTime.format(SunCalc.getTimes(new Date(Date.now() + (k - todayIdx()) * 864e5), HOME[0], HOME[1]).sunset)], ["Rain expected", inch(dd.precipitation_sum[k] || 0)]])) +
+      rows(x.reasons.map(function (r) { return [r[2], '<span class="' + LV[r[0]][0] + 'v">' + esc(r[1]) + "</span>"]; }).concat([["Sunset", fmtTime.format(SunCalc.getTimes(new Date(Date.now() + (k - todayIdx()) * 864e5), HOME[0], HOME[1]).sunset)], [k === todayIdx() ? "Rain expected, rest of today" : "Rain expected", inch(dayRain(k))]])) +
       '<p class="small">Bad if the track is soaked (half an inch of rain in a day), storms, a 60% rain chance, gusts over 40 mph or a heat index over 105°. Sandy tracks drain fast, clay ones don\'t, so check the track too.</p>'];
   }
   function stormDetail(s) {
