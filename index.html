@@ -940,7 +940,7 @@ select { max-width: 100%; text-overflow: ellipsis; }
     <div class="content">
     <div class="streetgap" aria-hidden="true"></div>
     <section class="card">
-      <div class="card-head"><h2 id="padTitle">Kennedy Space Center</h2><span class="small" id="padSub">Your launch pad</span></div>
+      <div class="card-head"><h2 id="padTitle">Cape Canaveral and Kennedy</h2><span class="small" id="padSub">Your launch pad</span></div>
       <div class="frow padpick"><label class="small" for="padPick">Launch pad</label><select id="padPick"><option value="near">Near me (250 miles)</option></select></div>
       <ul class="events" id="launchNear"><li><span class="muted">Loading launches…</span></li></ul>
     </section>
@@ -1305,17 +1305,12 @@ var ROUTES = S.routes;
         $("dewSub").textContent = dpf < 55 ? "Dry and comfortable" : dpf < 62 ? "Comfortable" : dpf < 66 ? "A little sticky" : dpf < 71 ? "Sticky" : "Muggy";
       }
       var ws = p.windSpeed && p.windSpeed.value, wg = p.windGust && p.windGust.value, wd = p.windDirection && p.windDirection.value;
-      D.windMph = ws != null ? Math.round(kmh2mph(ws)) : null; D.gustMph = wg ? Math.round(kmh2mph(wg)) : null; D.obs.ws = D.windMph;
-      renderScore();
+      D.obsWind = ws != null ? { ws: Math.round(kmh2mph(ws)), wg: wg ? Math.round(kmh2mph(wg)) : null, wd: wd, t: Date.parse(p.timestamp) } : null;
+      windNowRender();
       D.obsText = p.textDescription || ""; D.obsTime = new Date(p.timestamp).getTime(); if (D.om) { rainAhead(); if (typeof homeLinks === "function") homeLinks(); }
-      if (window.SKY) { try { window.SKY.obs(p.textDescription || "", Date.now() - D.obsTime < 90 * 60000); if (ws != null) window.SKY.wind(kmh2mph(ws), wg ? kmh2mph(wg) : 0, wd); } catch (e) {} }
-      if (ws != null) {
-        $("windNow").textContent = ws < 1 ? "Calm" : (wd != null ? dir16(wd) + " " : "") + Math.round(kmh2mph(ws)) + " mph";
-        $("windNowSub").textContent = (wg ? "Gusts to " + Math.round(kmh2mph(wg)) + " mph" : "No gusts reported") +
-          (wd != null && ws >= 1 ? " · from the " + DIRWORD[Math.round(wd / 45) % 8] : "");
-      } else { $("windNow").textContent = "--"; $("windNowSub").textContent = "Wind sensor not reporting"; }
+      if (window.SKY) { try { window.SKY.obs(p.textDescription || "", Date.now() - D.obsTime < 90 * 60000); } catch (e) {} }
       $("obsTime").textContent = "As of " + fmtTime.format(new Date(p.timestamp));
-    }).catch(function () { $("cond").textContent = "Current conditions unavailable"; });
+    }).catch(function () { $("cond").textContent = "Current conditions unavailable"; D.obsFail = true; windNowRender(); });
 
     nws("/gridpoints/" + S.office + "/" + S.gx + "," + S.gy + "/forecast").then(function (d) {
       var per = d.properties.periods || [];
@@ -1331,9 +1326,10 @@ var ROUTES = S.routes;
     // Rain amounts and chances, hour by hour, from the Weather Service's own forecast grid (the forecast on weather.gov)
     gridData().then(function (gp) {
       D.grid = { qpf: nwsSeries(gp.quantitativePrecipitation), pop: nwsSeries(gp.probabilityOfPrecipitation) }; D.gridFail = false;
+      D.gridWind = { s: nwsSeries(gp.windSpeed), g: nwsSeries(gp.windGust), d: nwsSeries(gp.windDirection) }; windNowRender();
       if (!D.grid.qpf.length) throw new Error("no rain grid");
       rainRefresh();
-    }).catch(function () { D.grid = null; D.gridFail = true; rainRefresh(); });
+    }).catch(function () { D.grid = null; D.gridFail = true; D.windFcFail = true; windNowRender(); rainRefresh(); });
     // The Weather Service's own hour-by-hour forecast, so the hourly temperatures match the high, low and current reading
     nws("/gridpoints/" + S.office + "/" + S.gx + "," + S.gy + "/forecast/hourly").then(function (d) {
       D.nwsH = (d.properties.periods || []).filter(function (x) { return new Date(x.endTime).getTime() > Date.now(); }).slice(0, 12);
@@ -1453,15 +1449,43 @@ var ROUTES = S.routes;
   var GRIDP = null;   // the Weather Service forecast grid for your spot, fetched once per load and shared
   function gridData() { if (!GRIDP) GRIDP = nws("/gridpoints/" + S.office + "/" + S.gx + "," + S.gy).then(function (d) { return d.properties; }); return GRIDP; }
   function nwsSeries(x) { return ((x && x.values) || []).map(function (v) { var a = v.validTime.split("/"), t0 = Date.parse(a[0]); return [t0, t0 + durMs(a[1]), v.value]; }); }
+  // "Wind now": the airport's measured wind, unless it reads calm or nothing while the Weather Service
+  // forecast for this hour says it's windy (the inland airport sensors often read calm when the coast is blowing).
+  // Then the forecast for this hour is shown, labeled as the forecast, with what the airport reads.
+  function windNowRender() {
+    if (!$("windNow")) return;
+    var a = D.obsWind && D.obsWind.ws >= 1 ? D.obsWind : (D.lastWind && Date.now() - D.lastWind.t < 90 * 60000 ? D.lastWind : D.obsWind), f = null, now = Date.now();
+    if (D.gridWind) {
+      var at = function (ser) { var v = null; ser.forEach(function (x) { if (x[0] <= now && x[1] > now && x[2] != null) v = x[2]; }); return v; };
+      var fs = at(D.gridWind.s), fg = at(D.gridWind.g), fd = at(D.gridWind.d);
+      if (fs != null) f = { ws: Math.round(kmh2mph(fs)), wg: fg != null ? Math.round(kmh2mph(fg)) : null, wd: fd };
+    }
+    var obsDone = D.obsFail || D.obsWind !== undefined, fcDone = !!D.gridWind || D.windFcFail;
+    if (!a && !f && !(obsDone && fcDone)) return;   // still loading
+    var dirTxt = function (w) { return w.wd != null && w.ws >= 1 ? dir16(w.wd) + " " : ""; };
+    var useF = f && f.ws >= 8 && (!a || a.ws < f.ws * 0.5);
+    var show = useF ? f : a, sub;
+    if (!show) { $("windNow").textContent = "--"; $("windNowSub").textContent = D.obsFail ? "Couldn't load the wind. Tap reload." : "Airport wind sensor isn't reporting and the forecast didn't load. Tap reload."; D.windMph = D.gustMph = null; return; }
+    $("windNow").textContent = show.ws < 1 ? "Calm" : dirTxt(show) + show.ws + " mph";
+    if (useF) sub = (f.wg && f.wg > f.ws ? "Gusts to " + f.wg + " mph · " : "") + "Weather Service forecast for this hour. Airport sensor " + (a ? (a.ws < 1 ? "reads calm" : "reads " + a.ws + " mph") : "isn't reporting") + ".";
+    else sub = (a.wg ? "Gusts to " + a.wg + " mph" : f && f.wg && f.wg >= a.ws + 8 ? "Gusts to " + f.wg + " mph possible (forecast)" : "No gusts measured") +
+      (a.wd != null && a.ws >= 1 ? " · from the " + DIRWORD[Math.round(a.wd / 45) % 8] : "") + " · measured at the airport";
+    $("windNowSub").textContent = sub;
+    D.windMph = show.ws; D.gustMph = useF ? f.wg : a.wg || null; if (D.obs) D.obs.ws = D.windMph;
+    renderScore();
+    if (window.SKY) { try { window.SKY.wind(show.ws, D.gustMph || 0, show.wd); } catch (e) {} }
+  }
   function loadWind() {
     var start = etMidnight(), end = start.getTime() + 86400000, now = Date.now();
     var obs = nws("/stations/" + S.station + "/observations?start=" + encodeURIComponent(start.toISOString()) + "&limit=300").then(function (d) {
-      var r = { s: null, g: null, gt: null };
+      var r = { s: null, g: null, gt: null }, last = null;
       (d.features || []).forEach(function (f) {
-        var p = f.properties, w = p.windSpeed && p.windSpeed.value, g = p.windGust && p.windGust.value;
+        var p = f.properties, w = p.windSpeed && p.windSpeed.value, g = p.windGust && p.windGust.value, tt = Date.parse(p.timestamp);
+        if (w != null && Date.now() - tt < 90 * 60000 && (!last || tt > last.t)) last = { ws: Math.round(kmh2mph(w)), wg: g ? Math.round(kmh2mph(g)) : null, wd: p.windDirection && p.windDirection.value, t: tt };
         if (w != null && (r.s == null || w > r.s)) r.s = w;
         if (g != null && (r.g == null || g > r.g)) { r.g = g; r.gt = p.timestamp; }
       });
+      if (last) { D.lastWind = last; windNowRender(); }
       return r;
     }).catch(function () { return null; });
     var fc = gridData().then(function (gp) { var d = { properties: gp };
@@ -3920,22 +3944,24 @@ var ROUTES = S.routes;
       '<div class="small">' + esc(l.pad || "") + (l.loc ? ", " + esc(l.loc) : "") + (mi != null ? " · " + mi.toLocaleString() + " mi" : "") + "</div>" +
       '<div class="small">' + esc(dayLabel(new Date(t))) + " " + esc(fmtTime.format(new Date(t))) + ' · <span class="cdown" data-t="' + t + '">' + cdText(t - Date.now()) + "</span></div></div></li>";
   }
-  var KSC = "Kennedy Space Center, FL, USA", STARBASE = "SpaceX Starbase, TX, USA";
-  function padName(p) { return p === STARBASE ? "Starbase, Texas" : p.split(",")[0]; }
+  var KSC = "Kennedy Space Center, FL, USA", STARBASE = "SpaceX Starbase, TX, USA", CAPE = "capekennedy";
+  function padName(p) { return p === CAPE ? "Cape Canaveral and Kennedy" : p === STARBASE ? "Starbase, Texas" : p.split(",")[0]; }
   function padKey(p) { return p.split(",")[0].replace(/^SpaceX /, "").toLowerCase(); }
   function lsGet(k, d) { try { var v = JSON.parse(localStorage.getItem(k) || "null"); return v == null ? d : v; } catch (e) { return d; } }
   function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
-  function padGet() { return lsGet("launchPad.v1", KSC); }
+  function padGet() { return lsGet("launchPad.v1", CAPE); }
   function padOptions() {
     var sel = $("padPick"), cur = padGet(), locs = {};
     locs[KSC] = 1; locs[STARBASE] = 1; (LAUNCH || []).forEach(function (l) { if (l.loc && !/starbase/i.test(l.loc)) locs[l.loc] = 1; });
-    sel.innerHTML = '<option value="near">Near me (250 miles)</option>' + Object.keys(locs).sort().map(function (x) { return '<option value="' + esc(x) + '">' + esc(x === STARBASE ? "Starbase, Texas" : x.replace(/, USA$/, "")) + "</option>"; }).join("");
-    sel.value = cur; if (sel.value !== cur) sel.value = KSC;
+    sel.innerHTML = '<option value="near">Near me (250 miles)</option><option value="' + CAPE + '">Cape Canaveral and Kennedy, FL</option>' + Object.keys(locs).sort().map(function (x) { return '<option value="' + esc(x) + '">' + esc(x === STARBASE ? "Starbase, Texas" : x.replace(/, USA$/, "")) + "</option>"; }).join("");
+    sel.value = cur; if (sel.value !== cur) sel.value = CAPE;
   }
   function padList() {
     if (!LAUNCH) return [];
     var now = Date.now(), pad = padGet();
     return LAUNCH.map(function (l, i) { return [l, i]; }).filter(function (x) { return Date.parse(x[0].net) > now - 2 * 3600000; }).filter(function (x) {
+      var lc = String(x[0].loc || "").toLowerCase();
+      if (pad === CAPE) return lc.indexOf("cape canaveral") >= 0 || lc.indexOf("kennedy space center") >= 0;
       return pad === "near" ? x[0].lat != null && miles(S.lat, S.lon, x[0].lat, x[0].lon) <= 250 : String(x[0].loc || "").toLowerCase().indexOf(padKey(pad)) >= 0;
     }).slice(0, 8);
   }
@@ -4002,7 +4028,7 @@ var ROUTES = S.routes;
   /* ---------------- Boot ---------------- */
   // Everything loads when the page opens. Tap the reload button (or reload the page) for new numbers.
   function stamp() { $("stamp").textContent = "Updated " + fmtTime.format(new Date()); $("stamp").title = fmtDay.format(new Date()); }
-  function loadAll() { GRIDP = null; floodAt = 0; if (tmap && on("lyrflood")) loadFloods(); feedP = null; loadNow(); loadOM(); loadWind(); loadAlerts(); loadRadar(); loadWhy(); loadTides(); loadWaves(); loadWaterTemp(); loadSky(); loadRide(); renderTracks(); stamp(); }
+  function loadAll() { GRIDP = null; D.obsWind = undefined; D.gridWind = null; D.windFcFail = false; D.obsFail = false; D.lastWind = null; floodAt = 0; if (tmap && on("lyrflood")) loadFloods(); feedP = null; loadNow(); loadOM(); loadWind(); loadAlerts(); loadRadar(); loadWhy(); loadTides(); loadWaves(); loadWaterTemp(); loadSky(); loadRide(); renderTracks(); stamp(); }
 
   document.addEventListener("click", function (e) {
     var g = e.target.closest("[data-go]");
