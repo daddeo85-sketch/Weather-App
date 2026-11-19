@@ -3942,7 +3942,7 @@ var ROUTES = S.routes;
     return '<li class="track" data-d="launch:' + i + '" role="button" tabindex="0"><span class="lstat ' + st[0] + '">' + st[1] + "</span><div><b>" + esc(l.mission || l.name) + "</b>" +
       '<div class="small">' + esc(l.rocket || "") + (l.prov ? " · " + esc(l.prov) : "") + "</div>" +
       '<div class="small">' + esc(l.pad || "") + (l.loc ? ", " + esc(l.loc) : "") + (mi != null ? " · " + mi.toLocaleString() + " mi" : "") + "</div>" +
-      '<div class="small">' + esc(dayLabel(new Date(t))) + " " + esc(fmtTime.format(new Date(t))) + ' · <span class="cdown" data-t="' + t + '">' + cdText(t - Date.now()) + "</span></div></div></li>";
+      (st[1] === "Date not set" ? '<div class="small">No firm date yet</div></div></li>' : '<div class="small">' + esc(dayLabel(new Date(t))) + " " + esc(fmtTime.format(new Date(t))) + ' · <span class="cdown" data-t="' + t + '">' + cdText(t - Date.now()) + "</span></div></div></li>");
   }
   var KSC = "Kennedy Space Center, FL, USA", STARBASE = "SpaceX Starbase, TX, USA", CAPE = "capekennedy";
   function padName(p) { return p === CAPE ? "Cape Canaveral and Kennedy" : p === STARBASE ? "Starbase, Texas" : p.split(",")[0]; }
@@ -3978,9 +3978,10 @@ var ROUTES = S.routes;
   function launchDetail(l) {
     if (!l) return ["Launch", LOADING];
     var st = lstat(l), t = Date.parse(l.net), ws = l.ws ? new Date(l.ws) : null, we = l.we ? new Date(l.we) : null;
-    var win = ws && we ? (+ws === +we ? "Instant, " + fmtTime.format(ws) : fmtTime.format(ws) + " to " + fmtTime.format(we)) : null;
-    return [l.mission || l.name, '<p><span class="lstat ' + st[0] + '">' + st[1] + '</span> <span class="cdown" data-t="' + t + '">' + cdText(t - Date.now()) + "</span></p>" +
-      rows([["Launch time", esc(dayLabel(new Date(t)) + " " + fmtTime.format(new Date(t)))], ["Window", esc(win)], ["Status", esc(l.stn)], ["Rocket", esc(l.rocket)], ["Company", esc(l.prov)],
+    var win = ws && we && lstat(l)[1] !== "Date not set" ? (+ws === +we ? "Instant, " + fmtTime.format(ws) : fmtTime.format(ws) + " to " + fmtTime.format(we)) : null;
+    var nodate = st[1] === "Date not set";
+    return [l.mission || l.name, '<p><span class="lstat ' + st[0] + '">' + st[1] + '</span>' + (nodate ? "" : ' <span class="cdown" data-t="' + t + '">' + cdText(t - Date.now()) + "</span>") + "</p>" +
+      rows([["Launch time", nodate ? "No firm date yet" : esc(dayLabel(new Date(t)) + " " + fmtTime.format(new Date(t)))], ["Window", esc(win)], ["Status", esc(l.stn)], ["Rocket", esc(l.rocket)], ["Company", esc(l.prov)],
         ["Pad", esc((l.pad || "") + (l.loc ? ", " + l.loc : ""))], ["Distance", l.lat != null ? Math.round(miles(S.lat, S.lon, l.lat, l.lon)).toLocaleString() + " miles" : null], ["Orbit", esc(l.orbit)]]) +
       (l.desc ? "<p>" + esc(l.desc) + "</p>" : "") +
       '<div class="frow"><a class="btn primary" target="_blank" rel="noopener" href="' + esc(l.vid || "https://www.youtube.com/results?search_query=" + encodeURIComponent((l.mission || l.name || "") + " launch live")) + '">📺 Watch live</a>' +
