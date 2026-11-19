@@ -1328,6 +1328,12 @@ var ROUTES = S.routes;
       renderScore();
       renderPeriods();
     }).catch(function () { $("periods").innerHTML = '<div class="err">Forecast unavailable right now.</div>'; });
+    // Rain amounts and chances, hour by hour, from the Weather Service's own forecast grid (the forecast on weather.gov)
+    gridData().then(function (gp) {
+      D.grid = { qpf: nwsSeries(gp.quantitativePrecipitation), pop: nwsSeries(gp.probabilityOfPrecipitation) }; D.gridFail = false;
+      if (!D.grid.qpf.length) throw new Error("no rain grid");
+      rainRefresh();
+    }).catch(function () { D.grid = null; D.gridFail = true; rainRefresh(); });
     // The Weather Service's own hour-by-hour forecast, so the hourly temperatures match the high, low and current reading
     nws("/gridpoints/" + S.office + "/" + S.gx + "," + S.gy + "/forecast/hourly").then(function (d) {
       D.nwsH = (d.properties.periods || []).filter(function (x) { return new Date(x.endTime).getTime() > Date.now(); }).slice(0, 12);
@@ -1346,22 +1352,52 @@ var ROUTES = S.routes;
     if (D.rainToday != null) p.push("Rain " + rainAmt(D.rainToday) + " in");
     $("hilo").textContent = p.join(" · ");
   }
-  function periodRain(x) {   // hourly amounts cover the hour before their time stamp
-    var h = D.om && D.om.hourly; if (!h || !h.precipitation || !x.startTime) return null;
-    var a = x.startTime.slice(0, 13), b = x.endTime.slice(0, 13), sum = 0, any = false;
-    for (var k = 0; k < h.time.length; k++) { var t = h.time[k].slice(0, 13); if (t > a && t <= b) { sum += h.precipitation[k] || 0; any = true; } }
-    return any ? sum : null;
-  }
-  function periodHours(x) {   // hour-by-hour rain inside one forecast period, with a running total
-    var h = D.om && D.om.hourly; if (!h || !h.precipitation || !x.startTime) return "";
-    var a = x.startTime.slice(0, 13), b = x.endTime.slice(0, 13), now = hourKey(new Date()).slice(0, 13), run = 0, cells = [];
-    for (var k = 0; k < h.time.length; k++) {
-      var t = h.time[k].slice(0, 13); if (!(t > a && t <= b)) continue;
-      var v = h.precipitation[k] || 0; run += v; if (t < now) continue;
-      cells.push('<div class="rh' + (v >= 0.01 ? " wet" : "") + '"><div class="n">' + esc(hourLabel(h.time[k])) + '</div><div class="a">' + (v >= 0.01 ? rainIn(v) : "\u2013") + '</div><div class="c">' + Math.round((h.precipitation_probability || [])[k] || 0) + '%</div><div class="r">' + (run >= 0.01 ? rainIn(run) : "0") + "</div></div>");
+  // Hour-by-hour rain: [{t: start of the hour (ms), key: "2026-11-19T07:00", amt: inches, pop: % chance}].
+  // Main source is the Weather Service grid. Its rain amounts come in blocks (usually 6 hours); each block's
+  // total is shared out over its hours by that hour's rain chance. Open-Meteo is only the backup.
+  // Returns null while loading, "fail" when neither source loaded.
+  function rainHours() {
+    var g = D.grid, out = [];
+    if (g && g.qpf.length) {
+      var popAt = function (t) { for (var i = 0; i < g.pop.length; i++) if (t >= g.pop[i][0] && t < g.pop[i][1]) return g.pop[i][2] || 0; return 0; };
+      g.qpf.forEach(function (b) {
+        var hrs = [], w = 0;
+        for (var t = b[0]; t < b[1]; t += 3600000) { var pc = popAt(t); hrs.push([t, pc]); w += Math.max(pc, 1); }
+        var tot = (b[2] || 0) / 25.4;
+        hrs.forEach(function (x) { out.push({ t: x[0], key: hourKey(new Date(x[0])), amt: tot * Math.max(x[1], 1) / w, pop: Math.round(x[1]) }); });
+      });
+      return out.sort(function (a, b) { return a.t - b.t; });
     }
-    if (!cells.length || run < 0.01) return "";
-    return '<h3>Rain hour by hour</h3><div class="rdrow"><div class="rh lbl"><div class="n">&nbsp;</div><div class="a">Inches</div><div class="c">Chance</div><div class="r">So far</div></div>' + cells.join("") + "</div>";
+    if (!D.gridFail) return null;                      // the Weather Service grid hasn't answered yet
+    var h = D.om && D.om.hourly;
+    if (h && h.precipitation) {                        // Open-Meteo stamps each hour's rain at the end of that hour
+      var off = (D.om.utc_offset_seconds || 0) * 1000;
+      for (var k = 0; k + 1 < h.time.length; k++) out.push({ t: Date.parse(h.time[k] + ":00Z") - off, key: h.time[k], amt: h.precipitation[k + 1] || 0, pop: Math.round((h.precipitation_probability || [])[k + 1] || 0) });
+      return out;
+    }
+    return D.omFail ? "fail" : null;
+  }
+  function rainSum(from, to) { var hr = rainHours(); if (!hr || hr === "fail") return null; var s = 0, any = false; hr.forEach(function (x) { if (x.t >= from && x.t < to) { s += x.amt; any = true; } }); return any ? s : null; }
+  function periodRain(x) { return x && x.startTime ? rainSum(Date.parse(x.startTime), Date.parse(x.endTime)) : null; }
+  function rainRefresh() { rainAhead(); renderPeriods(); rainDay(); redrawDetail(); if (typeof homeLinks === "function") homeLinks(); }
+  function rainSrc() { return D.grid ? "National Weather Service forecast" : "Open-Meteo forecast (the Weather Service's wasn't loading)"; }
+  // bar graph of rain by hour: bars are inches, the % under each hour is the chance
+  function rainGraph(cols) {
+    var top = 0, prevAP = ""; cols.forEach(function (q) { top = Math.max(top, q.amt); });
+    var scale = Math.max(top, 0.1);
+    return '<div class="rg">' + cols.map(function (q) {
+      var hr = +q.key.slice(11, 13), ap = hr < 12 ? "AM" : "PM", wet = q.amt >= 0.01, ht = wet ? Math.max(6, Math.round(q.amt / scale * 100)) : 0;
+      var tag = ap !== prevAP ? ap : "&nbsp;"; prevAP = ap;
+      return '<div class="rgc' + (wet ? " wet" : "") + '"><div class="rgv">' + (wet ? rainIn(q.amt) : "&nbsp;") + '</div><div class="rgb"><i style="height:' + ht + '%"></i></div>' +
+        '<div class="rgh">' + (hr % 12 || 12) + '</div><div class="rgap">' + tag + '</div><div class="rgp">' + q.pop + "%</div></div>";
+    }).join("") + "</div>";
+  }
+  function periodHours(x) {   // rain by hour inside one forecast period
+    var hr = rainHours(); if (!hr || hr === "fail" || !x.startTime) return "";
+    var a = Date.parse(x.startTime), b = Date.parse(x.endTime), now = Date.now() - 3600000;
+    var cols = hr.filter(function (q) { return q.t >= a && q.t < b && q.t > now; });
+    if (!cols.length || !cols.some(function (q) { return q.amt >= 0.01; })) return "";
+    return "<h3>Rain hour by hour</h3>" + rainGraph(cols.slice(0, 12));
   }
   function renderPeriods() {
     var per = D.periods; if (!per || !$("periods")) return;
@@ -1372,30 +1408,28 @@ var ROUTES = S.routes;
         '<div class="s">' + esc(x.shortForecast) + '</div></div>';
     }).join("");
   }
-  function rainDay() {   // today's total on the rain tile, and the hour-by-hour strip for the rest of today
-    var d = D.om, h = d && d.hourly; if (!h || !h.precipitation) return;
-    var today = ymd(new Date()), tot = d.daily && d.daily.precipitation_sum ? d.daily.precipitation_sum[0] || 0 : 0;
+  function rainDay() {   // today's total (rain tile and high/low line) and the graph of the next 12 hours
+    var box = $("rainDay"), hr = rainHours();
+    if (hr == null) return;                            // still loading
+    if (hr === "fail") {
+      D.rainToday = null; setHilo();
+      if ($("popSub")) $("popSub").textContent = "Rain amount didn't load";
+      if (!box) return; box.hidden = false;
+      $("rainDayHead").innerHTML = "<h3>Rain next 12 hours</h3>";
+      $("rainDayRow").innerHTML = '<p class="err">Couldn\'t load the rain forecast. Tap reload to try again.</p>';
+      return;
+    }
+    var m0 = etMidnight().getTime(), tot = rainSum(m0, m0 + 86400000) || 0;
     D.rainToday = tot; setHilo();
     if ($("popSub")) $("popSub").textContent = tot >= 0.01 ? rainIn(tot) + " in today" : "No rain today";
-    // the next 12 hours from the current hour: a bar for how much rain each hour should bring, with its chance under it.
-    // Open-Meteo stamps each hour's rain at the end of that hour, so the hour starting at 7 reads the 8:00 value.
-    var box = $("rainDay"); if (!box) return;
-    var i0 = h.time.indexOf(hourKey(new Date())); if (i0 < 0) { box.hidden = true; return; }
-    var cols = [], sum = 0, top = 0, k;
-    for (k = 0; k < 12 && i0 + k + 1 < h.time.length; k++) {
-      var v = h.precipitation[i0 + k + 1] || 0, pc = Math.round((h.precipitation_probability || [])[i0 + k + 1] || 0);
-      cols.push([h.time[i0 + k], v, pc]); sum += v; top = Math.max(top, v);
-    }
-    if (!cols.length) { box.hidden = true; return; }
+    if (!box) return;
+    var h0 = Date.now() - (Date.now() % 3600000);       // start of this hour
+    var cols = hr.filter(function (q) { return q.t >= h0; }).slice(0, 12), sum = 0;
+    cols.forEach(function (q) { sum += q.amt; });
+    if (!cols.length) { box.hidden = false; $("rainDayHead").innerHTML = "<h3>Rain next 12 hours</h3>"; $("rainDayRow").innerHTML = '<p class="err">Couldn\'t load the rain forecast. Tap reload to try again.</p>'; return; }
     box.hidden = false;
-    var scale = Math.max(top, 0.1), prevAP = "";
     $("rainDayHead").innerHTML = "<h3>Rain next 12 hours</h3><span>" + (sum >= 0.01 ? rainIn(sum) + " in expected" : "No rain expected") + "</span>";
-    $("rainDayRow").innerHTML = '<div class="rg">' + cols.map(function (q) {
-      var hr = +q[0].slice(11, 13), ap = hr < 12 ? "AM" : "PM", wet = q[1] >= 0.01, ht = wet ? Math.max(6, Math.round(q[1] / scale * 100)) : 0;
-      var tag = ap !== prevAP ? ap : "&nbsp;"; prevAP = ap;
-      return '<div class="rgc' + (wet ? " wet" : "") + '"><div class="rgv">' + (wet ? rainIn(q[1]) : "&nbsp;") + '</div><div class="rgb"><i style="height:' + ht + '%"></i></div>' +
-        '<div class="rgh">' + (hr % 12 || 12) + '</div><div class="rgap">' + tag + '</div><div class="rgp">' + q[2] + "%</div></div>";
-    }).join("") + '</div><div class="rgk">Bars show inches of rain each hour. The % is the chance of rain.</div>';
+    $("rainDayRow").innerHTML = rainGraph(cols) + '<div class="rgk">Bars show inches of rain each hour. The % is the chance of rain. From the ' + esc(rainSrc()) + ".</div>";
   }
 
   /* ---------------- Wind ---------------- */
@@ -1416,6 +1450,9 @@ var ROUTES = S.routes;
     var m = String(s).match(/P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?)?/) || [];
     return (((+m[1] || 0) * 24 + (+m[2] || 0)) * 60 + (+m[3] || 0)) * 60000;
   }
+  var GRIDP = null;   // the Weather Service forecast grid for your spot, fetched once per load and shared
+  function gridData() { if (!GRIDP) GRIDP = nws("/gridpoints/" + S.office + "/" + S.gx + "," + S.gy).then(function (d) { return d.properties; }); return GRIDP; }
+  function nwsSeries(x) { return ((x && x.values) || []).map(function (v) { var a = v.validTime.split("/"), t0 = Date.parse(a[0]); return [t0, t0 + durMs(a[1]), v.value]; }); }
   function loadWind() {
     var start = etMidnight(), end = start.getTime() + 86400000, now = Date.now();
     var obs = nws("/stations/" + S.station + "/observations?start=" + encodeURIComponent(start.toISOString()) + "&limit=300").then(function (d) {
@@ -1427,7 +1464,7 @@ var ROUTES = S.routes;
       });
       return r;
     }).catch(function () { return null; });
-    var fc = nws("/gridpoints/" + S.office + "/" + S.gx + "," + S.gy).then(function (d) {
+    var fc = gridData().then(function (gp) { var d = { properties: gp };
       function mx(series) {
         var best = null;
         ((series && series.values) || []).forEach(function (v) {
@@ -2470,7 +2507,7 @@ var ROUTES = S.routes;
       "&current=temperature_2m,apparent_temperature,uv_index,is_day,weather_code,cloud_cover,precipitation,rain,showers,wind_speed_10m,wind_gusts_10m,wind_direction_10m" +
       "&hourly=temperature_2m,apparent_temperature,relative_humidity_2m,dew_point_2m,precipitation_probability,precipitation,uv_index,wind_speed_10m,wind_gusts_10m,wind_direction_10m" +
       "&daily=uv_index_max,precipitation_sum&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=" + encodeURIComponent(TZ) + "&forecast_days=5").then(function (d) {
-      D.om = d; rainAhead(); renderPeriods(); rainDay(); redrawDetail(); homeLinks();
+      D.om = d; D.omFail = false; rainRefresh();
       var u = (d.current && d.current.uv_index) || 0, h = d.hourly || {}, today = ymd(new Date()), best = -1, bt = "";
       (h.time || []).forEach(function (t, i) { if (t.slice(0, 10) === today && h.uv_index[i] != null && h.uv_index[i] > best) { best = h.uv_index[i]; bt = t; } });
       var mx = d.daily && d.daily.uv_index_max ? d.daily.uv_index_max[0] : best;
@@ -2478,19 +2515,21 @@ var ROUTES = S.routes;
       $("uvNow").textContent = Math.round(u) + " " + uvWordS(u);
       $("uvSub").textContent = mx != null ? "Top today: " + Math.round(mx) + (bt ? " at " + hourLabel(bt) : "") : "";
       if (window.SKY) { try { window.SKY.weather(d.current); } catch (e) {} }
-    }).catch(function () { $("uvNow").textContent = "--"; $("uvSub").textContent = "UV unavailable right now"; });
+    }).catch(function () { D.omFail = true; rainRefresh(); $("uvNow").textContent = "--"; $("uvSub").textContent = "UV unavailable right now"; });
   }
   // Rain in the next 8 hours and when the rain should quit, from the Open-Meteo hourly forecast
   function rainAhead() {
-    var d = D.om, h = d && d.hourly; if (!h || !h.precipitation) return;
-    var nowKey = new Intl.DateTimeFormat("sv-SE", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", hourCycle: "h23" }).format(new Date()).replace(" ", "T").slice(0, 13) + ":00";
-    var i = h.time.indexOf(nowKey); if (i < 0) i = 0;
-    var s8 = 0; for (var j = i; j < i + 8 && j < h.time.length; j++) s8 += h.precipitation[j] || 0;
-    var c = d.current || {}, wetNow = rainingNow((c.precipitation || 0) + (c.rain || 0) + (c.showers || 0) > 0 || isRainCodeW(c.weather_code) || (h.precipitation[i] || 0) >= 0.01);
+    var hr = rainHours();
+    if (hr === "fail") { D.rain8 = null; D.rainEnd = null; if ($("rain8")) $("rain8").textContent = "Couldn't load the rain forecast."; return; }
+    if (!hr || !hr.length) return;
+    var h0 = Date.now() - (Date.now() % 3600000), i = 0;
+    while (i < hr.length - 1 && hr[i].t < h0) i++;
+    var s8 = 0; for (var j = i; j < i + 8 && j < hr.length; j++) s8 += hr[j].amt;
+    var c = (D.om && D.om.current) || {}, wetNow = rainingNow((c.precipitation || 0) + (c.rain || 0) + (c.showers || 0) > 0 || isRainCodeW(c.weather_code) || hr[i].amt >= 0.01);
     var end = null;
-    if (wetNow) for (var k = i + 1; k < h.time.length; k++) if ((h.precipitation[k] || 0) < 0.01 && (h.precipitation_probability[k] || 0) < 40) { end = h.time[k]; break; }
-    D.rain8 = s8; D.rainNow = wetNow; D.rainEnd = end; D.rainLast = h.time[h.time.length - 1];
-    var t8 = s8 < 0.01 ? "No rain expected in the next 8 hours." : "🌧 Rain expected in the next 8 hours: " + (s8 < 0.1 ? s8.toFixed(2) : s8.toFixed(2)) + " in";
+    if (wetNow) for (var k = i + 1; k < hr.length; k++) if (hr[k].amt < 0.01 && hr[k].pop < 40) { end = hr[k].key; break; }
+    D.rain8 = s8; D.rainNow = wetNow; D.rainEnd = end; D.rainLast = hr[hr.length - 1].key;
+    var t8 = s8 < 0.01 ? "No rain expected in the next 8 hours." : "🌧 Rain expected in the next 8 hours: " + s8.toFixed(2) + " in";
     if ($("rain8")) $("rain8").textContent = t8;
   }
   // Is it actually raining at your place right now? The airport's rain gauge reading comes first.
@@ -3273,11 +3312,13 @@ var ROUTES = S.routes;
     },
     rain: function () {
       var per = D.periods || [];
-      var h = D.om && D.om.hourly, run = 0;
+      var hr = rainHours();
+      if (hr === "fail") return ["Rain", '<p class="err">Couldn\'t load the rain forecast. Tap reload to try again.</p>'];
+      var h0 = Date.now() - (Date.now() % 3600000), next = hr ? hr.filter(function (q) { return q.t >= h0; }).slice(0, 24) : [];
       return ["Rain", rows([["Today", D.rainToday != null ? (D.rainToday >= 0.01 ? rainIn(D.rainToday) + " in expected" : "No rain expected") : null], ["Next 8 hours", D.rain8 != null ? (D.rain8 >= 0.01 ? rainIn(D.rain8) + " in" : "None") : null]]) +
         per.slice(0, 2).map(function (x) { var a = periodRain(x); return "<h3>" + esc(x.name) + (a != null && a >= 0.01 ? " · " + rainIn(a) + " in" : "") + "</h3><p>" + esc(x.detailedForecast) + "</p>"; }).join("") +
-        "<h3>Hour by hour</h3>" + hours("precipitation_probability", 24, function (v, k) { var a = h.precipitation[k] || 0; run += a; return Math.round(v) + '%<div class="s">' + (a >= 0.01 ? rainIn(a) + " in" : "\u2013") + '</div><div class="s">' + (run >= 0.01 ? rainIn(run) + " so far" : "") + "</div>"; }) +
-        '<p class="small">Rain chance is the odds of at least a hundredth of an inch at your spot during that time.</p>'];
+        (next.length ? "<h3>Next 12 hours</h3>" + rainGraph(next.slice(0, 12)) + "<h3>The 12 hours after that</h3>" + rainGraph(next.slice(12, 24)) : '<p class="muted">Hour-by-hour rain is still loading.</p>') +
+        '<p class="small">Rain chance is the odds of at least a hundredth of an inch at your spot during that time. Amounts are from the ' + esc(hr ? rainSrc() : "forecast") + ".</p>"];
     },
     uv: function () {
       var c = D.om && D.om.current; if (!c) return ["UV index", '<p class="muted">UV numbers aren\'t available right now.</p>'];
@@ -3949,7 +3990,7 @@ var ROUTES = S.routes;
   /* ---------------- Boot ---------------- */
   // Everything loads when the page opens. Tap the reload button (or reload the page) for new numbers.
   function stamp() { $("stamp").textContent = "Updated " + fmtTime.format(new Date()); $("stamp").title = fmtDay.format(new Date()); }
-  function loadAll() { floodAt = 0; if (tmap && on("lyrflood")) loadFloods(); feedP = null; loadNow(); loadOM(); loadWind(); loadAlerts(); loadRadar(); loadWhy(); loadTides(); loadWaves(); loadWaterTemp(); loadSky(); loadRide(); renderTracks(); stamp(); }
+  function loadAll() { GRIDP = null; floodAt = 0; if (tmap && on("lyrflood")) loadFloods(); feedP = null; loadNow(); loadOM(); loadWind(); loadAlerts(); loadRadar(); loadWhy(); loadTides(); loadWaves(); loadWaterTemp(); loadSky(); loadRide(); renderTracks(); stamp(); }
 
   document.addEventListener("click", function (e) {
     var g = e.target.closest("[data-go]");
