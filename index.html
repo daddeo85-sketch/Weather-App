@@ -994,7 +994,7 @@ select { max-width: 100%; text-overflow: ellipsis; }
       <div class="seg" id="bgSeg" role="group" aria-label="Background">
         <button type="button" data-bg="auto">Auto</button><button type="button" data-bg="day">Day</button><button type="button" data-bg="night">Night</button><button type="button" data-bg="photo">Photo</button>
       </div>
-      <p class="small">Auto goes from day to night with the real sun. Day and Night stay put. Photo is the sunrise over the water.</p>
+      <p class="small">Photo, the sunrise over the water, is the default. Auto goes from day to night with the real sun. Day and Night stay put.</p>
       <h3>Text size</h3>
       <input type="range" id="fsSlider" min="0.85" max="1.6" step="0.05" aria-label="Text size">
       <div class="small" id="fsPreview">Slide right for bigger text. <b id="fsVal">100%</b></div>
@@ -3059,7 +3059,7 @@ var ROUTES = S.routes;
       var v = +this.value; document.documentElement.style.setProperty("--fs", v); $("fsVal").textContent = Math.round(v * 100) + "%";
     });
     $("fsSlider").addEventListener("change", function () { S.fs = +this.value; saveS(S); });
-    function bgMark() { var m = "auto"; try { m = localStorage.getItem("bgMode.v1") || "auto"; } catch (x) {} Array.prototype.forEach.call(document.querySelectorAll("#bgSeg button"), function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-bg") === m)); }); }
+    function bgMark() { var m = null; try { m = localStorage.getItem("bgMode.v2"); if (!/^(auto|day|night|photo)$/.test(m || "")) { var o = localStorage.getItem("bgMode.v1"); m = /^(day|night|photo)$/.test(o || "") ? o : "photo"; } } catch (x) { m = "photo"; } Array.prototype.forEach.call(document.querySelectorAll("#bgSeg button"), function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-bg") === m)); }); }
     $("bgSeg").addEventListener("click", function (e) { var b = e.target.closest("button[data-bg]"); if (!b || !window.SKY || !SKY.setBg) return; SKY.setBg(b.getAttribute("data-bg")); bgMark(); });
     bgMark();
     $("tabSwitches").addEventListener("change", function (e) {
@@ -4196,7 +4196,7 @@ var ROUTES = S.routes;
   }
   var WINDTEST = (location.search.match(/windtest=([\d.]+)(?:,(\d+))?/) || []);   // preview only: ?windtest=mph,direction
   var SKYSHIFT = +((location.search.match(/skyshift=(-?\d+(?:\.\d+)?)/) || [])[1] || 0);   // preview only: move the scene's clock by N hours
-  function bgMode() { var m = "auto"; try { m = localStorage.getItem("bgMode.v1") || "auto"; } catch (e) {} return /^(auto|day|night|photo)$/.test(m) ? m : "auto"; }
+  function bgMode() { var m = null; try { m = localStorage.getItem("bgMode.v2"); if (!/^(auto|day|night|photo)$/.test(m || "")) { var o = localStorage.getItem("bgMode.v1"); m = /^(day|night|photo)$/.test(o || "") ? o : "photo"; } } catch (x) { m = "photo"; } return /^(auto|day|night|photo)$/.test(m) ? m : "photo"; }
   var PHOTO = false;
   function placePhoto() {
     // Put the photo's horizon in the open space above the cards, so the sunrise isn't hidden behind them
@@ -5563,7 +5563,7 @@ var ROUTES = S.routes;
   loadGround(); setInterval(loadGround, 30 * 60000);
   window.SKY.ground = function () { return GROUND; };
   window.SKY.bgMode = bgMode;
-  window.SKY.setBg = function (m) { try { localStorage.setItem("bgMode.v1", m); } catch (e) {} window.skyResize(); };
+  window.SKY.setBg = function (m) { try { localStorage.setItem("bgMode.v2", m); } catch (e) {} window.skyResize(); };
 })();
 
 </script>
