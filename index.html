@@ -450,7 +450,7 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; }
 .flash { position: absolute; inset: 0; background: #fff; opacity: 0; }
 .photoBg { display: none; position: absolute; inset: 0; z-index: 3; background-color: #2b2f33; background-repeat: no-repeat; }
 .photoBg::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.08) 30%, rgba(0,0,0,0.05) 60%, rgba(0,0,0,0.35) 100%); }
-.sky.photo .photoBg { display: block; background-image: url(img/bg-sunrise.webp); }
+.sky.photo .photoBg { display: block; }
 .sky.photo > :not(.photoBg) { display: none; }
 .seg { display: flex; border: 1px solid var(--line, rgba(0,0,0,0.15)); border-radius: 10px; overflow: hidden; margin: 6px 0; }
 .seg button { flex: 1; padding: 10px 4px; border: 0; background: transparent; font: inherit; font-weight: 600; color: inherit; cursor: pointer; }
@@ -994,7 +994,7 @@ select { max-width: 100%; text-overflow: ellipsis; }
       <div class="seg" id="bgSeg" role="group" aria-label="Background">
         <button type="button" data-bg="auto">Auto</button><button type="button" data-bg="day">Day</button><button type="button" data-bg="night">Night</button><button type="button" data-bg="photo">Photo</button>
       </div>
-      <p class="small">Photo, the sunrise over the water, is the default. Auto goes from day to night with the real sun. Day and Night stay put.</p>
+      <p class="small">Photo is the default. It picks a real photo to match the weather and time of day. Auto, Day and Night show the drawn street scene.</p>
       <h3>Text size</h3>
       <input type="range" id="fsSlider" min="0.85" max="1.6" step="0.05" aria-label="Text size">
       <div class="small" id="fsPreview">Slide right for bigger text. <b id="fsVal">100%</b></div>
@@ -4198,9 +4198,35 @@ var ROUTES = S.routes;
   var SKYSHIFT = +((location.search.match(/skyshift=(-?\d+(?:\.\d+)?)/) || [])[1] || 0);   // preview only: move the scene's clock by N hours
   function bgMode() { var m = null; try { m = localStorage.getItem("bgMode.v2"); if (!/^(auto|day|night|photo)$/.test(m || "")) { var o = localStorage.getItem("bgMode.v1"); m = /^(day|night|photo)$/.test(o || "") ? o : "photo"; } } catch (x) { m = "photo"; } return /^(auto|day|night|photo)$/.test(m) ? m : "photo"; }
   var PHOTO = false;
+  // The app owner's own photos, sorted by the weather and light they show. hz is how far down the photo its horizon sits.
+  var PHOTOS = {
+    sunrise: { f: "bg-sunrise", hz: 0.54 }, sunsetClouds: { f: "bg-sunset-clouds", hz: 0.38 }, sunsetSea: { f: "bg-sunset-sea", hz: 0.57 }, sunWater: { f: "bg-sun-water", hz: 0.49 },
+    beach: { f: "bg-beach", hz: 0.25 }, mountains: { f: "bg-mountains", hz: 0.42 }, skySea: { f: "bg-sky-sea", hz: 0.43 }, lakeClouds: { f: "bg-lake-clouds", hz: 0.5 },
+    lakeGray: { f: "bg-lake-gray", hz: 0.4 }, lakeFog: { f: "bg-lake-fog", hz: 0.45 }, storm: { f: "bg-storm", hz: 0.48 },
+    shipNight: { f: "bg-ship-night", hz: 0.5 }, parkNight: { f: "bg-park-night", hz: 0.5 }, moonClouds: { f: "bg-moon-clouds", hz: 0.5 }
+  };
+  var PHOTOSETS = {
+    golden: ["sunrise", "sunsetClouds", "sunsetSea", "sunWater"],
+    clear: ["beach", "mountains", "skySea"], partly: ["skySea", "lakeClouds", "mountains"], cloudy: ["lakeClouds", "lakeGray"], overcast: ["lakeGray", "lakeFog"],
+    fog: ["lakeFog", "lakeGray"], rain: ["lakeFog", "lakeGray"], storm: ["storm"],
+    nightClear: ["shipNight", "parkNight"], nightPartly: ["moonClouds", "shipNight", "parkNight"], nightGray: ["moonClouds"]
+  };
+  var PHOTONOW = PHOTOS.sunrise;
+  function pickPhoto() {
+    var force = (location.search.match(/photo=(\w+)/) || [])[1];   // preview only: ?photo=storm
+    if (force && PHOTOS[force]) return PHOTOS[force];
+    var now = new Date(Date.now() + SKYSHIFT * 36e5), alt = SunCalc.getPosition(now, HOME[0], HOME[1]).altitude * 180 / Math.PI, k = WX.kind || "clear", set;
+    if (k === "storm") set = "storm";
+    else if (alt < -6) set = k === "clear" ? "nightClear" : k === "partly" ? "nightPartly" : "nightGray";
+    else if (alt < 8 && (k === "clear" || k === "partly" || (k === "cloudy" && !WX.overcast))) set = "golden";
+    else set = k === "cloudy" && WX.overcast ? "overcast" : PHOTOSETS[k] ? k : "clear";
+    var list = PHOTOSETS[set], day = Math.floor((now.getTime() - now.getTimezoneOffset() * 6e4) / 864e5);
+    return PHOTOS[list[day % list.length]];   // same photo all day for the same weather, a different one tomorrow
+  }
   function placePhoto() {
-    // Put the photo's horizon in the open space above the cards, so the sunrise isn't hidden behind them
-    var el = document.getElementById("photoBg"), W = innerWidth, Hh = innerHeight, iw = 1080, ih = 1440, hz = 0.54;
+    // Put the photo's horizon in the open space above the cards
+    var el = document.getElementById("photoBg"), W = innerWidth, Hh = innerHeight, iw = 1080, ih = 1440, hz = PHOTONOW.hz;
+    var url = "url(img/" + PHOTONOW.f + ".webp)"; if (el.style.backgroundImage.indexOf(PHOTONOW.f) < 0) el.style.backgroundImage = url;
     var gap = document.querySelector('.view:not([hidden]) .streetgap'), g = gap && gap.offsetHeight ? gap.getBoundingClientRect() : null;
     var want = g ? g.top + window.scrollY + g.height * 0.6 : Hh * 0.45;
     var sc = Math.max(W / iw, Hh / ih, (Hh - want) / ((1 - hz) * ih), want / (hz * ih)), h = ih * sc, w = iw * sc;
@@ -4210,7 +4236,7 @@ var ROUTES = S.routes;
   function update() {
     var mode = bgMode(); PHOTO = mode === "photo";
     if (PHOTO) {
-      sky.className = "sky photo"; placePhoto(); clearInterval(FG.iv);
+      sky.className = "sky photo"; PHOTONOW = pickPhoto(); placePhoto(); clearInterval(FG.iv);
       var mt = document.querySelector('meta[name="theme-color"]'); if (mt) mt.setAttribute("content", "#2b2f33");
       return;
     }

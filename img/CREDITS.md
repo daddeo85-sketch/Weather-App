@@ -14,6 +14,19 @@ All photos come from Wikimedia Commons. They were shrunk, cut out and cropped fo
 | tab-rockets.webp | Apollo 11 launch, July 16, 1969 | NASA | Public domain (NASA) |
 | ../icons/*.png (app icon photo) | Sunset over the water, Nov 2026 | The app owner | Their own photo |
 | bg-sunrise.webp | Sunrise over the water, Nov 2026 (Photo background) | The app owner | Their own photo |
+| bg-sunset-clouds.webp | Sun setting behind clouds over the water (Photo background) | The app owner | Their own photo |
+| bg-sunset-sea.webp | Sunset over the sea (Photo background) | The app owner | Their own photo |
+| bg-sun-water.webp | Low sun on the water (Photo background) | The app owner | Their own photo |
+| bg-beach.webp | Beach waves under blue sky (Photo background) | The app owner | Their own photo |
+| bg-mountains.webp | Mountain overlook (Photo background) | The app owner | Their own photo |
+| bg-sky-sea.webp | Cloud-patterned sky over the sea (Photo background) | The app owner | Their own photo |
+| bg-lake-clouds.webp | Mountain lake under clouds (Photo background) | The app owner | Their own photo |
+| bg-lake-gray.webp | Mountain lake on a gray day (Photo background) | The app owner | Their own photo |
+| bg-lake-fog.webp | Lake in fog (Photo background) | The app owner | Their own photo |
+| bg-storm.webp | Storm cloud over the street (Photo background) | The app owner | Their own photo |
+| bg-ship-night.webp | Ship deck at night (Photo background) | The app owner | Their own photo |
+| bg-park-night.webp | Park at night (Photo background) | The app owner | Their own photo |
+| bg-moon-clouds.webp | Moon through clouds (Photo background) | The app owner | Their own photo |
 | ../icons/*.png (app icon lettering) | Kaushan Script and Barlow Condensed fonts | Google Fonts | SIL Open Font License |
 | veh/f150-*.webp | 2018 Ford F-150 XLT Crew Cab | Kevauto | CC BY-SA 4.0 |
 | veh/silverado-*.webp | 2022 Chevrolet Silverado 2500HD High Country | Elise240SX | CC BY-SA 4.0 |
