@@ -448,6 +448,14 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; }
   background: linear-gradient(180deg, var(--deck1, rgba(95,104,118,0.95)) 0%, var(--deck2, rgba(110,118,130,0.8)) 45%, rgba(120,128,140,0) 100%); }   /* follows the daylight */
 .sky.wx-cloudy .deck { opacity: 0.75; } .sky.wx-rain .deck, .sky.wx-fog .deck { opacity: 0.9; } .sky.wx-storm .deck { opacity: 1; }
 .flash { position: absolute; inset: 0; background: #fff; opacity: 0; }
+.photoBg { display: none; position: absolute; inset: 0; z-index: 3; background-color: #2b2f33; background-repeat: no-repeat; }
+.photoBg::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.08) 30%, rgba(0,0,0,0.05) 60%, rgba(0,0,0,0.35) 100%); }
+.sky.photo .photoBg { display: block; background-image: url(img/bg-sunrise.webp); }
+.sky.photo > :not(.photoBg) { display: none; }
+.seg { display: flex; border: 1px solid var(--line, rgba(0,0,0,0.15)); border-radius: 10px; overflow: hidden; margin: 6px 0; }
+.seg button { flex: 1; padding: 10px 4px; border: 0; background: transparent; font: inherit; font-weight: 600; color: inherit; cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--line, rgba(0,0,0,0.15)); }
+.seg button[aria-pressed="true"] { background: #2f6fa3; color: #fff; }
 .sky.wx-storm .flash { animation: flash 9s infinite; }
 @keyframes flash { 0%, 91%, 93.5%, 100% { opacity: 0; } 92% { opacity: 0.55; } 93% { opacity: 0.1; } 93.2% { opacity: 0.45; } }
 /* the street, looking down it to the ocean, just above the tab bar */
@@ -521,6 +529,7 @@ select { max-width: 100%; text-overflow: ellipsis; }
   <div class="cloud c1"></div><div class="cloud c2"></div><div class="cloud c3"></div><div class="cloud c4"></div><div class="cloud c5"></div><div class="cloud c6"></div>
   <div class="deck"></div>
   <div class="flash"></div>
+  <div class="photoBg" id="photoBg"></div>
   <div class="sunEl" id="sunEl" hidden></div>
   <svg class="moonEl" id="moonEl" viewBox="-50 -50 100 100" hidden></svg>
   <div class="scene">
@@ -981,6 +990,11 @@ select { max-width: 100%; text-overflow: ellipsis; }
       <div class="results" id="placeResults"></div>
       <p class="small" id="placeMsg" role="status"></p>
       <p class="small">Picking a place fills in everything else on its own: the closest weather station, tide station, wave buoy, water temperature and airports. You can still change any of them in each tab's options.</p>
+      <h3>Background</h3>
+      <div class="seg" id="bgSeg" role="group" aria-label="Background">
+        <button type="button" data-bg="auto">Auto</button><button type="button" data-bg="day">Day</button><button type="button" data-bg="night">Night</button><button type="button" data-bg="photo">Photo</button>
+      </div>
+      <p class="small">Auto goes from day to night with the real sun. Day and Night stay put. Photo is the sunrise over the water.</p>
       <h3>Text size</h3>
       <input type="range" id="fsSlider" min="0.85" max="1.6" step="0.05" aria-label="Text size">
       <div class="small" id="fsPreview">Slide right for bigger text. <b id="fsVal">100%</b></div>
@@ -3045,6 +3059,9 @@ var ROUTES = S.routes;
       var v = +this.value; document.documentElement.style.setProperty("--fs", v); $("fsVal").textContent = Math.round(v * 100) + "%";
     });
     $("fsSlider").addEventListener("change", function () { S.fs = +this.value; saveS(S); });
+    function bgMark() { var m = "auto"; try { m = localStorage.getItem("bgMode.v1") || "auto"; } catch (x) {} Array.prototype.forEach.call(document.querySelectorAll("#bgSeg button"), function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-bg") === m)); }); }
+    $("bgSeg").addEventListener("click", function (e) { var b = e.target.closest("button[data-bg]"); if (!b || !window.SKY || !SKY.setBg) return; SKY.setBg(b.getAttribute("data-bg")); bgMark(); });
+    bgMark();
     $("tabSwitches").addEventListener("change", function (e) {
       var x = e.target.closest("input[data-tab]"); if (!x) return;
       var t = x.getAttribute("data-tab");
@@ -4179,8 +4196,28 @@ var ROUTES = S.routes;
   }
   var WINDTEST = (location.search.match(/windtest=([\d.]+)(?:,(\d+))?/) || []);   // preview only: ?windtest=mph,direction
   var SKYSHIFT = +((location.search.match(/skyshift=(-?\d+(?:\.\d+)?)/) || [])[1] || 0);   // preview only: move the scene's clock by N hours
+  function bgMode() { var m = "auto"; try { m = localStorage.getItem("bgMode.v1") || "auto"; } catch (e) {} return /^(auto|day|night|photo)$/.test(m) ? m : "auto"; }
+  var PHOTO = false;
+  function placePhoto() {
+    // Put the photo's horizon in the open space above the cards, so the sunrise isn't hidden behind them
+    var el = document.getElementById("photoBg"), W = innerWidth, Hh = innerHeight, iw = 1080, ih = 1440, hz = 0.54;
+    var gap = document.querySelector('.view:not([hidden]) .streetgap'), g = gap && gap.offsetHeight ? gap.getBoundingClientRect() : null;
+    var want = g ? g.top + window.scrollY + g.height * 0.6 : Hh * 0.45;
+    var sc = Math.max(W / iw, Hh / ih, (Hh - want) / ((1 - hz) * ih), want / (hz * ih)), h = ih * sc, w = iw * sc;
+    var y = Math.min(0, Math.max(Hh - h, want - hz * h));
+    el.style.backgroundSize = Math.round(w) + "px " + Math.round(h) + "px"; el.style.backgroundPosition = "50% " + Math.round(y) + "px";
+  }
   function update() {
-    var now = new Date(Date.now() + SKYSHIFT * 36e5), sp = SunCalc.getPosition(now, HOME[0], HOME[1]), st = SunCalc.getTimes(now, HOME[0], HOME[1]);
+    var mode = bgMode(); PHOTO = mode === "photo";
+    if (PHOTO) {
+      sky.className = "sky photo"; placePhoto(); clearInterval(FG.iv);
+      var mt = document.querySelector('meta[name="theme-color"]'); if (mt) mt.setAttribute("content", "#2b2f33");
+      return;
+    }
+    var now = new Date(Date.now() + SKYSHIFT * 36e5), st0 = SunCalc.getTimes(now, HOME[0], HOME[1]);
+    if (mode === "day") now = new Date(st0.solarNoon.getTime() - 2.5 * 36e5);   // a fixed mid-morning sky
+    else if (mode === "night") now = new Date(st0.solarNoon.getTime() + 12 * 36e5);   // around midnight
+    var sp = SunCalc.getPosition(now, HOME[0], HOME[1]), st = SunCalc.getTimes(now, HOME[0], HOME[1]);
     var alt = sp.altitude * 180 / Math.PI, evening = now > st.solarNoon, night = alt < -6;
     var c = skyAt(alt, evening);
     // Moon up at night brightens the sky a little, more for a fuller, higher moon
@@ -5402,7 +5439,7 @@ var ROUTES = S.routes;
   }
   function fgFrame(t) {
     FG.raf = 0;
-    if (document.hidden) return;
+    if (document.hidden || PHOTO) return;
     if (t - FG.last >= 50) { FG.last = t; fgDraw(Date.now()); }
     FG.raf = requestAnimationFrame(fgFrame);
   }
@@ -5476,7 +5513,7 @@ var ROUTES = S.routes;
   var last = 0;
   function frame(t) {
     raf = 0;
-    if (!drops.length || document.hidden) return;
+    if (!drops.length || document.hidden || PHOTO) return;
     var dt = Math.min(50, t - (last || t)); last = t;
     var sl = slant();
     drops.forEach(function (d, i) { d.y += d.v * dt / 16; d.x += sl * d.v * dt / 16; if (d.y + d.l > d.g + 2) drops[i] = newDrop(-20 - Math.random() * 120); });
@@ -5513,6 +5550,7 @@ var ROUTES = S.routes;
     new ResizeObserver(function () {
       cancelAnimationFrame(heroRaf);
       heroRaf = requestAnimationFrame(function () {
+        if (PHOTO) { placePhoto(); return; }
         var gap = document.body.classList.contains("hero") && document.querySelector('.view:not([hidden]) .streetgap');
         if (!gap) return;
         var want = gap.getBoundingClientRect().top + window.scrollY + sky.querySelector(".scene").offsetHeight * 0.1;
@@ -5524,6 +5562,8 @@ var ROUTES = S.routes;
   document.addEventListener("visibilitychange", function () { if (!document.hidden) { safeUpdate(); } });
   loadGround(); setInterval(loadGround, 30 * 60000);
   window.SKY.ground = function () { return GROUND; };
+  window.SKY.bgMode = bgMode;
+  window.SKY.setBg = function (m) { try { localStorage.setItem("bgMode.v1", m); } catch (e) {} window.skyResize(); };
 })();
 
 </script>
