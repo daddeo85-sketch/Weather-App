@@ -5606,10 +5606,18 @@ var ROUTES = S.routes;
   var hit = !preview || testNs;
   var people = hit && first ? jk("hit", "people").then(function (d) { if (d) { try { localStorage.setItem(FLAG, "1"); } catch (e) {} } return d; }) : jk("get", "people");
   var opens = jk(hit ? "hit" : "get", "opens");
-  Promise.all([people, opens]).then(function (r) {
-    var p = r[0] && r[0].value, o = r[1] && r[1].value, el = document.getElementById("userCount");
+  // Today's numbers, by the Florida calendar day: each phone counts once a day, every open counts
+  var day = "", DFLAG = FLAG + ".day", firstToday = false;
+  try { day = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" }); } catch (e) { day = new Date().toISOString().slice(0, 10); }
+  try { firstToday = localStorage.getItem(DFLAG) !== day; } catch (e) {}
+  var peopleToday = hit && firstToday ? jk("hit", "people-" + day).then(function (d) { if (d) { try { localStorage.setItem(DFLAG, day); } catch (e) {} } return d; }) : jk("get", "people-" + day);
+  var opensToday = jk(hit ? "hit" : "get", "opens-" + day);
+  function n(v, one, many) { return v.toLocaleString() + " " + (v === 1 ? one : many); }
+  Promise.all([people, opens, peopleToday, opensToday]).then(function (r) {
+    var p = r[0] && r[0].value, o = r[1] && r[1].value, pt = r[2] && r[2].value, ot = r[3] && r[3].value, el = document.getElementById("userCount");
     if (!el || !(p > 0)) return;
-    el.textContent = p.toLocaleString() + (p === 1 ? " person has" : " people have") + " opened Full Send" + (o > 0 ? ", " + o.toLocaleString() + (o === 1 ? " open" : " opens") + " in all." : ".");
+    var all = n(p, "person", "people") + (o > 0 ? ", " + n(o, "open", "opens") : "");
+    el.innerHTML = (pt > 0 ? "<b>Today:</b> " + n(pt, "person", "people") + (ot > 0 ? ", " + n(ot, "open", "opens") : "") + "<br>" : "") + "<b>All time:</b> " + all;
     el.hidden = false;
   });
 })();
