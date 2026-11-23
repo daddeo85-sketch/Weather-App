@@ -1266,7 +1266,12 @@ var ROUTES = S.routes;
   /* ---------------- Alerts ---------------- */
   function loadAlerts() {
     nws("/alerts/active?point=" + HOME[0] + "," + HOME[1]).then(function (d) {
-      ALERTS = d.features || [];
+      // Only alerts still in force for this exact spot: drop cancelled ones and anything already over
+      var nowMs = Date.now();
+      ALERTS = (d.features || []).filter(function (f) {
+        var p = f.properties || {}, end = Date.parse(p.ends || p.expires || "");
+        return p.status !== "Test" && p.messageType !== "Cancel" && !/cancel/i.test(p.event || "") && !(end < nowMs);
+      });
       var box = $("alerts"); box.innerHTML = "";
       if (!ALERTS.length) box.innerHTML = '<section class="card"><p>No active weather alerts for ' + esc(S.name) + ".</p></section>";
       ALERTS.forEach(function (f) {
@@ -1285,7 +1290,8 @@ var ROUTES = S.routes;
       if (ALERTS.length) {
         var warnAny = ALERTS.some(function (f) { return /warning/i.test(f.properties.event); });
         ban.classList.toggle("warning", warnAny);
-        ban.textContent = "⚠ " + ALERTS[0].properties.event + (ALERTS.length > 1 ? " + " + (ALERTS.length - 1) + " more" : "");
+        var a0 = ALERTS[0].properties, on0 = a0.onset && new Date(a0.onset);
+        ban.textContent = "⚠ " + a0.event + (on0 && on0 > new Date() ? ", starts " + dayLabel(on0) + " " + fmtTime.format(on0) : "") + (ALERTS.length > 1 ? " + " + (ALERTS.length - 1) + " more" : "");
       }
       ban.hidden = !ALERTS.length || route().v === "alerts";
     }).catch(function () { ALERTS = []; $("alertBanner").hidden = true; $("alerts").innerHTML = '<section class="card"><p class="err">Couldn\'t check for alerts right now.</p></section>'; });
