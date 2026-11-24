@@ -1346,7 +1346,7 @@ var ROUTES = S.routes;
       per.slice(0, 2).forEach(function (x) { if (x.isDaytime) hi = x.temperature; else lo = x.temperature; });
       D.hl = [hi, lo]; setHilo();
       D.periods = per;
-      D.pop = per[0] && per[0].probabilityOfPrecipitation ? per[0].probabilityOfPrecipitation.value || 0 : null;
+      D.pop = D.popRest != null ? D.popRest : per[0] && per[0].probabilityOfPrecipitation ? per[0].probabilityOfPrecipitation.value || 0 : null;
       if (D.pop != null) $("pop").textContent = D.pop + "%";
       renderScore();
       renderPeriods();
@@ -1446,6 +1446,8 @@ var ROUTES = S.routes;
     var h0 = Date.now() - (Date.now() % 3600000);       // start of this hour
     var m0 = etMidnight().getTime(), tot = rainSum(h0, m0 + 86400000) || 0;   // from this hour to midnight, so hours already gone don't count
     D.rainToday = tot; setHilo();
+    var pmax = null; hr.forEach(function (x) { if (x.t >= h0 && x.t < m0 + 86400000) pmax = Math.max(pmax || 0, x.pop || 0); });
+    if (pmax != null) { D.popRest = D.pop = Math.round(pmax); if ($("pop")) $("pop").textContent = D.pop + "%"; }
     if ($("popSub")) $("popSub").textContent = tot >= 0.01 ? rainIn(tot) + " in rest of today" : "No rain rest of today";
     if (!box) return;
     var cols = hr.filter(function (q) { return q.t >= h0; }).slice(0, 12), sum = 0;
@@ -1501,6 +1503,7 @@ var ROUTES = S.routes;
     $("windNowSub").textContent = sub;
     D.windMph = show.ws; D.gustMph = useF ? f.wg : a.wg || null; if (D.obs) D.obs.ws = D.windMph;
     renderScore();
+    if (D.ride && typeof renderRide === "function") { try { renderRide(); } catch (e) {} }
     if (window.SKY) { try { window.SKY.wind(show.ws, D.gustMph || 0, show.wd); } catch (e) {} }
   }
   function loadWind() {
@@ -2755,6 +2758,7 @@ var ROUTES = S.routes;
       var sentences = text.join(" ").match(/[^.!?]+[.!?]/g) || [];
       var land = sentences.filter(function (x) { return /landfall/i.test(x); }).slice(0, 2).join(" ").trim();
       var c = catOf(kt, heading);
+      if (/^Subtropical/i.test(heading) && (c[0] === "ts" || c[0] === "td")) c = [c[0], c[0] === "ts" ? "Subtrop. storm" : "Subtrop. dep."];
       out.push({
         heading: heading, name: heading.replace(/^(Major |Tropical |Subtropical |Post-tropical )?(Hurricane|Storm|Depression|Cyclone)\s+/i, "").replace(/^(Tropical|Subtropical) (Storm|Depression)\s+/i, ""),
         kt: kt, mph: kt ? Math.round(kt * 1.15078 / 5) * 5 : null, pres: pres, cat: c[0], catLabel: c[1],
@@ -3587,6 +3591,9 @@ var ROUTES = S.routes;
     var road = raining ? [heavy ? 2 : 1, "Wet and slick", "pavement and sidewalks wet and slick"] : l3 >= 0.1 ? [1, "Wet, puddles on the sidewalks", "wet pavement, puddles on the sidewalks"] : l3 > 0.01 ? [1, "Damp, slick in spots", "damp pavement, slick in spots"] : l6 >= 0.25 ? [1, "Drying, puddles in low spots", "puddles in low spots"] : [0, "Dry", "dry pavement"];
     var storm = isStorm(c.weather_code), gust = Math.round(c.wind_gusts_10m || 0), ws = Math.round(c.wind_speed_10m || 0);
     var vis = vmi(h.visibility[i]), feel = Math.round(feelsF(c.temperature_2m, h.relative_humidity_2m && h.relative_humidity_2m[i], c.wind_speed_10m)), temp = Math.round(c.temperature_2m);
+    // Same reading the Weather tab shows up top (the airport), so the two tabs agree; the model is the backup
+    if (D.obs && D.obs.tf != null) { temp = Math.round(D.obs.tf); feel = Math.round(D.obs.feels != null ? D.obs.feels : D.obs.tf); }
+    if (D.windMph != null) { ws = Math.round(D.windMph); gust = Math.max(ws, Math.round(D.gustMph || gust)); }
     var st0 = SunCalc.getTimes(new Date(), HOME[0], HOME[1]), now = Date.now(), ss = st0.sunset.getTime(), sr = st0.sunrise.getTime(), dark = now >= ss || now < sr;
     var left = (ss - now) / 60000;
     var nowR = [road, storm ? [2, "Lightning in the area", "lightning nearby"] : raining ? [heavy ? 2 : 1, heavy ? "Heavy rain" : "Light rain", heavy ? "heavy rain" : "light rain"] : [0, "No rain", "no rain"],
