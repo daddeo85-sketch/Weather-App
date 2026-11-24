@@ -4243,8 +4243,10 @@ var ROUTES = S.routes;
     var el = document.getElementById("photoBg"), W = innerWidth, Hh = innerHeight, iw = 1080, ih = 1440, hz = PHOTONOW.hz;
     var url = "url(img/" + PHOTONOW.f + ".webp)"; if (el.style.backgroundImage.indexOf(PHOTONOW.f) < 0) el.style.backgroundImage = url;
     var gap = document.querySelector('.view:not([hidden]) .streetgap'), g = gap && gap.offsetHeight ? gap.getBoundingClientRect() : null;
-    var want = g ? g.top + window.scrollY + g.height * 0.6 : Hh * 0.45;
-    var sc = Math.max(W / iw, Hh / ih, (Hh - want) / ((1 - hz) * ih), want / (hz * ih)), h = ih * sc, w = iw * sc;
+    // The sky layer is fixed to the screen, so measure against the screen (no scroll offset)
+    var want = g ? Math.min(Hh * 0.6, Math.max(Hh * 0.25, g.top + g.height * 0.6)) : Hh * 0.45;
+    // Just fill the screen (no extra zoom), then slide the photo up or down so its horizon sits as near the open space as it can
+    var sc = Math.max(W / iw, Hh / ih), h = ih * sc, w = iw * sc;
     var y = Math.min(0, Math.max(Hh - h, want - hz * h));
     el.style.backgroundSize = Math.round(w) + "px " + Math.round(h) + "px"; el.style.backgroundPosition = "50% " + Math.round(y) + "px";
   }
