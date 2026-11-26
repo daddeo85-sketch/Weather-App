@@ -1307,9 +1307,11 @@ var ROUTES = S.routes;
   /* ---------------- Now + forecast ---------------- */
   // The airport's sky sensor only sees clouds below about 12,000 ft, so it calls a sky "Clear" or "Fair"
   // under a high or mid-level deck. When it says clear but the cloud cover says otherwise, go by the cloud cover.
+  function upperCover(c) { return c.cloud_cover_high == null && c.cloud_cover_mid == null ? (c.cloud_cover || 0) : Math.max(c.cloud_cover_mid || 0, c.cloud_cover_high || 0); }
   function skyWord(cover) { return cover >= 85 ? "Cloudy" : cover >= 60 ? "Mostly cloudy" : "Partly cloudy"; }
   function condShow() {
-    var t = D.obsText || "", cv = D.om && D.om.current && D.om.current.cloud_cover;
+    // The airport measures low clouds itself, so the forecast model only gets a say about the high clouds it can't see
+    var c = D.om && D.om.current, cv = c ? upperCover(c) : null, t = D.obsText || "";
     if (/^(clear|fair|sunny|mostly clear|mostly sunny)$/i.test(t.trim()) && cv != null && cv >= 35) t = skyWord(cv);
     if (t || !D.obsFail) $("cond").textContent = t;
   }
@@ -2590,7 +2592,7 @@ var ROUTES = S.routes;
   function uvWordS(u) { return u < 3 ? "Low" : u < 6 ? "Moderate" : u < 8 ? "High" : u < 11 ? "Very high" : "Extreme"; }
   function loadOM() {
     getJSON("https://api.open-meteo.com/v1/forecast?latitude=" + S.lat + "&longitude=" + S.lon +
-      "&current=temperature_2m,apparent_temperature,uv_index,is_day,weather_code,cloud_cover,precipitation,rain,showers,wind_speed_10m,wind_gusts_10m,wind_direction_10m" +
+      "&current=temperature_2m,apparent_temperature,uv_index,is_day,weather_code,cloud_cover,cloud_cover_mid,cloud_cover_high,precipitation,rain,showers,wind_speed_10m,wind_gusts_10m,wind_direction_10m" +
       "&hourly=temperature_2m,apparent_temperature,relative_humidity_2m,dew_point_2m,precipitation_probability,precipitation,uv_index,wind_speed_10m,wind_gusts_10m,wind_direction_10m" +
       "&daily=uv_index_max,precipitation_sum&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=" + encodeURIComponent(TZ) + "&forecast_days=5").then(function (d) {
       D.om = d; D.omFail = false; rainRefresh(); if (D.obsText) condShow();
@@ -4230,8 +4232,10 @@ var ROUTES = S.routes;
   function classify() {
     var o = WX.obsText.toLowerCase(), c = WX.code, k = "clear";
     if (WX.cover >= 85) k = "cloudy"; else if (WX.cover >= 35) k = "partly";
-    // The airport's sensor can't see high clouds, so its "clear" or "fair" only counts when the cloud cover agrees
-    if (/partly|few|scattered/.test(o)) k = WX.cover >= 85 ? "cloudy" : "partly"; else if (/mostly cloudy|overcast|cloudy/.test(o)) k = "cloudy"; else if (/clear|fair|sunny/.test(o) && WX.cover < 35) k = "clear";
+    // The airport measures the low clouds itself, which beats the model's guess. Its sensor can't see high clouds,
+    // so for those the model's high and mid cloud cover (not its low cloud guess) can still make the sky cloudier.
+    var up = WX.upper == null ? WX.cover : WX.upper;
+    if (/partly|few|scattered/.test(o)) k = up >= 85 ? "cloudy" : "partly"; else if (/mostly cloudy|overcast|cloudy/.test(o)) k = "cloudy"; else if (/clear|fair|sunny/.test(o)) k = up >= 85 ? "cloudy" : up >= 35 ? "partly" : "clear";
     if (c === 45 || c === 48 || /fog|mist|haze/.test(o)) k = "fog";
         // Falling rain only when it's really raining here: the radar over your spot or the airport says so.
     // The forecast model counts only until the radar has loaded.
@@ -5602,7 +5606,7 @@ var ROUTES = S.routes;
   window.SKY = {
     weather: function (c) {
       if (!c) return;
-      WX.code = c.weather_code; WX.cover = c.cloud_cover || 0;
+      WX.code = c.weather_code; WX.cover = c.cloud_cover || 0; WX.upper = c.cloud_cover_high == null && c.cloud_cover_mid == null ? WX.cover : Math.max(c.cloud_cover_mid || 0, c.cloud_cover_high || 0);
       WX.wet = Math.max(c.precipitation || 0, c.rain || 0, c.showers || 0);
       if (WX.mph === 0 && c.wind_speed_10m != null) { WX.mph = Math.max(c.wind_speed_10m, 0.7 * (c.wind_gusts_10m || 0)); WX.dir = c.wind_direction_10m; }
       classify(); safeUpdate();
