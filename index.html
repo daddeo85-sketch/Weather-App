@@ -1306,6 +1306,24 @@ var ROUTES = S.routes;
     if (/^(clear|fair|sunny|mostly clear|mostly sunny)$/i.test(t.trim()) && cv != null && cv >= 35) t = skyWord(cv);
     if (t || !D.obsFail) $("cond").textContent = t;
   }
+  // The airport's rain sensor sometimes reports light rain under a clear sky (dew or spray on the sensor).
+  // When the radar right over your spot is empty and the airport's own sky reading is clear or only some clouds,
+  // that rain isn't real, so the app goes by the sky instead.
+  function obsRainGhost() {
+    var t = D.obsRaw || "", sky = D.obsSky || [];
+    if (!/rain|drizzle|shower/i.test(t) || /thunder|t-storm|heavy/i.test(t)) return false;
+    if (D.radarFrac == null || D.radarFrac > 0) return false;
+    return sky.every(function (a) { return /^(CLR|SKC|FEW|SCT)$/.test(a); });
+  }
+  function obsApply() {
+    if (D.obsRaw == null) return;
+    var sky = D.obsSky || [], t = D.obsRaw;
+    if (obsRainGhost()) t = sky.indexOf("SCT") >= 0 ? "Partly Cloudy" : "Fair";
+    var changed = t !== D.obsText;
+    D.obsText = t; condShow();
+    if (D.om && typeof rainAhead === "function") { rainAhead(); if (typeof homeLinks === "function") homeLinks(); }
+    if (changed && window.SKY) { try { window.SKY.obs(t, Date.now() - D.obsTime < 90 * 60000); } catch (e) {} }
+  }
   function loadNow() {
     nws("/stations/" + S.station + "/observations/latest").then(function (d) {
       var p = d.properties;
@@ -1314,7 +1332,9 @@ var ROUTES = S.routes;
       if (tc == null) throw new Error("no temp");
       var tf = c2f(tc);
       $("tNow").textContent = Math.round(tf) + "°";
-      D.obsText = p.textDescription || ""; condShow();
+      D.obsRaw = p.textDescription || ""; D.obsTime = new Date(p.timestamp).getTime();
+      D.obsSky = (p.cloudLayers || []).map(function (x) { return String(x.amount || "").toUpperCase(); });
+      D.obsText = null; obsApply();
       $("rh").textContent = rh != null ? Math.round(rh) + "%" : "--";
       var feels = tf, kind = "same";
       if (tf >= 80 && rh != null) { feels = heatIndex(tf, rh); kind = "heat index"; }
@@ -1335,12 +1355,14 @@ var ROUTES = S.routes;
       var ws = p.windSpeed && p.windSpeed.value, wg = p.windGust && p.windGust.value, wd = p.windDirection && p.windDirection.value;
       D.obsWind = ws != null ? { ws: Math.round(kmh2mph(ws)), wg: wg ? Math.round(kmh2mph(wg)) : null, wd: wd, t: Date.parse(p.timestamp) } : null;
       windNowRender();
-      D.obsText = p.textDescription || ""; D.obsTime = new Date(p.timestamp).getTime(); if (D.om) { rainAhead(); if (typeof homeLinks === "function") homeLinks(); }
-      if (window.SKY) { try { window.SKY.obs(p.textDescription || "", Date.now() - D.obsTime < 90 * 60000); } catch (e) {} }
+      D.obsText = null; obsApply();
       $("obsTime").textContent = "As of " + fmtTime.format(new Date(p.timestamp));
     }).catch(function () { $("cond").textContent = "Current conditions unavailable"; D.obsFail = true; windNowRender(); });
 
-    nws("/gridpoints/" + S.office + "/" + S.gx + "," + S.gy + "/forecast").then(function (d) {
+    // The Weather Service often answers with an error for a minute while it rebuilds the forecast, so try a few times
+    var fcPath = "/gridpoints/" + S.office + "/" + S.gx + "," + S.gy + "/forecast";
+    function fcTry(n) { return nws(fcPath).catch(function (e) { if (n <= 0) throw e; return new Promise(function (r) { setTimeout(r, 8000); }).then(function () { return fcTry(n - 1); }); }); }
+    fcTry(3).then(function (d) {
       var per = d.properties.periods || [];
       var hi = null, lo = null;
       per.slice(0, 2).forEach(function (x) { if (x.isDaytime) hi = x.temperature; else lo = x.temperature; });
@@ -1760,7 +1782,7 @@ var ROUTES = S.routes;
         var g = c.getContext("2d"); g.drawImage(img, 0, 0);
         var d = g.getImageData(Math.max(0, px - 2), Math.max(0, py - 2), 5, 5).data, hit = 0, heavy = 0;
         for (var i = 0; i < d.length; i += 4) if (d[i + 3] > 40) { hit++; if (d[i] > 200 && d[i + 2] < 120) heavy++; }
-        D.radarFrac = hit / 25; D.radarHeavy = heavy > 2; if (/debug/.test(location.search)) document.title = "radar here " + D.radarFrac; window.SKY.radar(hit / 25, heavy > 2); renderRide(); if (D.om) { rainAhead(); homeLinks(); }
+        D.radarFrac = hit / 25; D.radarHeavy = heavy > 2; if (/debug/.test(location.search)) document.title = "radar here " + D.radarFrac; window.SKY.radar(hit / 25, heavy > 2); if (D.obsRaw != null) obsApply(); renderRide(); if (D.om) { rainAhead(); homeLinks(); }
       } catch (e) { if (/debug/.test(location.search)) document.title = "radar here failed: " + e.message; }
     };
     img.onerror = function () { if (/debug/.test(location.search)) document.title = "radar here: image failed"; };
