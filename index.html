@@ -369,6 +369,12 @@ label.sw:first-of-type { border-top: 0; }
 .rows { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 6px 0; }
 .rows .k { color: var(--muted); }
 .rows .v { font-weight: 600; }
+.hnote { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; padding: 11px 8px 11px 14px; border-radius: 14px;
+  background: rgba(12, 20, 30, 0.62); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  color: #fff; font-weight: 700; font-size: calc(15px * var(--fs)); line-height: 1.3; border: 1px solid rgba(255,255,255,0.16); }
+.hnote[hidden] { display: none; }
+.hnote span { flex: 1; }
+.hnote button { flex: none; width: 32px; height: 32px; min-height: 0; padding: 0; border: 0; border-radius: 50%; background: rgba(255,255,255,0.14); color: #fff; font-size: 20px; line-height: 1; cursor: pointer; }
 .abanner { display: block; width: 100%; text-align: left; border: 0; border-radius: 14px; padding: 10px 34px 10px 12px; margin: 0 0 10px; position: relative;
   color: #fff; background: #b7791f; font: 700 calc(15px * var(--fs)) var(--font); cursor: pointer; box-shadow: 0 4px 14px rgba(0,0,0,0.25); }
 .abanner.warning { background: #c0392b; }
@@ -564,6 +570,7 @@ select { max-width: 100%; text-overflow: ellipsis; }
     </div>
   </header>
 
+  <div class="hnote" id="holidayNote" role="status" hidden><span id="holidayText"></span><button type="button" id="holidayX" aria-label="Close">&times;</button></div>
   <button class="abanner" id="alertBanner" type="button" data-go="#/alerts" hidden></button>
 
   <div class="view" data-view="weather" hidden>
@@ -5666,6 +5673,28 @@ var ROUTES = S.routes;
     el.innerHTML = (pt > 0 ? "<b>Today:</b> " + n(pt, "person", "people") + (ot > 0 ? ", " + n(ot, "open", "opens") : "") + "<br>" : "") + "<b>All time:</b> " + all;
     el.hidden = false;
   });
+})();
+</script>
+<script>
+// A one-day message from the app's makers. Each note shows only on its own day (Eastern time) and hides itself after.
+(function () {
+  var NOTES = [{ day: "2026-11-26", id: "thanks26", text: "From the creators of the app, Happy Thanksgiving!" }];
+  var box = document.getElementById("holidayNote"); if (!box) return;
+  function today() { try { return new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date()); } catch (e) { return ""; } }
+  function closed(id) { try { return localStorage.getItem("noteClosed_" + id) === "1"; } catch (e) { return false; } }
+  var cur = null;
+  function check() {
+    var d = today(); cur = null;
+    for (var i = 0; i < NOTES.length; i++) if (NOTES[i].day === d && !closed(NOTES[i].id)) cur = NOTES[i];
+    if (cur) document.getElementById("holidayText").textContent = cur.text;
+    box.hidden = !cur;
+  }
+  document.getElementById("holidayX").addEventListener("click", function () {
+    if (cur) { try { localStorage.setItem("noteClosed_" + cur.id, "1"); } catch (e) {} }
+    box.hidden = true;
+  });
+  check(); setInterval(check, 60000);
+  document.addEventListener("visibilitychange", function () { if (!document.hidden) check(); });
 })();
 </script>
 </body>
