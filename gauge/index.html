@@ -65,6 +65,8 @@ button{cursor:pointer}
 .step{display:flex;gap:6px}
 .step button{width:38px;height:32px;border-radius:8px;border:1px solid var(--line);background:var(--panel);font-size:18px;line-height:1}
 
+.fuelg{width:86px;height:86px;flex:none;background:none;border:0;padding:0;border-radius:50%}
+.fuelg svg{width:100%;height:100%;display:block}
 .trips{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding-block:6px 8px;border-top:1px solid var(--line)}
 .trips div{text-align:center}
 .trips small{display:block;font-size:11px;letter-spacing:.12em;color:var(--muted);text-transform:uppercase}
@@ -222,6 +224,20 @@ button{cursor:pointer}
         <button type="button" id="limUp" aria-label="Raise limit">+</button>
       </div>
     </div>
+    <button type="button" class="fuelg" id="fuelGauge" aria-label="Fuel gauge, opens fuel">
+      <svg viewBox="0 0 86 86" aria-hidden="true">
+        <circle cx="43" cy="43" r="42" fill="url(#cchrome)"/>
+        <circle cx="43" cy="43" r="37.5" fill="#0f1f3a"/>
+        <path d="M17.6 53.4 A28 28 0 0 1 20.3 26.6" fill="none" stroke="#ff4646" stroke-width="3.2"/>
+        <g id="fgTicks"></g>
+        <text x="19" y="62" text-anchor="middle" font-family="Barlow Condensed, Arial Narrow, sans-serif" font-weight="700" font-size="12" fill="#c4f0dc">E</text>
+        <text x="67" y="62" text-anchor="middle" font-family="Barlow Condensed, Arial Narrow, sans-serif" font-weight="700" font-size="12" fill="#c4f0dc">F</text>
+        <text x="43" y="66" text-anchor="middle" font-family="Barlow, sans-serif" font-size="7" letter-spacing="1.5" fill="#7fa596">FUEL</text>
+        <text id="fgText" x="43" y="76" text-anchor="middle" font-family="Barlow, sans-serif" font-size="7" fill="#7fa596"></text>
+        <g id="fgNeedle"><path d="M43 43 L41.4 46 L42.4 18 L43.6 18 L44.6 46 Z" fill="#ff6a1c"/></g>
+        <circle cx="43" cy="43" r="5" fill="#c4f0dc"/><circle cx="43" cy="43" r="2.4" fill="#0f1f3a"/>
+      </svg>
+    </button>
   </div>
 
   </div>
@@ -261,6 +277,15 @@ button{cursor:pointer}
   <div class="inner">
     <div class="grab"></div>
     <h2>Fuel <button type="button" data-close>Done</button></h2>
+    <div class="result" id="fgBox" style="grid-template-columns:1fr 1fr">
+      <div><small>Gas left</small><b id="fgLeft">--</b></div>
+      <div><small>Miles to empty</small><b id="fgRange">--</b></div>
+    </div>
+    <div class="two">
+      <div class="field"><label for="estMpg">Your miles per gallon</label><input id="estMpg" inputmode="decimal" placeholder="Type yours" autocomplete="off"></div>
+      <div class="field"><label>&nbsp;</label><button type="button" class="btn primary" id="fullTank" style="padding:11px 12px">Full tank</button></div>
+    </div>
+    <p class="note" id="fgNote">Tap Full tank when you fill up, and type the MPG you think the truck gets. The gauge drops as you drive.</p>
     <div class="row"><div><div class="k">Miles since last fill-up</div><div class="v" id="sinceFill">0.0 mi</div></div></div>
     <form id="fuelForm" class="inner" style="gap:12px">
       <div class="two">
@@ -302,6 +327,11 @@ button{cursor:pointer}
       </div>
       <p class="note" id="keyStatus">No key saved. The limit is set by hand.</p>
     </div>
+    <div class="field">
+      <label for="tankSize">Tank size (gallons)</label>
+      <input id="tankSize" inputmode="decimal" autocomplete="off">
+      <p class="note">Set to 27, the stock tank on your 2007 F-150 regular cab long bed.</p>
+    </div>
     <div class="switch"><label for="wake">Keep screen on while open</label><input type="checkbox" id="wake" checked></div>
     <div class="switch"><span>Try it without driving</span><button type="button" class="btn" id="demoBtn">Demo drive</button></div>
     <p class="note">Dial turns green at or under the limit, yellow up to 10 over, red past 10 over. The needle starts shaking at 60.</p>
@@ -318,7 +348,7 @@ const store = {
   set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} },
   del(k){ try { localStorage.removeItem(k); } catch(e){} }
 };
-const blank = () => ({ trips:[0,0,0], odo:0, sinceFill:0, manualLimit:45, source:'manual', wake:true, fills:[], hasFill:false });
+const blank = () => ({ trips:[0,0,0], odo:0, sinceFill:0, manualLimit:45, source:'manual', wake:true, fills:[], hasFill:false, tank:27, estMpg:null, fuelLeft:null });
 let S = Object.assign(blank(), store.get(KEY, {}));
 let tomKey = store.get(KEY + '.tomtom', '') || '';
 let demo = null;          // demo state when running
@@ -469,7 +499,19 @@ function paintGps(state, text){
   $('lightL').setAttribute('fill', state === 'on' ? '#3ee68a' : state === 'weak' ? '#9a8a2a' : '#1d4d33');
 }
 
-function paintAll(){ paintStatus(); paintOdo(); paintLimitInfo(); paintCompass(); }
+// ---------- fuel gauge (all manual: full tank + his own MPG estimate) ----------
+(function(){ const g = $('fgTicks'); [0,.25,.5,.75,1].forEach(f => mk('line', { x1:43, y1:13, x2:43, y2: f === .5 ? 20 : 18, stroke:'#c4f0dc', 'stroke-width':1.6, transform:`rotate(${-60 + 120*f} 43 43)` }, g)); })();
+function paintFuelGauge(){
+  const st = demo || S;
+  const has = st.fuelLeft != null && st.tank > 0;
+  const frac = has ? Math.max(0, Math.min(1, st.fuelLeft / st.tank)) : 0;
+  $('fgNeedle').setAttribute('transform', `rotate(${(-60 + 120 * frac).toFixed(1)} 43 43)`);
+  $('fgText').textContent = has ? (st.fuelLeft < 10 ? st.fuelLeft.toFixed(1) : Math.round(st.fuelLeft)) + ' gal' : 'set it';
+  $('fgText').setAttribute('fill', has && frac <= 0.125 ? '#ff4646' : '#7fa596');
+  $('fgLeft').textContent = has ? st.fuelLeft.toFixed(1) + ' gal' : '--';
+  $('fgRange').textContent = has && st.estMpg > 0 ? Math.round(st.fuelLeft * st.estMpg) + ' mi' : '--';
+}
+function paintAll(){ paintStatus(); paintOdo(); paintLimitInfo(); paintCompass(); paintFuelGauge(); }
 
 // ---------- GPS ----------
 function onPos(p){
@@ -489,6 +531,11 @@ function onPos(p){
   if (mph == null || mph < 1) mph = 0;
   live.target = Math.min(MAX + 4, mph);
   if (c.heading != null && !Number.isNaN(c.heading) && mph >= 3) live.heading = c.heading;
+  else if (prev && mph >= 3 && d > 8){ // phone gave no heading: work it out from the last two fixes
+    const r = Math.PI / 180, y = Math.sin((fix.lon - prev.lon) * r) * Math.cos(fix.lat * r);
+    const x = Math.cos(prev.lat * r) * Math.sin(fix.lat * r) - Math.sin(prev.lat * r) * Math.cos(fix.lat * r) * Math.cos((fix.lon - prev.lon) * r);
+    live.heading = (Math.atan2(y, x) / r + 360) % 360;
+  }
   live.fix = fix; live.lastFixAt = Date.now(); live.acc = c.accuracy;
   if (!demo) paintGps(c.accuracy <= 40 ? 'on' : 'weak', c.accuracy <= 40 ? 'GPS good' : 'GPS weak (±' + Math.round(c.accuracy * 3.28) + ' ft)');
   maybeFetchLimit();
@@ -498,6 +545,7 @@ function onPos(p){
 function addMiles(mi){
   const st = demo || S;
   st.odo += mi; st.sinceFill += mi; st.trips = st.trips.map(x => x + mi);
+  if (st.fuelLeft != null && st.estMpg > 0) st.fuelLeft = Math.max(0, st.fuelLeft - mi / st.estMpg);
 }
 function onErr(e){
   if (demo) return;
@@ -639,7 +687,8 @@ $('limUp').addEventListener('click', () => { S.manualLimit = Math.min(85, S.manu
 // ---------- fuel ----------
 function paintFuel(){
   const st = demo || S;
-  paintOdo();
+  paintOdo(); paintFuelGauge();
+  if (document.activeElement !== $('estMpg')) $('estMpg').value = st.estMpg > 0 ? String(st.estMpg) : '';
   const h = $('hist'); h.textContent = '';
   st.fills.slice(-6).reverse().forEach(f => {
     const row = document.createElement('div');
@@ -674,9 +723,21 @@ $('fuelForm').addEventListener('submit', e => {
     msg.textContent = 'Starting point saved. At your next fill-up this shows MPG and cost per mile.';
   }
   st.fills.push(entry); if (st.fills.length > 60) st.fills.shift();
-  st.sinceFill = 0; st.hasFill = true;
+  st.sinceFill = 0; st.hasFill = true; st.fuelLeft = st.tank;
   $('ppg').value = ''; $('gal').value = '';
   save(); paintFuel();
+});
+
+$('fuelGauge').addEventListener('click', () => open('fuel'));
+$('estMpg').addEventListener('change', e => {
+  const st = demo || S; const v = parseFloat(String(e.target.value).replace(/[,\s]/g, ''));
+  st.estMpg = v > 0 && v < 100 ? v : null; e.target.value = st.estMpg ? String(st.estMpg) : ''; save(); paintFuelGauge();
+});
+$('fullTank').addEventListener('click', () => {
+  const st = demo || S; const v = parseFloat(String($('estMpg').value).replace(/[,\s]/g, ''));
+  if (v > 0 && v < 100) st.estMpg = v;
+  st.fuelLeft = st.tank; save(); paintFuelGauge();
+  $('fgNote').textContent = st.estMpg ? 'Full tank set: ' + st.tank + ' gallons at ' + st.estMpg + ' MPG.' : 'Full tank set. Type your MPG so the gauge can drop as you drive.';
 });
 
 // ---------- settings ----------
@@ -693,6 +754,7 @@ function paintSettings(){
   $('tomKey').value = tomKey ? '•'.repeat(12) : '';
   $('tomKey').dataset.masked = tomKey ? '1' : '';
   $('wake').checked = !!S.wake;
+  $('tankSize').value = S.tank;
   updateKeyStatus();
 }
 $('srcTom').addEventListener('click', () => { S.source = 'tomtom'; save(); live.limitAt = 0; maybeFetchLimit(); paintSettings(); paintAll(); });
@@ -711,6 +773,11 @@ $('keySave').addEventListener('click', () => {
 $('keyClear').addEventListener('click', () => {
   tomKey = ''; store.del(KEY + '.tomtom'); live.limit = null; S.source = 'manual'; save(); paintSettings(); paintAll();
 });
+$('tankSize').addEventListener('change', e => {
+  const v = parseFloat(String(e.target.value).replace(/[,\s]/g, ''));
+  if (v >= 5 && v <= 80){ if (S.fuelLeft != null) S.fuelLeft = Math.min(S.fuelLeft, v); S.tank = v; save(); paintFuelGauge(); }
+  e.target.value = S.tank;
+});
 $('wake').addEventListener('change', e => { S.wake = e.target.checked; save(); if (S.wake) wake(); else if (lock){ lock.release().catch(()=>{}); lock = null; } });
 
 // ---------- demo drive ----------
@@ -727,7 +794,7 @@ function demoSpeedAt(t){
 function startDemo(fixed){
   if (demo) stopDemo();
   saved = S;
-  demo = { trips:[...S.trips], odo:S.odo, sinceFill:S.sinceFill, fills:[...S.fills], hasFill:S.hasFill, limit:55,
+  demo = { trips:[...S.trips], odo:S.odo, sinceFill:S.sinceFill, fills:[...S.fills], hasFill:S.hasFill, tank:S.tank, estMpg:S.estMpg, fuelLeft:S.fuelLeft, limit:55,
     lat:27.4467, lon:-80.3256, head:20, t:0, fixed: fixed == null ? null : +fixed };
   live.fix = null;
   $('demoBar').hidden = false; close();
