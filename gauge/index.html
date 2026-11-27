@@ -1,4 +1,4 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Hammer Down</title><link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" type="image/png" href="icon-192.png"><meta name="theme-color" content="#000000"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="apple-mobile-web-app-title" content="Hammer Down"><style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html,body{margin:0;background:#000}img{max-width:100%}[hidden]{display:none!important}</style></head><body><meta name="claude:viewport-fit-sides" content="cover">
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Hammer Down</title><link rel="manifest" href="manifest.webmanifest?v=2"><link rel="apple-touch-icon" href="apple-touch-icon.png?v=2"><link rel="icon" type="image/png" href="icon-192.png?v=2"><meta name="theme-color" content="#000000"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="apple-mobile-web-app-title" content="Hammer Down"><style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html,body{margin:0;background:#000}img{max-width:100%}[hidden]{display:none!important}</style></head><body><meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=Orbitron:wght@600;700&display=swap">
@@ -113,6 +113,8 @@ button{cursor:pointer}
 .field input{background:#0a1424;border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-size:17px;width:100%;min-height:46px;user-select:text;-webkit-user-select:text;-webkit-appearance:none;appearance:none}
 .inbox{position:relative;display:block;width:100%}
 .inbox input{padding-right:48px}
+.field input::placeholder{color:#5f7187;font-style:italic;opacity:1}
+.keyrow .inbox input{font-size:17px}
 .clr{position:absolute;right:2px;top:50%;transform:translateY(-50%);width:44px;height:42px;border:0;background:none;color:var(--muted);font-size:22px;line-height:1;display:flex;align-items:center;justify-content:center;border-radius:8px}
 .clr[hidden]{display:none!important}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -130,6 +132,23 @@ button{cursor:pointer}
 .keyrow{display:grid;grid-template-columns:1fr auto;gap:8px}
 .switch{display:flex;justify-content:space-between;align-items:center;gap:12px}
 .switch input{width:22px;height:22px;accent-color:var(--mint)}
+/* gas level wheel: scroll up and down, the middle row is the pick */
+.lvl{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:center}
+.wheelbox{position:relative;border:1px solid var(--line);border-radius:14px;background:#0a1424;overflow:hidden}
+.wheelbox::after{content:"";position:absolute;left:6px;right:6px;top:60px;height:60px;border-radius:10px;
+  border:1px solid var(--mint-dim);background:rgba(196,240,220,.07);pointer-events:none}
+.wheel{height:180px;overflow-y:auto;scroll-snap-type:y mandatory;overscroll-behavior:contain;scrollbar-width:none;touch-action:pan-y;
+  -webkit-mask-image:linear-gradient(transparent,#000 28%,#000 72%,transparent);mask-image:linear-gradient(transparent,#000 28%,#000 72%,transparent)}
+.wheel:focus-visible{outline:2px solid var(--mint);outline-offset:-2px}
+.wheel::-webkit-scrollbar{display:none}
+.wheel .pad{height:60px}
+.wheel .opt{height:60px;scroll-snap-align:center;scroll-snap-stop:always;display:flex;align-items:baseline;justify-content:center;gap:8px;
+  padding-top:14px;box-sizing:border-box;font-family:var(--f-dial);font-size:28px;font-weight:700;color:var(--mint-dim);cursor:pointer}
+.wheel .opt small{font-family:var(--f-ui);font-size:14px;font-weight:500;color:var(--muted)}
+.wheel .opt.on{color:var(--mint)}
+.wheel .opt.on small{color:var(--text)}
+.lvlside{display:flex;flex-direction:column;gap:10px}
+.lvlside .btn{min-height:56px;font-size:17px}
 .status-ok{color:var(--ok)} .status-bad{color:var(--bad)}
 @media (prefers-reduced-motion: reduce){ .sheet{transition:none} }
 </style>
@@ -289,16 +308,22 @@ button{cursor:pointer}
       <div><small>Gas left</small><b id="fgLeft">--</b></div>
       <div><small>Miles to empty</small><b id="fgRange">--</b></div>
     </div>
-    <div class="two">
-      <div class="field"><label for="estMpg">Your miles per gallon</label><span class="inbox"><input id="estMpg" inputmode="decimal" placeholder="Type yours" autocomplete="off"><button type="button" class="clr" data-clear="estMpg" aria-label="Clear" hidden>&times;</button></span></div>
-      <div class="field"><label aria-hidden="true">&nbsp;</label><button type="button" class="btn primary" id="fullTank" style="min-height:46px">Full tank</button></div>
+    <div class="field"><label id="lvlLabel">Gas in the tank now</label>
+      <div class="lvl">
+        <div class="wheelbox"><div class="wheel" id="lvlWheel" role="listbox" tabindex="0" aria-labelledby="lvlLabel"></div></div>
+        <div class="lvlside">
+          <button type="button" class="btn primary" id="fullTank">Full tank</button>
+          <p class="note" id="lvlNow">Not set yet</p>
+        </div>
+      </div>
     </div>
-    <p class="note" id="fgNote">Tap Full tank when you fill up, and type the MPG you think the truck gets. The gauge drops as you drive.</p>
+    <div class="field"><label for="estMpg">Your miles per gallon</label><span class="inbox"><input id="estMpg" type="text" inputmode="decimal" enterkeyhint="done" placeholder="Type it here" autocomplete="off"><button type="button" class="clr" data-clear="estMpg" aria-label="Clear" hidden>&times;</button></span></div>
+    <p class="note" id="fgNote">Scroll the dial to how much gas you have, or tap Full tank when you fill up. With your MPG typed in, the gauge drops as you drive.</p>
     <div class="row"><div><div class="k">Miles since last fill-up</div><div class="v" id="sinceFill">0.0 mi</div></div></div>
     <form id="fuelForm" class="inner" style="gap:12px">
       <div class="two">
-        <div class="field"><label for="ppg">Price per gallon ($)</label><span class="inbox"><input id="ppg" inputmode="decimal" placeholder="3.29" autocomplete="off"><button type="button" class="clr" data-clear="ppg" aria-label="Clear" hidden>&times;</button></span></div>
-        <div class="field"><label for="gal">Gallons</label><span class="inbox"><input id="gal" inputmode="decimal" placeholder="18.4" autocomplete="off"><button type="button" class="clr" data-clear="gal" aria-label="Clear" hidden>&times;</button></span></div>
+        <div class="field"><label for="ppg">Price per gallon ($)</label><span class="inbox"><input id="ppg" type="text" inputmode="decimal" enterkeyhint="done" placeholder="Type price" autocomplete="off"><button type="button" class="clr" data-clear="ppg" aria-label="Clear" hidden>&times;</button></span></div>
+        <div class="field"><label for="gal">Gallons</label><span class="inbox"><input id="gal" type="text" inputmode="decimal" enterkeyhint="done" placeholder="Type gallons" autocomplete="off"><button type="button" class="clr" data-clear="gal" aria-label="Clear" hidden>&times;</button></span></div>
       </div>
       <button type="submit" class="btn primary" id="fillBtn">Log fill-up and show MPG</button>
     </form>
@@ -326,7 +351,7 @@ button{cursor:pointer}
     <div class="field">
       <label for="tomKey">TomTom key (stays on this phone only)</label>
       <div class="keyrow">
-        <input id="tomKey" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Paste your key">
+        <span class="inbox"><input id="tomKey" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Paste your key"><button type="button" class="clr" data-clear="tomKey" aria-label="Clear" hidden>&times;</button></span>
         <button type="button" class="btn" id="keyShow">Show</button>
       </div>
       <div class="keyrow">
@@ -337,7 +362,7 @@ button{cursor:pointer}
     </div>
     <div class="field">
       <label for="tankSize">Tank size (gallons)</label>
-      <span class="inbox"><input id="tankSize" inputmode="decimal" autocomplete="off"><button type="button" class="clr" data-clear="tankSize" aria-label="Clear" hidden>&times;</button></span>
+      <span class="inbox"><input id="tankSize" type="text" inputmode="decimal" enterkeyhint="done" placeholder="27" autocomplete="off"><button type="button" class="clr" data-clear="tankSize" aria-label="Clear" hidden>&times;</button></span>
       <p class="note">Set to 27, the stock tank on your 2007 F-150 regular cab long bed.</p>
     </div>
     <div class="switch"><label for="wake">Keep screen on while open</label><input type="checkbox" id="wake" checked></div>
@@ -724,7 +749,7 @@ $('limUp').addEventListener('click', () => { S.manualLimit = Math.min(85, S.manu
 // ---------- fuel ----------
 function paintFuel(){
   const st = demo || S;
-  paintOdo(); paintFuelGauge();
+  paintOdo(); paintFuelGauge(); syncWheel();
   if (document.activeElement !== $('estMpg')) $('estMpg').value = st.estMpg > 0 ? String(st.estMpg) : '';
   if (typeof syncClears === 'function') syncClears();
   const h = $('hist'); h.textContent = '';
@@ -771,26 +796,86 @@ $('estMpg').addEventListener('change', e => {
   const st = demo || S; const v = parseFloat(String(e.target.value).replace(/[,\s]/g, ''));
   st.estMpg = v > 0 && v < 100 ? v : null; e.target.value = st.estMpg ? String(st.estMpg) : ''; save(); paintFuelGauge();
 });
-$('fullTank').addEventListener('click', () => {
-  const st = demo || S; const v = parseFloat(String($('estMpg').value).replace(/[,\s]/g, ''));
+// gas level wheel: Full at the top, E at the bottom, in eighths
+const LV = [1, 7/8, 3/4, 5/8, 1/2, 3/8, 1/4, 1/8, 0];
+const LVN = ['Full', '7/8', '3/4', '5/8', '1/2', '3/8', '1/4', '1/8', 'E'];
+const ROW = 60, wheel = $('lvlWheel');
+(function buildWheel(){
+  const pad = () => { const d = document.createElement('div'); d.className = 'pad'; return d; };
+  wheel.appendChild(pad());
+  LV.forEach((f, i) => {
+    const o = document.createElement('div'); o.className = 'opt'; o.setAttribute('role', 'option'); o.dataset.i = i;
+    const b = document.createElement('span'); b.textContent = LVN[i];
+    const g = document.createElement('small');
+    o.append(b, g); wheel.appendChild(o);
+    o.addEventListener('click', () => { touched = true; wheel.scrollTo({ top: i * ROW, behavior: 'smooth' }); });
+  });
+  wheel.appendChild(pad());
+})();
+const wheelOpts = () => wheel.querySelectorAll('.opt');
+function paintWheel(){
+  const st = demo || S;
+  wheelOpts().forEach((o, i) => { o.querySelector('small').textContent = (LV[i] * st.tank).toFixed(1) + ' gal'; });
+  const has = st.fuelLeft != null && st.tank > 0;
+  $('lvlNow').textContent = has ? 'Now: ' + st.fuelLeft.toFixed(1) + ' of ' + st.tank + ' gallons' : 'Not set yet. Scroll to how much gas you have.';
+}
+function markWheel(i){
+  wheelOpts().forEach((o, k) => { const on = k === i; o.classList.toggle('on', on); o.setAttribute('aria-selected', on ? 'true' : 'false'); });
+}
+let touched = false, settle = null, wheelIdx = 0;
+function wheelTo(i, smooth){
+  wheelIdx = i; markWheel(i);
+  wheel.scrollTo({ top: i * ROW, behavior: smooth ? 'smooth' : 'auto' });
+}
+function syncWheel(){
+  const st = demo || S;
+  paintWheel();
+  const frac = st.fuelLeft != null && st.tank > 0 ? st.fuelLeft / st.tank : 1;
+  let best = 0; LV.forEach((f, i) => { if (Math.abs(f - frac) < Math.abs(LV[best] - frac)) best = i; });
+  touched = false;
+  requestAnimationFrame(() => wheelTo(best, false));
+}
+function takeMpg(st){
+  const v = parseFloat(String($('estMpg').value).replace(/[,\s]/g, ''));
   if (v > 0 && v < 100) st.estMpg = v;
-  st.fuelLeft = st.tank; save(); paintFuelGauge();
-  $('fgNote').textContent = st.estMpg ? 'Full tank set: ' + st.tank + ' gallons at ' + st.estMpg + ' MPG.' : 'Full tank set. Type your MPG so the gauge can drop as you drive.';
+}
+function setLevel(i){
+  const st = demo || S; takeMpg(st);
+  st.fuelLeft = LV[i] * st.tank; save(); paintFuelGauge(); paintWheel();
+  const what = i === 0 ? 'Full tank' : i === LV.length - 1 ? 'Empty' : LVN[i] + ' tank';
+  $('fgNote').textContent = what + ' set: ' + st.fuelLeft.toFixed(1) + ' gallons.' + (st.estMpg ? ' The gauge drops from here at ' + st.estMpg + ' MPG.' : ' Type your MPG so the gauge can drop as you drive.');
+}
+['pointerdown', 'touchstart', 'wheel'].forEach(ev => wheel.addEventListener(ev, () => { touched = true; }, { passive: true }));
+wheel.addEventListener('scroll', () => {
+  const i = Math.max(0, Math.min(LV.length - 1, Math.round(wheel.scrollTop / ROW)));
+  if (i !== wheelIdx){ wheelIdx = i; markWheel(i); }
+  clearTimeout(settle);
+  settle = setTimeout(() => { if (!touched) return; touched = false; setLevel(Math.round(wheel.scrollTop / ROW)); }, 220);
+}, { passive: true });
+wheel.addEventListener('keydown', e => {
+  if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+  e.preventDefault(); touched = true;
+  wheelTo(Math.max(0, Math.min(LV.length - 1, wheelIdx + (e.key === 'ArrowDown' ? 1 : -1))), true);
 });
+$('fullTank').addEventListener('click', () => { setLevel(0); touched = false; wheelTo(0, true); });
 
-// number boxes: tap selects everything so typing replaces it; the x clears it
-['estMpg','ppg','gal','tankSize'].forEach(id => {
+// number boxes: the x clears it
+['estMpg','ppg','gal','tankSize','tomKey'].forEach(id => {
   const inp = $(id), clr = document.querySelector('[data-clear="' + id + '"]');
   const sync = () => { clr.hidden = !inp.value; };
   inp.addEventListener('input', sync);
-  inp.addEventListener('focus', () => { sync(); setTimeout(() => { try { inp.setSelectionRange(0, inp.value.length); } catch(e){ inp.select(); } }, 0); });
+  // tap puts the cursor at the end of the number (no highlight), so backspace takes one digit at a time
+  const toEnd = () => { const n = inp.value.length; try { inp.setSelectionRange(n, n); } catch(e){} };
+  let justFocused = false;
+  inp.addEventListener('focus', () => { sync(); justFocused = true; setTimeout(toEnd, 0); setTimeout(() => { toEnd(); justFocused = false; }, 120); });
+  inp.addEventListener('pointerup', () => { if (justFocused) setTimeout(toEnd, 0); });
   // keep focus in the box when the x is pressed
   clr.addEventListener('pointerdown', e => e.preventDefault());
   clr.addEventListener('click', () => { inp.value = ''; sync(); inp.focus(); });
   sync();
   inp._sync = sync;
 });
-const syncClears = () => ['estMpg','ppg','gal','tankSize'].forEach(id => $(id)._sync && $(id)._sync());
+const syncClears = () => ['estMpg','ppg','gal','tankSize','tomKey'].forEach(id => $(id)._sync && $(id)._sync());
 
 // ---------- settings ----------
 function updateKeyStatus(){
