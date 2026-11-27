@@ -30,7 +30,8 @@
 html,body{height:100%}
 body{background:var(--night);color:var(--text);font-family:var(--f-ui);font-size:15px;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
-  -webkit-tap-highlight-color:transparent;overscroll-behavior:none;user-select:none;-webkit-user-select:none}
+  -webkit-tap-highlight-color:transparent;overscroll-behavior:none}
+.top,.mid,.trips,.nav,.demo,.sheet h2,.row .v,.result{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
 *{box-sizing:border-box}
 button,input{font:inherit;color:inherit}
 button{cursor:pointer}
@@ -99,7 +100,11 @@ button{cursor:pointer}
 .btn.warn{background:var(--bad);border-color:var(--bad);color:#fff}
 .field{display:flex;flex-direction:column;gap:6px}
 .field label{font-size:13px;color:var(--muted)}
-.field input{background:#0a1424;border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-size:17px;width:100%;user-select:text;-webkit-user-select:text}
+.field input{background:#0a1424;border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-size:17px;width:100%;min-height:46px;user-select:text;-webkit-user-select:text;-webkit-appearance:none;appearance:none}
+.inbox{position:relative;display:block;width:100%}
+.inbox input{padding-right:48px}
+.clr{position:absolute;right:2px;top:50%;transform:translateY(-50%);width:44px;height:42px;border:0;background:none;color:var(--muted);font-size:22px;line-height:1;display:flex;align-items:center;justify-content:center;border-radius:8px}
+.clr[hidden]{display:none!important}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .note{font-size:13px;color:var(--muted);line-height:1.45;margin:0}
 .result{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;background:#0a1424;border:1px solid var(--line);border-radius:12px;padding:12px}
@@ -282,15 +287,15 @@ button{cursor:pointer}
       <div><small>Miles to empty</small><b id="fgRange">--</b></div>
     </div>
     <div class="two">
-      <div class="field"><label for="estMpg">Your miles per gallon</label><input id="estMpg" inputmode="decimal" placeholder="Type yours" autocomplete="off"></div>
-      <div class="field"><label>&nbsp;</label><button type="button" class="btn primary" id="fullTank" style="padding:11px 12px">Full tank</button></div>
+      <div class="field"><label for="estMpg">Your miles per gallon</label><span class="inbox"><input id="estMpg" inputmode="decimal" placeholder="Type yours" autocomplete="off"><button type="button" class="clr" data-clear="estMpg" aria-label="Clear" hidden>&times;</button></span></div>
+      <div class="field"><label aria-hidden="true">&nbsp;</label><button type="button" class="btn primary" id="fullTank" style="min-height:46px">Full tank</button></div>
     </div>
     <p class="note" id="fgNote">Tap Full tank when you fill up, and type the MPG you think the truck gets. The gauge drops as you drive.</p>
     <div class="row"><div><div class="k">Miles since last fill-up</div><div class="v" id="sinceFill">0.0 mi</div></div></div>
     <form id="fuelForm" class="inner" style="gap:12px">
       <div class="two">
-        <div class="field"><label for="ppg">Price per gallon ($)</label><input id="ppg" inputmode="decimal" placeholder="3.29" autocomplete="off"></div>
-        <div class="field"><label for="gal">Gallons</label><input id="gal" inputmode="decimal" placeholder="18.4" autocomplete="off"></div>
+        <div class="field"><label for="ppg">Price per gallon ($)</label><span class="inbox"><input id="ppg" inputmode="decimal" placeholder="3.29" autocomplete="off"><button type="button" class="clr" data-clear="ppg" aria-label="Clear" hidden>&times;</button></span></div>
+        <div class="field"><label for="gal">Gallons</label><span class="inbox"><input id="gal" inputmode="decimal" placeholder="18.4" autocomplete="off"><button type="button" class="clr" data-clear="gal" aria-label="Clear" hidden>&times;</button></span></div>
       </div>
       <button type="submit" class="btn primary" id="fillBtn">Log fill-up and show MPG</button>
     </form>
@@ -329,7 +334,7 @@ button{cursor:pointer}
     </div>
     <div class="field">
       <label for="tankSize">Tank size (gallons)</label>
-      <input id="tankSize" inputmode="decimal" autocomplete="off">
+      <span class="inbox"><input id="tankSize" inputmode="decimal" autocomplete="off"><button type="button" class="clr" data-clear="tankSize" aria-label="Clear" hidden>&times;</button></span>
       <p class="note">Set to 27, the stock tank on your 2007 F-150 regular cab long bed.</p>
     </div>
     <div class="switch"><label for="wake">Keep screen on while open</label><input type="checkbox" id="wake" checked></div>
@@ -689,6 +694,7 @@ function paintFuel(){
   const st = demo || S;
   paintOdo(); paintFuelGauge();
   if (document.activeElement !== $('estMpg')) $('estMpg').value = st.estMpg > 0 ? String(st.estMpg) : '';
+  if (typeof syncClears === 'function') syncClears();
   const h = $('hist'); h.textContent = '';
   st.fills.slice(-6).reverse().forEach(f => {
     const row = document.createElement('div');
@@ -724,7 +730,7 @@ $('fuelForm').addEventListener('submit', e => {
   }
   st.fills.push(entry); if (st.fills.length > 60) st.fills.shift();
   st.sinceFill = 0; st.hasFill = true; st.fuelLeft = st.tank;
-  $('ppg').value = ''; $('gal').value = '';
+  $('ppg').value = ''; $('gal').value = ''; syncClears();
   save(); paintFuel();
 });
 
@@ -739,6 +745,20 @@ $('fullTank').addEventListener('click', () => {
   st.fuelLeft = st.tank; save(); paintFuelGauge();
   $('fgNote').textContent = st.estMpg ? 'Full tank set: ' + st.tank + ' gallons at ' + st.estMpg + ' MPG.' : 'Full tank set. Type your MPG so the gauge can drop as you drive.';
 });
+
+// number boxes: tap selects everything so typing replaces it; the x clears it
+['estMpg','ppg','gal','tankSize'].forEach(id => {
+  const inp = $(id), clr = document.querySelector('[data-clear="' + id + '"]');
+  const sync = () => { clr.hidden = !inp.value; };
+  inp.addEventListener('input', sync);
+  inp.addEventListener('focus', () => { sync(); setTimeout(() => { try { inp.setSelectionRange(0, inp.value.length); } catch(e){ inp.select(); } }, 0); });
+  // keep focus in the box when the x is pressed
+  clr.addEventListener('pointerdown', e => e.preventDefault());
+  clr.addEventListener('click', () => { inp.value = ''; sync(); inp.focus(); });
+  sync();
+  inp._sync = sync;
+});
+const syncClears = () => ['estMpg','ppg','gal','tankSize'].forEach(id => $(id)._sync && $(id)._sync());
 
 // ---------- settings ----------
 function updateKeyStatus(){
@@ -755,6 +775,7 @@ function paintSettings(){
   $('tomKey').dataset.masked = tomKey ? '1' : '';
   $('wake').checked = !!S.wake;
   $('tankSize').value = S.tank;
+  syncClears();
   updateKeyStatus();
 }
 $('srcTom').addEventListener('click', () => { S.source = 'tomtom'; save(); live.limitAt = 0; maybeFetchLimit(); paintSettings(); paintAll(); });
