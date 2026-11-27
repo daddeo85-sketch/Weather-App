@@ -1,0 +1,890 @@
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=Orbitron:wght@600;700&display=swap">
+<style>
+/* Layout: one-screen instrument. Dial is the hero; compass top right; three quiet buttons open bottom sheets. */
+:root{
+  --night:#000000;      /* page ground: plain black */
+  --panel:#0f1b2e;      /* sheets */
+  --line:#22324b;       /* hairlines */
+  --mint:#c4f0dc;       /* dial numerals */
+  --mint-dim:#7fa596;
+  --text:#e6eef5;
+  --muted:#8ea0b4;
+  --needle:#ff6a1c;
+  --ok:#35d07f;
+  --warn:#f2c230;
+  --bad:#ff4646;
+  --f-dial:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --f-ui:"Barlow",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  color-scheme:dark;
+}
+html,body{height:100%}
+body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:#000 url(bg.jpg) 50% 70%/cover no-repeat}
+body{background:transparent;color:var(--text);font-family:var(--f-ui);font-size:15px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  -webkit-tap-highlight-color:transparent;overscroll-behavior:none}
+.top,.mid,.nav,.demo,.sheet h2,.row .v,.result{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+*{box-sizing:border-box}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--mint);outline-offset:2px}
+
+.app{height:100%;display:flex;flex-direction:column;max-width:520px;margin:0 auto;padding-block:10px 6px}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;min-height:70px}
+.lim{display:flex;flex-direction:column;gap:5px;min-width:0}
+.limctl{display:flex;align-items:center;gap:10px}
+.limctl button{width:64px;height:64px;flex:none;border-radius:14px;border:1px solid #2c4060;background:var(--panel);font-size:34px;font-weight:600;line-height:1;color:var(--text);touch-action:manipulation}
+.limctl button:active{background:#1d3150}
+.limctl button[hidden]{display:none}
+.limcap{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.limcap .src{color:var(--text)}
+.brand{display:flex;flex-direction:column;gap:3px;min-width:0}
+.brand b{font-family:var(--f-dial);font-weight:700;letter-spacing:.22em;font-size:15px;color:var(--mint)}
+.gps{font-size:12.5px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.gps i{width:7px;height:7px;border-radius:50%;background:var(--muted);flex:none}
+.gps.on i{background:var(--ok)} .gps.weak i{background:var(--warn)} .gps.off i{background:var(--bad)}
+
+.right{display:flex;align-items:center;gap:12px;flex:none}
+.temp{text-align:right;line-height:1}
+.temp b{display:block;font-family:var(--f-dial);font-weight:600;font-size:26px;color:var(--text);font-variant-numeric:tabular-nums}
+.temp small{display:block;font-size:10.5px;letter-spacing:.14em;color:var(--muted);text-transform:uppercase;margin-top:3px}
+.compass{width:64px;height:64px;flex:none;position:relative}
+.compass svg{width:100%;height:100%;display:block}
+
+.mid{flex:1;display:flex;flex-direction:column;justify-content:center;gap:10px;min-height:0}
+.dialwrap{display:flex;align-items:center;justify-content:center;min-height:0}
+#dial{width:min(100%,58vh,470px);height:auto;aspect-ratio:1;max-width:100%;display:block;overflow:visible}
+
+.limitrow{display:flex;align-items:center;justify-content:center;gap:18px;min-height:96px}
+.tripbox{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 18px;text-align:center;min-width:128px;line-height:1.1}
+.tripbox small{display:block;font-size:11.5px;letter-spacing:.14em;color:var(--muted);text-transform:uppercase}
+.tripbox b{display:block;font-family:var(--f-dial);font-size:30px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--mint);margin-top:3px}
+.tripbox b span{font-size:15px;color:var(--muted);margin-left:4px}
+.row.pick{cursor:pointer}
+.row.pick.on{border-color:var(--mint);background:#10243a}
+.row.pick .k b{color:var(--mint);font-weight:600;margin-left:6px}
+.sign{background:#f4f4ef;color:#111;border:2px solid #111;outline:2px solid #f4f4ef;border-radius:6px;flex:none;
+  width:58px;padding:4px 0 3px;text-align:center;font-family:var(--f-dial);line-height:1}
+.sign small{display:block;font-size:9.5px;font-weight:700;letter-spacing:.06em}
+.sign b{display:block;font-size:28px;font-weight:700;margin-top:2px}
+.limitinfo{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--muted);min-width:0}
+.limitinfo .src{color:var(--text);font-size:13.5px}
+.step{display:flex;gap:6px}
+.step button{width:38px;height:32px;border-radius:8px;border:1px solid var(--line);background:var(--panel);font-size:18px;line-height:1}
+
+.fuelg{width:96px;height:96px;flex:none;background:none;border:0;padding:0;border-radius:50%}
+.fuelg svg{width:100%;height:100%;display:block}
+.trips{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding-block:6px 8px;border-top:1px solid var(--line)}
+.trips div{text-align:center}
+.trips small{display:block;font-size:11px;letter-spacing:.12em;color:var(--muted);text-transform:uppercase}
+.trips span{font-family:var(--f-dial);font-size:20px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--mint)}
+
+.nav{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding-bottom:env(safe-area-inset-bottom,0px)}
+.nav button{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 4px;font-weight:600;letter-spacing:.04em}
+/* glass panels over the pedal photo */
+.tripbox,.nav button{background:rgba(12,22,38,.72);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.nav button:active{background:#16253c}
+
+.demo{position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 82px);
+  background:var(--warn);color:#1b1500;border-radius:999px;padding:6px 8px 6px 14px;font-size:13px;font-weight:600;
+  display:flex;gap:10px;align-items:center;z-index:30;white-space:nowrap}
+.demo button{background:#1b1500;color:var(--warn);border:0;border-radius:999px;padding:4px 10px;font-size:12px}
+
+/* sheets */
+.scrim{position:fixed;inset:0;background:rgba(2,6,12,.55);z-index:40}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:41;background:var(--panel);border-top:1px solid var(--line);
+  border-radius:18px 18px 0 0;max-height:86%;overflow:auto;
+  padding:8px max(18px,env(safe-area-inset-right,0px)) calc(18px + env(safe-area-inset-bottom,0px)) max(18px,env(safe-area-inset-left,0px))}
+.sheet .inner{max-width:520px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+.grab{width:40px;height:4px;border-radius:2px;background:var(--line);margin:4px auto 2px}
+.sheet h2{margin:0;font-family:var(--f-dial);font-weight:700;letter-spacing:.14em;text-transform:uppercase;font-size:18px;color:var(--mint);display:flex;justify-content:space-between;align-items:center}
+.sheet h2 button{font-family:var(--f-ui);letter-spacing:0;text-transform:none;font-size:14px;color:var(--muted);background:none;border:0;padding:6px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:0}
+.row .k{color:var(--muted);font-size:13px}
+.row .v{font-family:var(--f-dial);font-size:26px;font-weight:600;font-variant-numeric:tabular-nums}
+.btn{background:#172741;border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-weight:600}
+.btn.primary{background:var(--mint);color:#06211a;border-color:var(--mint)}
+.btn.warn{background:var(--bad);border-color:var(--bad);color:#fff}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:13px;color:var(--muted)}
+.field input{background:#0a1424;border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-size:17px;width:100%;min-height:46px;user-select:text;-webkit-user-select:text;-webkit-appearance:none;appearance:none}
+.inbox{position:relative;display:block;width:100%}
+.inbox input{padding-right:48px}
+.clr{position:absolute;right:2px;top:50%;transform:translateY(-50%);width:44px;height:42px;border:0;background:none;color:var(--muted);font-size:22px;line-height:1;display:flex;align-items:center;justify-content:center;border-radius:8px}
+.clr[hidden]{display:none!important}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.note{font-size:13px;color:var(--muted);line-height:1.45;margin:0}
+.result{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;background:#0a1424;border:1px solid var(--line);border-radius:12px;padding:12px}
+.result div{text-align:center}
+.result small{display:block;font-size:11px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase}
+.result b{font-family:var(--f-dial);font-size:26px;font-weight:700;color:var(--mint);font-variant-numeric:tabular-nums}
+.hist{display:flex;flex-direction:column}
+.hist div{display:grid;grid-template-columns:1fr auto auto;gap:14px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13.5px;font-variant-numeric:tabular-nums}
+.hist div span:first-child{color:var(--muted)}
+.seg{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{background:transparent;border:0;padding:10px;font-weight:600;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--mint);color:#06211a}
+.keyrow{display:grid;grid-template-columns:1fr auto;gap:8px}
+.switch{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.switch input{width:22px;height:22px;accent-color:var(--mint)}
+.status-ok{color:var(--ok)} .status-bad{color:var(--bad)}
+@media (prefers-reduced-motion: reduce){ .sheet{transition:none} }
+</style>
+
+<div class="app" id="app">
+  <div class="top">
+    <div class="lim">
+      <div class="limctl" id="stepper">
+        <button type="button" id="limDown" aria-label="Lower limit">−</button>
+        <div class="sign" aria-label="Speed limit"><small>SPEED<br>LIMIT</small><b id="limitNum">45</b></div>
+        <button type="button" id="limUp" aria-label="Raise limit">+</button>
+      </div>
+      <div class="limcap"><span class="src" id="limitSrc">Set by hand</span><span id="limitSub"></span></div>
+      <div class="gps" id="gps"><i></i><span id="gpsText">Waiting for GPS</span></div>
+    </div>
+    <div class="right">
+    <div class="temp" id="tempBox" hidden aria-label="Outside temperature"><b id="tempF">--</b><small>Outside</small></div>
+    <div class="compass" aria-label="Heading">
+      <svg viewBox="0 0 64 64" aria-hidden="true">
+        <defs>
+          <linearGradient id="cchrome" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#f4f7fa"/><stop offset=".45" stop-color="#8c97a3"/><stop offset=".55" stop-color="#cfd6dd"/><stop offset="1" stop-color="#5d6772"/>
+          </linearGradient>
+        </defs>
+        <circle cx="32" cy="32" r="31" fill="url(#cchrome)"/>
+        <circle cx="32" cy="32" r="27" fill="#0f1f3a"/>
+        <g id="cRose">
+          <path d="M32 7 l3.2 6 h-6.4z" fill="#ff6a1c"/>
+          <circle cx="32" cy="57" r="1.3" fill="#7fa596"/><circle cx="57" cy="32" r="1.3" fill="#7fa596"/><circle cx="7" cy="32" r="1.3" fill="#7fa596"/>
+        </g>
+        <text id="cDir" x="32" y="35.5" text-anchor="middle" font-family="Barlow Condensed, Arial Narrow, sans-serif" font-weight="700" font-size="19" fill="#c4f0dc">--</text>
+        <text id="cDeg" x="32" y="47" text-anchor="middle" font-family="Barlow, sans-serif" font-size="7.5" fill="#7fa596"></text>
+      </svg>
+    </div>
+    </div>
+  </div>
+
+  <div class="mid">
+  <div class="dialwrap">
+    <svg id="dial" viewBox="0 0 400 400" role="img" aria-label="Speed dial">
+      <defs>
+        <linearGradient id="chrome" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#ffffff"/><stop offset=".18" stop-color="#c9d1d9"/><stop offset=".42" stop-color="#6d7884"/>
+          <stop offset=".5" stop-color="#e9eef2"/><stop offset=".62" stop-color="#8a95a1"/><stop offset=".85" stop-color="#3f4953"/><stop offset="1" stop-color="#b7c0c8"/>
+        </linearGradient>
+        <linearGradient id="chromeIn" x1="1" y1="1" x2="0" y2="0">
+          <stop offset="0" stop-color="#f2f5f8"/><stop offset=".5" stop-color="#58626d"/><stop offset="1" stop-color="#1d242c"/>
+        </linearGradient>
+        <radialGradient id="face" cx=".5" cy=".42" r=".62">
+          <stop offset="0" stop-color="#16294a"/><stop offset=".75" stop-color="#0d1c35"/><stop offset="1" stop-color="#08142a"/>
+        </radialGradient>
+        <radialGradient id="glow" cx=".5" cy=".5" r=".5">
+          <stop id="gs1" offset=".72" stop-color="#35d07f" stop-opacity="0"/><stop id="gs2" offset="1" stop-color="#35d07f" stop-opacity=".55"/>
+        </radialGradient>
+        <linearGradient id="glass" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#fff" stop-opacity=".16"/><stop offset=".45" stop-color="#fff" stop-opacity="0"/>
+        </linearGradient>
+        <linearGradient id="needleG" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stop-color="#ff8a3d"/><stop offset=".5" stop-color="#ff6a1c"/><stop offset="1" stop-color="#d9480f"/>
+        </linearGradient>
+        <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#000" flood-opacity=".55"/>
+        </filter>
+      </defs>
+      <!-- bezel -->
+      <circle cx="200" cy="200" r="198" fill="url(#chrome)"/>
+      <circle cx="200" cy="200" r="186" fill="url(#chromeIn)"/>
+      <circle cx="200" cy="200" r="180" fill="#b9c2cb"/>
+      <circle cx="200" cy="200" r="176" fill="url(#face)"/>
+      <!-- status ring + glow -->
+      <g id="statusG" style="color:#35d07f">
+        <circle cx="200" cy="200" r="176" fill="url(#glow)" id="glowC" opacity=".0"/>
+        <circle cx="200" cy="200" r="171" fill="none" stroke="currentColor" stroke-width="6" id="ring" opacity=".0"/>
+      </g>
+      <g id="ticks"></g>
+      <g id="nums"></g>
+      <g id="limitMark"><path d="M200 34 l-7 -11 h14z" fill="#ff6a1c" stroke="#08111f" stroke-width="1"/></g>
+      <!-- odometer -->
+      <g id="odo" transform="translate(200 268)"></g>
+      <!-- indicator lights -->
+      <g transform="translate(200 330)">
+        <path id="lightL" d="M-62 0 l14 -8 v16z" fill="#1d6b3f"/>
+        <circle id="lightR0" cx="0" cy="0" r="7" fill="#5a1a1a"/>
+        <path id="lightG" d="M62 0 l-14 -8 v16z" fill="#1d6b3f"/>
+      </g>
+      <!-- needle -->
+      <g id="needle" filter="url(#shadow)">
+        <path d="M200 200 L196.2 208 L199 66 L201 66 L203.8 208 Z" fill="url(#needleG)"/>
+        <path d="M197.6 200 L198.6 228 L201.4 228 L202.4 200 Z" fill="#c2410c"/>
+      </g>
+      <!-- bullseye cap -->
+      <g filter="url(#shadow)">
+        <circle cx="200" cy="200" r="34" fill="#0a1426" stroke="#1f3355" stroke-width="2"/>
+        <circle cx="200" cy="200" r="24" fill="#c4f0dc"/>
+        <circle cx="200" cy="200" r="20" fill="#0d1c35"/>
+        <circle cx="200" cy="200" r="15.5" fill="#c4f0dc"/>
+        <circle cx="200" cy="200" r="11.5" fill="#0d1c35"/>
+        <circle cx="200" cy="200" r="7.5" fill="#c4f0dc"/>
+        <circle cx="200" cy="200" r="3.8" fill="#0d1c35"/>
+      </g>
+      <circle cx="200" cy="200" r="176" fill="url(#glass)" pointer-events="none"/>
+    </svg>
+  </div>
+
+  <div class="limitrow">
+    <button type="button" class="tripbox" id="tripBox" data-open="trips" aria-label="Active trip, opens trips"><small id="tripName">Trip 1</small><b><em id="tripVal" style="font-style:normal">0.0</em><span>mi</span></b></button>
+    <button type="button" class="fuelg" id="fuelGauge" aria-label="Fuel gauge, opens fuel">
+      <svg viewBox="0 0 100 100" aria-hidden="true">
+        <defs>
+          <filter id="led" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="1.1" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        </defs>
+        <circle cx="50" cy="50" r="49" fill="#1c1c1c"/>
+        <circle cx="50" cy="50" r="46.5" fill="none" stroke="#6b6b6b" stroke-width="1"/>
+        <circle cx="50" cy="50" r="45.5" fill="#030303"/>
+        <g id="fgSegs"></g>
+        <path id="fgArc" fill="none" stroke="#39ff3a" stroke-width="1.3" stroke-linecap="round" filter="url(#led)"/>
+        <g id="fgTicks" filter="url(#led)"></g>
+        <g id="fgLabels" font-family="Orbitron, 'Share Tech Mono', monospace" font-weight="700" font-size="5.2" fill="#39ff3a" text-anchor="middle" filter="url(#led)"></g>
+        <text id="fgText" x="50" y="54" text-anchor="middle" font-family="Orbitron, 'Share Tech Mono', monospace" font-weight="600" font-size="6.5" fill="#39ff3a" filter="url(#led)"></text>
+        <text x="50" y="87" text-anchor="middle" font-family="Orbitron, 'Share Tech Mono', monospace" font-weight="700" font-style="italic" font-size="9" letter-spacing=".5" fill="#39ff3a" filter="url(#led)" transform="skewX(-8) translate(12 0)">FUEL</text>
+      </svg>
+    </button>
+  </div>
+
+  </div>
+
+  <div class="nav">
+    <button type="button" data-open="trips">Trips</button>
+    <button type="button" data-open="fuel">Fuel</button>
+    <button type="button" data-open="settings">Settings</button>
+  </div>
+</div>
+
+<div class="demo" id="demoBar" hidden><span>Demo drive, miles not saved</span><button type="button" id="demoStop">Stop</button></div>
+
+<div class="scrim" id="scrim" hidden></div>
+
+<section class="sheet" id="sheet-trips" hidden aria-label="Trips">
+  <div class="inner">
+    <div class="grab"></div>
+    <h2>Trips <button type="button" data-close>Done</button></h2>
+    <div>
+      <div class="row pick" data-pick="0"><div><div class="k">Trip 1<b class="act" hidden>Showing</b></div><div class="v" id="st1">0.0 mi</div></div><button type="button" class="btn" data-reset="0">Reset</button></div>
+      <div class="row pick" data-pick="1"><div><div class="k">Trip 2<b class="act" hidden>Showing</b></div><div class="v" id="st2">0.0 mi</div></div><button type="button" class="btn" data-reset="1">Reset</button></div>
+      <div class="row pick" data-pick="2"><div><div class="k">Trip 3<b class="act" hidden>Showing</b></div><div class="v" id="st3">0.0 mi</div></div><button type="button" class="btn" data-reset="2">Reset</button></div>
+      <div class="row"><div><div class="k">Odometer (miles counted by this app)</div><div class="v" id="stOdo">0.0 mi</div></div></div>
+    </div>
+    <p class="note">Tap a trip to show it on the main screen. Tap Reset twice to zero it. All three keep counting.</p>
+  </div>
+</section>
+
+<section class="sheet" id="sheet-fuel" hidden aria-label="Fuel">
+  <div class="inner">
+    <div class="grab"></div>
+    <h2>Fuel <button type="button" data-close>Done</button></h2>
+    <div class="result" id="fgBox" style="grid-template-columns:1fr 1fr">
+      <div><small>Gas left</small><b id="fgLeft">--</b></div>
+      <div><small>Miles to empty</small><b id="fgRange">--</b></div>
+    </div>
+    <div class="two">
+      <div class="field"><label for="estMpg">Your miles per gallon</label><span class="inbox"><input id="estMpg" inputmode="decimal" placeholder="Type yours" autocomplete="off"><button type="button" class="clr" data-clear="estMpg" aria-label="Clear" hidden>&times;</button></span></div>
+      <div class="field"><label aria-hidden="true">&nbsp;</label><button type="button" class="btn primary" id="fullTank" style="min-height:46px">Full tank</button></div>
+    </div>
+    <p class="note" id="fgNote">Tap Full tank when you fill up, and type the MPG you think the truck gets. The gauge drops as you drive.</p>
+    <div class="row"><div><div class="k">Miles since last fill-up</div><div class="v" id="sinceFill">0.0 mi</div></div></div>
+    <form id="fuelForm" class="inner" style="gap:12px">
+      <div class="two">
+        <div class="field"><label for="ppg">Price per gallon ($)</label><span class="inbox"><input id="ppg" inputmode="decimal" placeholder="3.29" autocomplete="off"><button type="button" class="clr" data-clear="ppg" aria-label="Clear" hidden>&times;</button></span></div>
+        <div class="field"><label for="gal">Gallons</label><span class="inbox"><input id="gal" inputmode="decimal" placeholder="18.4" autocomplete="off"><button type="button" class="clr" data-clear="gal" aria-label="Clear" hidden>&times;</button></span></div>
+      </div>
+      <button type="submit" class="btn primary" id="fillBtn">Log fill-up and show MPG</button>
+    </form>
+    <p class="note" id="fuelMsg">Fill the tank all the way each time. The first fill-up starts the count, and every fill after that shows MPG.</p>
+    <div class="result" id="fuelResult" hidden>
+      <div><small>MPG</small><b id="rMpg">--</b></div>
+      <div><small>Cost / mile</small><b id="rCpm">--</b></div>
+      <div><small>Fill cost</small><b id="rCost">--</b></div>
+    </div>
+    <div class="hist" id="hist"></div>
+  </div>
+</section>
+
+<section class="sheet" id="sheet-settings" hidden aria-label="Settings">
+  <div class="inner">
+    <div class="grab"></div>
+    <h2>Settings <button type="button" data-close>Done</button></h2>
+    <div class="field">
+      <label>Speed limit comes from</label>
+      <div class="seg" role="group">
+        <button type="button" id="srcTom" aria-pressed="false">TomTom</button>
+        <button type="button" id="srcMan" aria-pressed="true">Set by hand</button>
+      </div>
+    </div>
+    <div class="field">
+      <label for="tomKey">TomTom key (stays on this phone only)</label>
+      <div class="keyrow">
+        <input id="tomKey" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Paste your key">
+        <button type="button" class="btn" id="keyShow">Show</button>
+      </div>
+      <div class="keyrow">
+        <button type="button" class="btn primary" id="keySave">Save key</button>
+        <button type="button" class="btn" id="keyClear">Remove</button>
+      </div>
+      <p class="note" id="keyStatus">No key saved. The limit is set by hand.</p>
+    </div>
+    <div class="field">
+      <label for="tankSize">Tank size (gallons)</label>
+      <span class="inbox"><input id="tankSize" inputmode="decimal" autocomplete="off"><button type="button" class="clr" data-clear="tankSize" aria-label="Clear" hidden>&times;</button></span>
+      <p class="note">Set to 27, the stock tank on your 2007 F-150 regular cab long bed.</p>
+    </div>
+    <div class="switch"><label for="wake">Keep screen on while open</label><input type="checkbox" id="wake" checked></div>
+    <div class="switch"><span>Try it without driving</span><button type="button" class="btn" id="demoBtn">Demo drive</button></div>
+    <p class="note">Dial turns green at or under the limit, yellow up to 10 over, red past 10 over. The needle starts shaking at 60.</p>
+  </div>
+</section>
+
+<script>
+(() => {
+'use strict';
+// ---------- storage ----------
+const KEY = 'gauge.v1';
+const store = {
+  get(k, d){ try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch(e){ return d; } },
+  set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} },
+  del(k){ try { localStorage.removeItem(k); } catch(e){} }
+};
+const blank = () => ({ trips:[0,0,0], odo:0, sinceFill:0, manualLimit:45, source:'manual', wake:true, fills:[], hasFill:false, tank:27, estMpg:null, fuelLeft:null, activeTrip:0 });
+let S = Object.assign(blank(), store.get(KEY, {}));
+let tomKey = store.get(KEY + '.tomtom', '') || '';
+let demo = null;          // demo state when running
+let saved = S;            // real state kept while demo runs
+const save = () => { if (!demo) store.set(KEY, S); };
+
+// ---------- helpers ----------
+const $ = id => document.getElementById(id);
+const NS = 'http://www.w3.org/2000/svg';
+const mk = (tag, attrs, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; };
+const MAX = 90, SWEEP = 270, START = -135;
+const ang = v => START + (Math.max(0, Math.min(MAX + 4, v)) / MAX) * SWEEP;
+const fmt1 = n => (Math.round(n * 10) / 10).toFixed(1);
+const money = n => '$' + n.toFixed(2);
+const DIRS = ['N','NE','E','SE','S','SW','W','NW'];
+const dirOf = h => DIRS[Math.round(((h % 360) + 360) % 360 / 45) % 8];
+function hav(a, b){
+  const R = 6371008.8, r = x => x * Math.PI / 180;
+  const dLat = r(b.lat - a.lat), dLon = r(b.lon - a.lon);
+  const s = Math.sin(dLat/2)**2 + Math.cos(r(a.lat))*Math.cos(r(b.lat))*Math.sin(dLon/2)**2;
+  return 2 * R * Math.asin(Math.sqrt(s)); // meters
+}
+
+// ---------- draw dial ----------
+(function drawDial(){
+  const ticks = $('ticks'), nums = $('nums');
+  for (let v = 0; v <= MAX; v += 5){
+    if (v % 10 === 0){
+      const t = mk('text', { x:200, y:52, 'text-anchor':'middle', 'dominant-baseline':'middle',
+        transform:`rotate(${ang(v)} 200 200)`, fill:'#c4f0dc',
+        'font-family':'Barlow Condensed, Arial Narrow, Arial, sans-serif', 'font-weight':'700', 'font-size':'40', 'letter-spacing':'-0.5' }, nums);
+      t.textContent = v;
+    } else {
+      mk('circle', { cx:200, cy:56, r:3.6, fill:'#c4f0dc', transform:`rotate(${ang(v)} 200 200)` }, ticks);
+    }
+  }
+  // fine ticks every 1 mph, very faint, inner track
+  for (let v = 0; v <= MAX; v += 1){
+    const major = v % 5 === 0;
+    mk('line', { x1:200, y1:83, x2:200, y2: major ? 92 : 87, stroke:'#c4f0dc', 'stroke-opacity': major ? .55 : .22, 'stroke-width': major ? 2 : 1.2,
+      transform:`rotate(${ang(v)} 200 200)` }, ticks);
+  }
+  // odometer: 5 digits + tenths
+  const odo = $('odo');
+  mk('rect', { x:-56, y:-13, width:112, height:26, rx:3, fill:'#02060d', stroke:'#2a3b57', 'stroke-width':1.5 }, odo);
+  for (let i = 0; i < 6; i++){
+    const x = -46.5 + i * 18.6;
+    if (i === 5) mk('rect', { x:x-8.3, y:-11, width:16.6, height:22, fill:'#e9e6dc' }, odo);
+    const t = mk('text', { x, y:1, 'text-anchor':'middle', 'dominant-baseline':'middle', fill: i === 5 ? '#111' : '#c4f0dc',
+      'font-family':'Barlow Condensed, Arial Narrow, sans-serif', 'font-weight':'600', 'font-size':'20', id:'od'+i }, odo);
+    t.textContent = '0';
+  }
+  mk('text', { x:0, y:-26, 'text-anchor':'middle', fill:'#7fa596', 'font-family':'Barlow, sans-serif', 'font-size':'11', 'letter-spacing':'3' }, odo).textContent = 'MPH';
+})();
+
+// ---------- live values ----------
+const live = { mph:0, target:0, fix:null, last:null, heading:null, devHeading:null, lastFixAt:0, acc:null,
+  limit:null, limitAt:0, limitPos:null, limitBusy:false, limitErr:'' };
+
+function currentLimit(){
+  const st = demo || S;
+  if (demo) return demo.limit;
+  if (st.source === 'tomtom' && tomKey && live.limit != null && Date.now() - live.limitAt < 180000) return live.limit;
+  return S.manualLimit;
+}
+function limitIsLive(){ return !demo && S.source === 'tomtom' && tomKey && live.limit != null && Date.now() - live.limitAt < 180000; }
+
+// ---------- render loop ----------
+let needleAngle = START, t0 = performance.now();
+function shakeAmp(m){
+  if (m < 60) return 0;
+  if (m < 70) return 0.5 + (m - 60) * 0.07;      // 0.5 -> 1.2 deg
+  if (m < 80) return 1.2 + (m - 70) * 0.14;      // 1.2 -> 2.6
+  return Math.min(4.2, 2.6 + (m - 80) * 0.16);   // 2.6 -> 4.2
+}
+function frame(now){
+  const dt = Math.min(0.1, (now - t0) / 1000); t0 = now;
+  // ease displayed speed toward target
+  live.mph += (live.target - live.mph) * Math.min(1, dt * 3.2);
+  if (Math.abs(live.target - live.mph) < 0.02) live.mph = live.target;
+  let a = ang(live.mph);
+  const amp = shakeAmp(live.mph);
+  if (amp){
+    const s = now / 1000;
+    a += amp * (0.55*Math.sin(s*31) + 0.3*Math.sin(s*47.3 + 1.7) + 0.15*Math.sin(s*83.1 + .4)) + amp * 0.25 * (Math.random() - .5);
+  }
+  needleAngle = a;
+  $('needle').setAttribute('transform', `rotate(${a.toFixed(2)} 200 200)`);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+function paintStatus(){
+  const lim = currentLimit();
+  const sp = live.target;
+  const over = sp - lim;
+  const color = over <= 0 ? 'var(--ok)' : over <= 10 ? 'var(--warn)' : 'var(--bad)';
+  const raw = over <= 0 ? '#35d07f' : over <= 10 ? '#f2c230' : '#ff4646';
+  $('statusG').style.color = raw;
+  $('gs1').setAttribute('stop-color', raw); $('gs2').setAttribute('stop-color', raw);
+  $('ring').setAttribute('opacity', '0.95');
+  $('glowC').setAttribute('opacity', over <= 0 ? '0.35' : '0.75');
+  $('lightR0').setAttribute('fill', over > 0 ? '#ff3b3b' : '#4a1717');
+  $('lightG').setAttribute('fill', limitIsLive() || demo ? '#3ee68a' : '#1d4d33');
+  $('limitNum').textContent = lim;
+  $('limitMark').setAttribute('transform', `rotate(${ang(lim)} 200 200)`);
+  document.querySelector('meta[name="theme-color"]').setAttribute('content', '#000000');
+  return color;
+}
+
+function paintOdo(){
+  const st = demo || S;
+  const tenths = Math.floor(st.odo * 10) % 1000000;
+  const s = String(tenths).padStart(6, '0');
+  for (let i = 0; i < 6; i++) $('od'+i).textContent = s[i];
+  const at = S.activeTrip || 0;
+  $('tripName').textContent = 'Trip ' + (at + 1); $('tripVal').textContent = fmt1(st.trips[at]);
+  for (let i = 0; i < 3; i++){ $('st'+(i+1)).textContent = fmt1(st.trips[i]) + ' mi'; const r = document.querySelector('[data-pick="'+i+'"]'); r.classList.toggle('on', i === at); r.querySelector('.act').hidden = i !== at; }
+  $('stOdo').textContent = fmt1(st.odo) + ' mi';
+  $('sinceFill').textContent = fmt1(st.sinceFill) + ' mi';
+}
+
+function setStep(on){ $('limDown').hidden = !on; $('limUp').hidden = !on; }
+function paintLimitInfo(){
+  const live_ = limitIsLive();
+  const step = $('stepper');
+  if (demo){ $('limitSrc').textContent = 'Demo drive'; $('limitSub').textContent = ''; setStep(false); return; }
+  if (S.source === 'tomtom' && tomKey){
+    if (live_){ $('limitSrc').textContent = 'From TomTom'; $('limitSub').textContent = live.road || ''; setStep(false); }
+    else { $('limitSrc').textContent = 'By hand for now'; $('limitSub').textContent = live.limitErr || 'Waiting for TomTom'; setStep(true); }
+  } else {
+    $('limitSrc').textContent = 'Set by hand';
+    $('limitSub').textContent = S.source === 'tomtom' ? 'Add key in Settings' : '';
+    setStep(true);
+  }
+}
+
+function paintCompass(){
+  let h = null, src = '';
+  if (live.heading != null && live.target >= 3){ h = live.heading; src = 'gps'; }
+  else if (live.devHeading != null){ h = live.devHeading; src = 'phone'; }
+  else if (live.heading != null){ h = live.heading; src = 'gps'; }
+  if (h == null){ $('cDir').textContent = '--'; $('cDeg').textContent = ''; $('cRose').setAttribute('transform', ''); return; }
+  $('cDir').textContent = dirOf(h);
+  $('cDeg').textContent = Math.round(((h % 360) + 360) % 360) + '°';
+  $('cRose').setAttribute('transform', `rotate(${(-h).toFixed(1)} 32 32)`);
+}
+
+function paintGps(state, text){
+  const g = $('gps'); g.className = 'gps ' + state; $('gpsText').textContent = text;
+  $('lightL').setAttribute('fill', state === 'on' ? '#3ee68a' : state === 'weak' ? '#9a8a2a' : '#1d4d33');
+}
+
+// ---------- fuel gauge (all manual: full tank + his own MPG estimate) ----------
+const FG_N = 18, FG_A0 = -135, FG_A1 = 135;
+const polar = (r, deg) => { const t = (deg - 90) * Math.PI / 180; return [50 + r * Math.cos(t), 50 + r * Math.sin(t)]; };
+(function buildFuelGauge(){
+  const segs = $('fgSegs'), span = (FG_A1 - FG_A0) / FG_N, gap = 2.6;
+  for (let i = 0; i < FG_N; i++){
+    const a0 = FG_A0 + i * span + gap / 2, a1 = FG_A0 + (i + 1) * span - gap / 2;
+    const [x1,y1] = polar(44, a0), [x2,y2] = polar(44, a1), [x3,y3] = polar(31, a1), [x4,y4] = polar(31, a0);
+    mk('path', { d:`M${x1.toFixed(2)} ${y1.toFixed(2)} A44 44 0 0 1 ${x2.toFixed(2)} ${y2.toFixed(2)} L${x3.toFixed(2)} ${y3.toFixed(2)} A31 31 0 0 0 ${x4.toFixed(2)} ${y4.toFixed(2)}Z`, fill:'#0c2a0e', id:'fgs'+i }, segs);
+  }
+  const [ax,ay] = polar(27.5, FG_A0), [bx,by] = polar(27.5, FG_A1);
+  $('fgArc').setAttribute('d', `M${ax.toFixed(2)} ${ay.toFixed(2)} A27.5 27.5 0 1 1 ${bx.toFixed(2)} ${by.toFixed(2)}`);
+  for (let k = 0; k <= 16; k++){
+    const deg = FG_A0 + (FG_A1 - FG_A0) * k / 16, major = k % 4 === 0;
+    const [x1,y1] = polar(27.5, deg), [x2,y2] = polar(major ? 23 : 25, deg);
+    mk('line', { x1:x1.toFixed(2), y1:y1.toFixed(2), x2:x2.toFixed(2), y2:y2.toFixed(2), stroke:'#39ff3a', 'stroke-width': major ? 1.3 : .8 }, $('fgTicks'));
+  }
+  [['E',0],['1/4',.25],['1/2',.5],['3/4',.75],['F',1]].forEach(([t,f]) => {
+    const [x,y] = polar(f === 0 || f === 1 ? 19 : 17.5, FG_A0 + (FG_A1 - FG_A0) * f);
+    mk('text', { x:x.toFixed(2), y:(y + 1.9).toFixed(2) }, $('fgLabels')).textContent = t;
+  });
+})();
+function paintFuelGauge(){
+  const st = demo || S;
+  const has = st.fuelLeft != null && st.tank > 0;
+  const frac = has ? Math.max(0, Math.min(1, st.fuelLeft / st.tank)) : 0;
+  const lit = has ? Math.ceil(frac * FG_N - 1e-9) : 0;
+  for (let i = 0; i < FG_N; i++) $('fgs'+i).setAttribute('fill', i < lit ? '#39ff3a' : '#0c2a0e');
+  $('fgSegs').setAttribute('filter', lit ? 'url(#led)' : '');
+  $('fgText').textContent = has ? (st.fuelLeft < 10 ? st.fuelLeft.toFixed(1) : Math.round(st.fuelLeft)) + ' GAL' : 'SET';
+  $('fgLeft').textContent = has ? st.fuelLeft.toFixed(1) + ' gal' : '--';
+  $('fgRange').textContent = has && st.estMpg > 0 ? Math.round(st.fuelLeft * st.estMpg) + ' mi' : '--';
+}
+function paintAll(){ paintStatus(); paintOdo(); paintLimitInfo(); paintCompass(); paintFuelGauge(); }
+
+// ---------- GPS ----------
+function onPos(p){
+  const c = p.coords, now = p.timestamp || Date.now();
+  const fix = { lat:c.latitude, lon:c.longitude, t:now, acc:c.accuracy };
+  let mph = (c.speed != null && c.speed >= 0 && !Number.isNaN(c.speed)) ? c.speed * 2.236936 : null;
+  const prev = live.fix;
+  let d = 0;
+  if (prev){
+    d = hav(prev, fix);
+    const dtS = (now - prev.t) / 1000;
+    if (mph == null && dtS > 0.5) mph = (d / dtS) * 2.236936;
+    // count miles only on decent fixes while actually moving, and ignore jumps
+    const good = c.accuracy <= 40 && prev.acc <= 40;
+    if (good && mph != null && mph >= 2 && dtS > 0 && dtS < 30 && d / dtS < 80) addMiles(d / 1609.344);
+  }
+  if (mph == null || mph < 1) mph = 0;
+  live.target = Math.min(MAX + 4, mph);
+  if (c.heading != null && !Number.isNaN(c.heading) && mph >= 3) live.heading = c.heading;
+  else if (prev && mph >= 3 && d > 8){ // phone gave no heading: work it out from the last two fixes
+    const r = Math.PI / 180, y = Math.sin((fix.lon - prev.lon) * r) * Math.cos(fix.lat * r);
+    const x = Math.cos(prev.lat * r) * Math.sin(fix.lat * r) - Math.sin(prev.lat * r) * Math.cos(fix.lat * r) * Math.cos((fix.lon - prev.lon) * r);
+    live.heading = (Math.atan2(y, x) / r + 360) % 360;
+  }
+  live.fix = fix; live.lastFixAt = Date.now(); live.acc = c.accuracy;
+  if (!demo) paintGps(c.accuracy <= 40 ? 'on' : 'weak', c.accuracy <= 40 ? 'GPS good' : 'GPS weak (±' + Math.round(c.accuracy * 3.28) + ' ft)');
+  maybeFetchLimit();
+  maybeFetchTemp();
+  paintAll();
+}
+function addMiles(mi){
+  const st = demo || S;
+  st.odo += mi; st.sinceFill += mi; st.trips = st.trips.map(x => x + mi);
+  if (st.fuelLeft != null && st.estMpg > 0) st.fuelLeft = Math.max(0, st.fuelLeft - mi / st.estMpg);
+}
+function onErr(e){
+  if (demo) return;
+  if (e.code === 1 && /claude/.test(location.hostname + document.referrer)) paintGps('weak', 'Preview: GPS works on the phone link. Try Demo drive.');
+  else if (e.code === 1) paintGps('off', 'Location is off. Allow it for this site.');
+  else paintGps('weak', 'Looking for GPS');
+}
+let watchId = null;
+function startGps(){
+  if (!('geolocation' in navigator)){ paintGps('off', 'No GPS on this device'); return; }
+  try { watchId = navigator.geolocation.watchPosition(onPos, onErr, { enableHighAccuracy:true, maximumAge:0, timeout:20000 }); }
+  catch(e){ paintGps('off', 'Location is not allowed here'); }
+}
+// stale fix -> drop to zero
+setInterval(() => {
+  if (demo) return;
+  if (live.lastFixAt && Date.now() - live.lastFixAt > 8000){ live.target = 0; paintGps('weak', 'GPS signal lost'); paintStatus(); }
+  save();
+}, 4000);
+
+// ---------- TomTom speed limit ----------
+async function maybeFetchLimit(){
+  if (demo || S.source !== 'tomtom' || !tomKey || !live.fix || live.limitBusy) return;
+  const since = Date.now() - live.limitAt;
+  const moved = live.limitPos ? hav(live.limitPos, live.fix) : 1e9;
+  const due = live.target >= 3 ? (since > 12000 || moved > 160) : (since > 60000 && moved > 30);
+  if (!due && live.limit != null) return;
+  if (live.limitErrAt && Date.now() - live.limitErrAt < 30000) return;
+  live.limitBusy = true;
+  const pos = { lat:live.fix.lat, lon:live.fix.lon };
+  let url = `https://api.tomtom.com/search/2/reverseGeocode/${pos.lat.toFixed(6)},${pos.lon.toFixed(6)}.json?returnSpeedLimit=true&radius=60&key=${encodeURIComponent(tomKey)}`;
+  if (live.heading != null && live.target >= 3) url += `&heading=${Math.round(live.heading)}`;
+  try {
+    const r = await fetch(url);
+    if (r.status === 401 || r.status === 403){ live.limitErr = 'TomTom did not accept the key'; live.limitErrAt = Date.now(); }
+    else if (!r.ok){ live.limitErr = 'TomTom error ' + r.status; live.limitErrAt = Date.now(); }
+    else {
+      const j = await r.json();
+      const a = j && j.addresses && j.addresses[0] && j.addresses[0].address;
+      const sl = a && a.speedLimit;
+      live.limitPos = pos; live.limitAt = Date.now();
+      if (sl){
+        const n = parseFloat(sl); const unit = /KPH|KMH/i.test(sl) ? 'kph' : 'mph';
+        live.limit = Math.round((unit === 'kph' ? n / 1.609344 : n) / 5) * 5 || Math.round(n);
+        live.road = a.streetName || a.street || '';
+        live.limitErr = ''; live.limitErrAt = 0;
+      } else { live.limit = null; live.limitErr = 'No posted limit for this road'; }
+    }
+  } catch(e){ live.limitErr = 'Can’t reach TomTom'; live.limitErrAt = Date.now(); }
+  live.limitBusy = false;
+  paintAll(); updateKeyStatus();
+}
+
+// ---------- outside temperature (Open-Meteo, free, no key) ----------
+const wx = { at:0, pos:null, busy:false };
+async function maybeFetchTemp(){
+  if (!live.fix || wx.busy) return;
+  const moved = wx.pos ? hav(wx.pos, live.fix) : 1e9;
+  if (wx.at && Date.now() - wx.at < 600000 && moved < 8000) return;   // every 10 min, or after ~5 miles
+  if (wx.failAt && Date.now() - wx.failAt < 120000) return;
+  wx.busy = true;
+  const pos = { lat:live.fix.lat, lon:live.fix.lon };
+  try {
+    const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${pos.lat.toFixed(3)}&longitude=${pos.lon.toFixed(3)}&current=temperature_2m&temperature_unit=fahrenheit&timezone=auto`);
+    if (!r.ok) throw new Error(r.status);
+    const j = await r.json();
+    const t = j && j.current && j.current.temperature_2m;
+    if (typeof t === 'number'){ $('tempF').textContent = Math.round(t) + '\u00b0F'; $('tempBox').hidden = false; wx.at = Date.now(); wx.pos = pos; wx.failAt = 0; }
+  } catch(e){ wx.failAt = Date.now(); }
+  wx.busy = false;
+}
+
+// ---------- device compass ----------
+let compassAsked = false;
+function onOrient(e){
+  let h = null;
+  if (typeof e.webkitCompassHeading === 'number') h = e.webkitCompassHeading;
+  else if (e.absolute && e.alpha != null) h = 360 - e.alpha;
+  if (h == null) return;
+  const so = (screen.orientation && screen.orientation.angle) || 0;
+  live.devHeading = (h + so + 360) % 360;
+  paintCompass();
+}
+function startCompass(){
+  if (compassAsked) return; compassAsked = true;
+  const add = () => {
+    window.addEventListener('deviceorientationabsolute', onOrient);
+    window.addEventListener('deviceorientation', e => { if (typeof e.webkitCompassHeading === 'number' || e.absolute) onOrient(e); });
+  };
+  try {
+    if (window.DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission === 'function'){
+      DeviceOrientationEvent.requestPermission().then(s => { if (s === 'granted') add(); }).catch(() => {});
+    } else add();
+  } catch(e){}
+}
+document.addEventListener('pointerdown', startCompass, { once:true });
+if (!(window.DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission === 'function')) startCompass();
+
+// ---------- wake lock ----------
+let lock = null;
+async function wake(){
+  if (!S.wake || !('wakeLock' in navigator) || document.visibilityState !== 'visible') return;
+  try { lock = await navigator.wakeLock.request('screen'); } catch(e){}
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') wake(); else save(); });
+window.addEventListener('pagehide', save);
+
+// ---------- sheets ----------
+let openSheet = null;
+function open(name){
+  close(); openSheet = $('sheet-' + name); if (!openSheet) return;
+  openSheet.hidden = false; $('scrim').hidden = false;
+  if (name === 'fuel') paintFuel();
+  if (name === 'settings') paintSettings();
+}
+function close(){ if (openSheet) openSheet.hidden = true; $('scrim').hidden = true; openSheet = null; }
+document.querySelectorAll('[data-open]').forEach(b => b.addEventListener('click', () => open(b.dataset.open)));
+document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', close));
+$('scrim').addEventListener('click', close);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+
+// trips reset (tap twice)
+document.querySelectorAll('[data-reset]').forEach(b => {
+  let armed = 0;
+  b.addEventListener('click', () => {
+    if (Date.now() - armed < 3000){
+      const st = demo || S; st.trips[+b.dataset.reset] = 0; save(); paintOdo();
+      b.textContent = 'Reset'; b.classList.remove('warn'); armed = 0; return;
+    }
+    armed = Date.now(); b.textContent = 'Tap again'; b.classList.add('warn');
+    setTimeout(() => { if (armed && Date.now() - armed >= 2900){ b.textContent = 'Reset'; b.classList.remove('warn'); armed = 0; } }, 3000);
+  });
+});
+
+// pick the active trip
+document.querySelectorAll('[data-pick]').forEach(r => r.addEventListener('click', e => {
+  if (e.target.closest('[data-reset]')) return;
+  S.activeTrip = +r.dataset.pick; save(); paintOdo(); close();
+}));
+// limit stepper
+$('limDown').addEventListener('click', () => { S.manualLimit = Math.max(5, S.manualLimit - 5); save(); paintAll(); });
+$('limUp').addEventListener('click', () => { S.manualLimit = Math.min(85, S.manualLimit + 5); save(); paintAll(); });
+
+// ---------- fuel ----------
+function paintFuel(){
+  const st = demo || S;
+  paintOdo(); paintFuelGauge();
+  if (document.activeElement !== $('estMpg')) $('estMpg').value = st.estMpg > 0 ? String(st.estMpg) : '';
+  if (typeof syncClears === 'function') syncClears();
+  const h = $('hist'); h.textContent = '';
+  st.fills.slice(-6).reverse().forEach(f => {
+    const row = document.createElement('div');
+    const d = new Date(f.at);
+    const a = document.createElement('span'); a.textContent = d.toLocaleDateString(undefined, { month:'short', day:'numeric' }) + ' · ' + f.gal.toFixed(1) + ' gal at ' + money(f.ppg);
+    const b = document.createElement('span'); b.textContent = f.mpg != null ? f.mpg.toFixed(1) + ' mpg' : 'start';
+    const c = document.createElement('span'); c.textContent = f.cpm != null ? money(f.cpm) + '/mi' : '';
+    row.append(a, b, c); h.appendChild(row);
+  });
+}
+$('fuelForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const st = demo || S;
+  const ppg = parseFloat(String($('ppg').value).replace(/[$,\s]/g, ''));
+  const gal = parseFloat(String($('gal').value).replace(/[,\s]/g, ''));
+  const msg = $('fuelMsg');
+  if (!(ppg > 0) || !(gal > 0)){ msg.textContent = 'Enter the price per gallon and the gallons from the pump.'; return; }
+  const cost = ppg * gal;
+  const miles = st.sinceFill;
+  const entry = { at:Date.now(), ppg, gal, cost, miles: st.hasFill ? miles : null, mpg:null, cpm:null };
+  if (st.hasFill && miles >= 1){
+    entry.mpg = miles / gal; entry.cpm = cost / miles;
+    $('rMpg').textContent = entry.mpg.toFixed(1); $('rCpm').textContent = money(entry.cpm); $('rCost').textContent = money(cost);
+    $('fuelResult').hidden = false;
+    msg.textContent = fmt1(miles) + ' miles on ' + gal.toFixed(2) + ' gallons. The count starts over now.';
+  } else if (st.hasFill){
+    $('fuelResult').hidden = true;
+    msg.textContent = 'Less than a mile since the last fill-up, so there’s no MPG yet. Saved as a new starting point.';
+  } else {
+    $('fuelResult').hidden = false;
+    $('rMpg').textContent = '--'; $('rCpm').textContent = '--'; $('rCost').textContent = money(cost);
+    msg.textContent = 'Starting point saved. At your next fill-up this shows MPG and cost per mile.';
+  }
+  st.fills.push(entry); if (st.fills.length > 60) st.fills.shift();
+  st.sinceFill = 0; st.hasFill = true; st.fuelLeft = st.tank;
+  $('ppg').value = ''; $('gal').value = ''; syncClears();
+  save(); paintFuel();
+});
+
+$('fuelGauge').addEventListener('click', () => open('fuel'));
+$('estMpg').addEventListener('change', e => {
+  const st = demo || S; const v = parseFloat(String(e.target.value).replace(/[,\s]/g, ''));
+  st.estMpg = v > 0 && v < 100 ? v : null; e.target.value = st.estMpg ? String(st.estMpg) : ''; save(); paintFuelGauge();
+});
+$('fullTank').addEventListener('click', () => {
+  const st = demo || S; const v = parseFloat(String($('estMpg').value).replace(/[,\s]/g, ''));
+  if (v > 0 && v < 100) st.estMpg = v;
+  st.fuelLeft = st.tank; save(); paintFuelGauge();
+  $('fgNote').textContent = st.estMpg ? 'Full tank set: ' + st.tank + ' gallons at ' + st.estMpg + ' MPG.' : 'Full tank set. Type your MPG so the gauge can drop as you drive.';
+});
+
+// number boxes: tap selects everything so typing replaces it; the x clears it
+['estMpg','ppg','gal','tankSize'].forEach(id => {
+  const inp = $(id), clr = document.querySelector('[data-clear="' + id + '"]');
+  const sync = () => { clr.hidden = !inp.value; };
+  inp.addEventListener('input', sync);
+  inp.addEventListener('focus', () => { sync(); setTimeout(() => { try { inp.setSelectionRange(0, inp.value.length); } catch(e){ inp.select(); } }, 0); });
+  // keep focus in the box when the x is pressed
+  clr.addEventListener('pointerdown', e => e.preventDefault());
+  clr.addEventListener('click', () => { inp.value = ''; sync(); inp.focus(); });
+  sync();
+  inp._sync = sync;
+});
+const syncClears = () => ['estMpg','ppg','gal','tankSize'].forEach(id => $(id)._sync && $(id)._sync());
+
+// ---------- settings ----------
+function updateKeyStatus(){
+  const ks = $('keyStatus');
+  if (!tomKey){ ks.textContent = 'No key saved. The limit is set by hand.'; ks.className = 'note'; return; }
+  if (live.limitErr && S.source === 'tomtom'){ ks.textContent = 'Key saved. ' + live.limitErr + '.'; ks.className = 'note status-bad'; return; }
+  if (limitIsLive()){ ks.textContent = 'Key saved. TomTom says ' + live.limit + ' mph here.'; ks.className = 'note status-ok'; return; }
+  ks.textContent = 'Key saved. The limit updates once GPS has a fix.'; ks.className = 'note';
+}
+function paintSettings(){
+  $('srcTom').setAttribute('aria-pressed', S.source === 'tomtom');
+  $('srcMan').setAttribute('aria-pressed', S.source !== 'tomtom');
+  $('tomKey').value = tomKey ? '•'.repeat(12) : '';
+  $('tomKey').dataset.masked = tomKey ? '1' : '';
+  $('wake').checked = !!S.wake;
+  $('tankSize').value = S.tank;
+  syncClears();
+  updateKeyStatus();
+}
+$('srcTom').addEventListener('click', () => { S.source = 'tomtom'; save(); live.limitAt = 0; maybeFetchLimit(); paintSettings(); paintAll(); });
+$('srcMan').addEventListener('click', () => { S.source = 'manual'; save(); paintSettings(); paintAll(); });
+$('tomKey').addEventListener('focus', e => { if (e.target.dataset.masked){ e.target.value = ''; e.target.dataset.masked = ''; } });
+$('keyShow').addEventListener('click', () => { const i = $('tomKey'); const show = i.type === 'password'; i.type = show ? 'text' : 'password'; $('keyShow').textContent = show ? 'Hide' : 'Show'; });
+$('keySave').addEventListener('click', () => {
+  const v = $('tomKey').value.trim();
+  if ($('tomKey').dataset.masked) return;
+  if (!v){ $('keyStatus').textContent = 'Paste the key first.'; return; }
+  tomKey = v; store.set(KEY + '.tomtom', v);
+  S.source = 'tomtom'; save(); live.limit = null; live.limitAt = 0; live.limitErr = ''; live.limitErrAt = 0;
+  $('tomKey').type = 'password'; $('keyShow').textContent = 'Show';
+  paintSettings(); paintAll(); maybeFetchLimit();
+});
+$('keyClear').addEventListener('click', () => {
+  tomKey = ''; store.del(KEY + '.tomtom'); live.limit = null; S.source = 'manual'; save(); paintSettings(); paintAll();
+});
+$('tankSize').addEventListener('change', e => {
+  const v = parseFloat(String(e.target.value).replace(/[,\s]/g, ''));
+  if (v >= 5 && v <= 80){ if (S.fuelLeft != null) S.fuelLeft = Math.min(S.fuelLeft, v); S.tank = v; save(); paintFuelGauge(); }
+  e.target.value = S.tank;
+});
+$('wake').addEventListener('change', e => { S.wake = e.target.checked; save(); if (S.wake) wake(); else if (lock){ lock.release().catch(()=>{}); lock = null; } });
+
+// ---------- demo drive ----------
+// Simulated GPS: feeds made-up positions through the same code the real GPS uses.
+const PROFILE = [[0,0],[6,25],[12,35],[20,45],[26,55],[30,55],[36,62],[42,68],[48,74],[54,82],[60,86],[66,70],[72,55],[80,30],[86,0],[92,0]];
+function demoSpeedAt(t){
+  const T = t % 92;
+  for (let i = 1; i < PROFILE.length; i++){
+    const [t1, v1] = PROFILE[i], [t0_, v0] = PROFILE[i-1];
+    if (T <= t1) return v0 + (v1 - v0) * (T - t0_) / (t1 - t0_);
+  }
+  return 0;
+}
+function startDemo(fixed){
+  if (demo) stopDemo();
+  saved = S;
+  demo = { trips:[...S.trips], odo:S.odo, sinceFill:S.sinceFill, fills:[...S.fills], hasFill:S.hasFill, tank:S.tank, estMpg:S.estMpg, fuelLeft:S.fuelLeft, limit:55,
+    lat:27.4467, lon:-80.3256, head:20, t:0, fixed: fixed == null ? null : +fixed };
+  live.fix = null;
+  $('demoBar').hidden = false; close();
+  paintGps('on', 'Demo GPS');
+  demo.timer = setInterval(() => {
+    demo.t += 1;
+    const v = demo.fixed != null ? demo.fixed : demoSpeedAt(demo.t);
+    demo.head = (demo.head + (demo.t % 20 < 10 ? 2.5 : -1.5) + 360) % 360;
+    const m = v / 2.236936; // m/s
+    const r = Math.PI / 180;
+    demo.lat += (m * Math.cos(demo.head * r)) / 111320;
+    demo.lon += (m * Math.sin(demo.head * r)) / (111320 * Math.cos(demo.lat * r));
+    onPos({ timestamp: Date.now(), coords: { latitude:demo.lat, longitude:demo.lon, accuracy:5, speed:m, heading: v > 0 ? demo.head : NaN } });
+  }, 1000);
+}
+function stopDemo(){
+  if (!demo) return;
+  clearInterval(demo.timer); demo = null; S = saved;
+  live.fix = null; live.target = 0; live.heading = null;
+  $('demoBar').hidden = true; paintGps('weak', 'Waiting for GPS'); paintAll();
+}
+$('demoBtn').addEventListener('click', () => startDemo());
+$('demoStop').addEventListener('click', stopDemo);
+window.__gauge = { startDemo, stopDemo, open, close, state: () => (demo || S), live, wx };
+
+// ---------- boot ----------
+paintAll();
+paintGps('weak', 'Waiting for GPS');
+if (location.hash.startsWith('#demo')){
+  const n = location.hash.match(/#demo-(\d+)/);
+  startDemo(n ? n[1] : null);
+} else {
+  startGps();
+}
+wake();
+if ('serviceWorker' in navigator && /github\.io$/.test(location.hostname)){
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+})();
+</script>
