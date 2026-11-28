@@ -21,6 +21,7 @@
   color-scheme:dark;
 }
 html,body{height:100%}
+html{touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:100%}
 body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:#000 url(bg.jpg) 50% 70%/cover no-repeat}
 body{background:transparent;color:var(--text);font-family:var(--f-ui);font-size:15px;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
@@ -209,6 +210,7 @@ button{cursor:pointer}
         <linearGradient id="needleG" x1="0" y1="0" x2="1" y2="0">
           <stop offset="0" stop-color="#ff8a3d"/><stop offset=".5" stop-color="#ff6a1c"/><stop offset="1" stop-color="#d9480f"/>
         </linearGradient>
+        <filter id="spdGlow" x="-20%" y="-30%" width="140%" height="160%"><feGaussianBlur stdDeviation="2.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
         <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
           <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#000" flood-opacity=".55"/>
         </filter>
@@ -226,6 +228,8 @@ button{cursor:pointer}
       <g id="ticks"></g>
       <g id="nums"></g>
       <g id="limitMark"><path d="M200 34 l-7 -11 h14z" fill="#ff6a1c" stroke="#08111f" stroke-width="1"/></g>
+      <!-- digital speed readout: colors with the dial -->
+      <text id="spdNum" x="200" y="156" text-anchor="middle" font-family="Orbitron, 'Share Tech Mono', monospace" font-weight="700" font-size="56" letter-spacing="1" fill="#35d07f" filter="url(#spdGlow)">0</text>
       <!-- odometer -->
       <g id="odo" transform="translate(200 268)"></g>
       <!-- indicator lights -->
@@ -481,6 +485,7 @@ function paintStatus(){
   const color = over <= 0 ? 'var(--ok)' : over <= 10 ? 'var(--warn)' : 'var(--bad)';
   const raw = over <= 0 ? '#35d07f' : over <= 10 ? '#f2c230' : '#ff4646';
   $('statusG').style.color = raw;
+  $('spdNum').textContent = Math.round(sp); $('spdNum').setAttribute('fill', raw);
   $('gs1').setAttribute('stop-color', raw); $('gs2').setAttribute('stop-color', raw);
   $('ring').setAttribute('opacity', '0.95');
   $('glowC').setAttribute('opacity', over <= 0 ? '0.35' : '0.75');
@@ -709,6 +714,10 @@ async function wake(){
 }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') wake(); else save(); });
 window.addEventListener('pagehide', save);
+
+// ---------- no pinch zoom (it got stuck zoomed on the dial); double-tap zoom is off by touch-action ----------
+['gesturestart','gesturechange','gestureend'].forEach(ev => document.addEventListener(ev, e => e.preventDefault(), { passive: false }));
+document.addEventListener('touchmove', e => { if (e.touches && e.touches.length > 1) e.preventDefault(); }, { passive: false });
 
 // ---------- sheets ----------
 let openSheet = null;
