@@ -601,8 +601,12 @@ function paintFuelGauge(){
   const st = demo || S;
   const has = st.fuelLeft != null && st.tank > 0;
   const frac = has ? Math.max(0, Math.min(1, st.fuelLeft / st.tank)) : 0;
-  const lit = has ? Math.ceil(frac * FG_N - 1e-9) : 0;
-  for (let i = 0; i < FG_N; i++) $('fgs'+i).setAttribute('fill', i < lit ? '#39ff3a' : '#0c2a0e');
+  const lit = has && st.fuelLeft >= 0.05 ? Math.ceil(frac * FG_N - 1e-9) : 0;
+  // an eighth of a tank or less: the bars and gallons go red
+  const low = has && frac <= 1/8 + 1e-6;
+  const on = low ? '#ff3b30' : '#39ff3a', off = low ? '#2e0d0b' : '#0c2a0e';
+  for (let i = 0; i < FG_N; i++) $('fgs'+i).setAttribute('fill', i < lit ? on : off);
+  $('fgText').setAttribute('fill', low ? '#ff3b30' : '#39ff3a');
   $('fgSegs').setAttribute('filter', lit ? 'url(#led)' : '');
   $('fgText').textContent = has ? (st.fuelLeft < 10 ? st.fuelLeft.toFixed(1) : Math.round(st.fuelLeft)) + ' GAL' : 'SET';
   $('fgLeft').textContent = has ? st.fuelLeft.toFixed(1) + ' gal' : '--';
@@ -1011,8 +1015,17 @@ wheel.addEventListener('scroll', () => {
   const i = Math.max(0, Math.min(LV.length - 1, Math.round(wheel.scrollTop / ROW)));
   if (i !== wheelIdx){ wheelIdx = i; markWheel(i); }
   clearTimeout(settle);
-  settle = setTimeout(() => { if (!touched) return; touched = false; setLevel(Math.round(wheel.scrollTop / ROW)); }, 220);
+  // keep listening until the wheel fully stops, so a slow iPhone glide down to E still counts
+  settle = setTimeout(settleWheel, 260);
 }, { passive: true });
+function settleWheel(){
+  if (!touched) return;
+  const i = Math.max(0, Math.min(LV.length - 1, Math.round(wheel.scrollTop / ROW)));
+  const st = demo || S;
+  if (st.tank > 0 && st.fuelLeft != null && Math.abs(st.fuelLeft - LV[i] * st.tank) < 0.01) return;
+  setLevel(i);
+}
+wheel.addEventListener('scrollend', () => { clearTimeout(settle); settleWheel(); });
 wheel.addEventListener('keydown', e => {
   if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
   e.preventDefault(); touched = true;
