@@ -120,6 +120,7 @@ button{cursor:pointer}
 .keyrow .inbox input{font-size:17px}
 .clr{position:absolute;right:2px;top:50%;transform:translateY(-50%);width:44px;height:42px;border:0;background:none;color:var(--muted);font-size:22px;line-height:1;display:flex;align-items:center;justify-content:center;border-radius:8px}
 .clr[hidden]{display:none!important}
+[hidden]{display:none!important}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .note{font-size:13px;color:var(--muted);line-height:1.45;margin:0}
 .result{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;background:#0a1424;border:1px solid var(--line);border-radius:12px;padding:12px}
@@ -127,8 +128,16 @@ button{cursor:pointer}
 .result small{display:block;font-size:11px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase}
 .result b{font-family:var(--f-dial);font-size:26px;font-weight:700;color:var(--mint);font-variant-numeric:tabular-nums}
 .hist{display:flex;flex-direction:column}
-.hist div{display:grid;grid-template-columns:1fr auto auto;gap:14px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13.5px;font-variant-numeric:tabular-nums}
-.hist div span:first-child{color:var(--muted)}
+.hist .hrow{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px;font-variant-numeric:tabular-nums}
+.hist .hrow.sel{background:#0a1424;border-radius:10px;padding-left:8px;padding-right:8px}
+.hist .hinfo{display:flex;flex-direction:column;gap:2px;min-width:0}
+.hist .hinfo span:first-child{color:var(--text)}
+.hist .hinfo span:last-child{color:var(--muted);font-size:13px}
+.hist .hbtn{min-height:44px;min-width:64px;padding:8px 10px;font-size:14px}
+.hist .hbtn.del{background:transparent;border-color:var(--bad);color:var(--bad)}
+.hist .hbtn.del.warn{background:var(--bad);color:#fff}
+.fedit{display:flex;flex-direction:column;gap:10px;background:#0a1424;border:1px solid var(--line);border-radius:12px;padding:12px}
+.fedit .k{font-weight:600}
 .seg{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:10px;overflow:hidden}
 .seg button{background:transparent;border:0;padding:10px;font-weight:600;color:var(--muted)}
 .seg button[aria-pressed="true"]{background:var(--mint);color:#06211a}
@@ -343,7 +352,18 @@ button{cursor:pointer}
       <div><small>Cost / mile</small><b id="rCpm">--</b></div>
       <div><small>Fill cost</small><b id="rCost">--</b></div>
     </div>
+    <p class="note" id="histNote" hidden>Tap Fix to change a fill-up, or Delete to remove it.</p>
     <div class="hist" id="hist"></div>
+    <div class="fedit" id="fillEdit" hidden>
+      <div class="k" id="feTitle">Fix this fill-up</div>
+      <div class="two">
+        <div class="field"><label for="fePpg">Price per gallon ($)</label><span class="inbox"><input id="fePpg" type="text" inputmode="decimal" enterkeyhint="done" placeholder="Type price" autocomplete="off"><button type="button" class="clr" data-clear="fePpg" aria-label="Clear" hidden>&times;</button></span></div>
+        <div class="field"><label for="feGal">Gallons</label><span class="inbox"><input id="feGal" type="text" inputmode="decimal" enterkeyhint="done" placeholder="Type gallons" autocomplete="off"><button type="button" class="clr" data-clear="feGal" aria-label="Clear" hidden>&times;</button></span></div>
+      </div>
+      <div class="field" id="feMilesWrap"><label for="feMiles">Miles since the fill-up before it</label><span class="inbox"><input id="feMiles" type="text" inputmode="decimal" enterkeyhint="done" placeholder="Type miles" autocomplete="off"><button type="button" class="clr" data-clear="feMiles" aria-label="Clear" hidden>&times;</button></span></div>
+      <p class="note" id="feMsg" hidden></p>
+      <div class="two"><button type="button" class="btn primary" id="feSave">Save</button><button type="button" class="btn" id="feCancel">Cancel</button></div>
+    </div>
   </div>
 </section>
 
@@ -772,7 +792,7 @@ let openSheet = null;
 function open(name){
   close(); openSheet = $('sheet-' + name); if (!openSheet) return;
   openSheet.hidden = false; $('scrim').hidden = false;
-  if (name === 'fuel') paintFuel();
+  if (name === 'fuel'){ closeEdit(); paintFuel(); }
   if (name === 'settings') paintSettings();
 }
 function close(){ if (openSheet) openSheet.hidden = true; $('scrim').hidden = true; openSheet = null; }
@@ -814,15 +834,94 @@ function paintFuel(){
   if (document.activeElement !== $('estMpg')) $('estMpg').value = st.estMpg > 0 ? String(st.estMpg) : '';
   if (typeof syncClears === 'function') syncClears();
   const h = $('hist'); h.textContent = '';
-  st.fills.slice(-6).reverse().forEach(f => {
-    const row = document.createElement('div');
-    const d = new Date(f.at);
-    const a = document.createElement('span'); a.textContent = d.toLocaleDateString(undefined, { month:'short', day:'numeric' }) + ' · ' + f.gal.toFixed(1) + ' gal at ' + money(f.ppg);
-    const b = document.createElement('span'); b.textContent = f.mpg != null ? f.mpg.toFixed(1) + ' mpg' : 'start';
-    const c = document.createElement('span'); c.textContent = f.cpm != null ? money(f.cpm) + '/mi' : '';
-    row.append(a, b, c); h.appendChild(row);
+  if (editIdx >= st.fills.length) closeEdit();
+  const first = Math.max(0, st.fills.length - 10);
+  for (let i = st.fills.length - 1; i >= first; i--){
+    const f = st.fills[i];
+    const row = document.createElement('div'); row.className = 'hrow' + (i === editIdx ? ' sel' : '');
+    const info = document.createElement('div'); info.className = 'hinfo';
+    const a = document.createElement('span'); a.textContent = fillDay(f) + ' · ' + f.gal.toFixed(1) + ' gal at ' + money(f.ppg);
+    const b = document.createElement('span'); b.textContent = f.mpg != null ? f.mpg.toFixed(1) + ' mpg · ' + money(f.cpm) + '/mi' : (f.miles == null ? 'Starting point' : 'Under a mile, no MPG');
+    info.append(a, b);
+    const fix = document.createElement('button'); fix.type = 'button'; fix.className = 'btn hbtn'; fix.textContent = 'Fix'; fix.dataset.fix = i;
+    const del = document.createElement('button'); del.type = 'button'; del.className = 'btn hbtn del'; del.textContent = 'Delete'; del.dataset.del = i;
+    row.append(info, fix, del); h.appendChild(row);
+  }
+  $('histNote').hidden = !st.fills.length;
+}
+// ---------- fix or delete a logged fill-up ----------
+let editIdx = -1, delArmed = -1, delTimer = 0;
+const fillDay = f => new Date(f.at).toLocaleDateString(undefined, { month:'short', day:'numeric' });
+const num = v => parseFloat(String(v).replace(/[$,\s]/g, ''));
+function recalcFills(st){
+  st.fills.forEach(f => {
+    f.cost = f.ppg * f.gal;
+    const ok = f.miles != null && f.miles >= 1 && f.gal > 0;
+    f.mpg = ok ? f.miles / f.gal : null; f.cpm = ok ? f.cost / f.miles : null;
   });
 }
+function showLatest(st){
+  const f = st.fills[st.fills.length - 1];
+  if (!f){ $('fuelResult').hidden = true; $('fuelMsg').textContent = 'Fill the tank all the way each time. The first fill-up starts the count, and every fill after that shows MPG.'; return; }
+  $('fuelResult').hidden = false;
+  $('rMpg').textContent = f.mpg != null ? f.mpg.toFixed(1) : '--';
+  $('rCpm').textContent = f.cpm != null ? money(f.cpm) : '--';
+  $('rCost').textContent = money(f.cost);
+}
+function closeEdit(){ editIdx = -1; $('fillEdit').hidden = true; $('feMsg').hidden = true; }
+function openEdit(i){
+  const st = demo || S, f = st.fills[i]; if (!f) return;
+  editIdx = i;
+  $('feTitle').textContent = 'Fix the ' + fillDay(f) + ' fill-up';
+  $('fePpg').value = String(+f.ppg.toFixed(3)); $('feGal').value = String(+f.gal.toFixed(3));
+  $('feMilesWrap').hidden = f.miles == null;
+  $('feMiles').value = f.miles != null ? String(+f.miles.toFixed(1)) : '';
+  $('feMsg').hidden = true; $('fillEdit').hidden = false; syncClears();
+  paintFuel();
+  $('fillEdit').scrollIntoView({ block:'nearest', behavior:'smooth' });
+}
+function deleteFill(i){
+  const st = demo || S, f = st.fills[i]; if (!f) return;
+  const next = st.fills[i + 1];
+  if (next){
+    // the deleted fill-up never happened: its miles belong to the next one
+    next.miles = f.miles == null ? null : (next.miles || 0) + f.miles;
+  } else if (f.miles != null){
+    st.sinceFill = (st.sinceFill || 0) + f.miles;
+  }
+  st.fills.splice(i, 1);
+  st.hasFill = st.fills.length > 0;
+  if (!st.hasFill) st.sinceFill = 0;
+  recalcFills(st); closeEdit(); showLatest(st);
+  $('fuelMsg').textContent = 'Fill-up deleted. MPG and cost per mile are updated.';
+  save(); paintFuel();
+}
+$('hist').addEventListener('click', e => {
+  const fx = e.target.closest('[data-fix]'), dl = e.target.closest('[data-del]');
+  if (fx){ openEdit(+fx.dataset.fix); return; }
+  if (!dl) return;
+  const i = +dl.dataset.del;
+  if (delArmed === i){ clearTimeout(delTimer); delArmed = -1; deleteFill(i); return; }
+  paintFuel(); // resets any other armed button
+  const b = $('hist').querySelector('[data-del="' + i + '"]');
+  delArmed = i; b.textContent = 'Sure?'; b.classList.add('warn');
+  $('fuelMsg').textContent = 'Delete this fill-up? Tap Sure? to delete it.';
+  clearTimeout(delTimer);
+  delTimer = setTimeout(() => { delArmed = -1; paintFuel(); }, 3000);
+});
+$('feCancel').addEventListener('click', () => { closeEdit(); paintFuel(); });
+$('feSave').addEventListener('click', () => {
+  const st = demo || S, f = st.fills[editIdx]; if (!f) return closeEdit();
+  const ppg = num($('fePpg').value), gal = num($('feGal').value);
+  const mi = f.miles == null ? null : num($('feMiles').value);
+  const msg = $('feMsg');
+  if (!(ppg > 0) || !(gal > 0)){ msg.textContent = 'Enter the price per gallon and the gallons.'; msg.hidden = false; return; }
+  if (f.miles != null && !(mi >= 0)){ msg.textContent = 'Enter the miles, or 0.'; msg.hidden = false; return; }
+  f.ppg = ppg; f.gal = gal; if (mi != null) f.miles = mi;
+  recalcFills(st); closeEdit(); showLatest(st);
+  $('fuelMsg').textContent = 'Fill-up fixed. MPG and cost per mile are updated.';
+  save(); paintFuel();
+});
 $('fuelForm').addEventListener('submit', e => {
   e.preventDefault();
   const st = demo || S;
@@ -922,7 +1021,7 @@ wheel.addEventListener('keydown', e => {
 $('fullTank').addEventListener('click', () => { setLevel(0); touched = false; wheelTo(0, true); });
 
 // number boxes: the x clears it
-['estMpg','ppg','gal','tankSize','tomKey'].forEach(id => {
+['estMpg','ppg','gal','tankSize','tomKey','fePpg','feGal','feMiles'].forEach(id => {
   const inp = $(id), clr = document.querySelector('[data-clear="' + id + '"]');
   const sync = () => { clr.hidden = !inp.value; };
   inp.addEventListener('input', sync);
@@ -937,7 +1036,7 @@ $('fullTank').addEventListener('click', () => { setLevel(0); touched = false; wh
   sync();
   inp._sync = sync;
 });
-const syncClears = () => ['estMpg','ppg','gal','tankSize','tomKey'].forEach(id => $(id)._sync && $(id)._sync());
+const syncClears = () => ['estMpg','ppg','gal','tankSize','tomKey','fePpg','feGal','feMiles'].forEach(id => $(id)._sync && $(id)._sync());
 
 // ---------- settings ----------
 function updateKeyStatus(){
