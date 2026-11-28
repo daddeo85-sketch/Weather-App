@@ -128,6 +128,8 @@ button{cursor:pointer}
 .result small{display:block;font-size:11px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase}
 .result b{font-family:var(--f-dial);font-size:26px;font-weight:700;color:var(--mint);font-variant-numeric:tabular-nums}
 .hist{display:flex;flex-direction:column}
+#fgSvg.low #fgArc,#fgSvg.low #fgTicks line{stroke:#ff3b30}
+#fgSvg.low #fgLabels,#fgSvg.low #fgText,#fgSvg.low .fgFuel{fill:#ff3b30}
 .hist .hrow{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px;font-variant-numeric:tabular-nums}
 .hist .hrow.sel{background:#0a1424;border-radius:10px;padding-left:8px;padding-right:8px}
 .hist .hinfo{display:flex;flex-direction:column;gap:2px;min-width:0}
@@ -271,7 +273,7 @@ button{cursor:pointer}
   <div class="limitrow">
     <button type="button" class="tripbox" id="tripBox" data-open="trips" aria-label="Active trip, opens trips"><small id="tripName">Trip 1</small><b><em id="tripVal" style="font-style:normal">0.0</em><span>mi</span></b></button>
     <button type="button" class="fuelg" id="fuelGauge" aria-label="Fuel gauge, opens fuel">
-      <svg viewBox="0 0 100 100" aria-hidden="true">
+      <svg id="fgSvg" viewBox="0 0 100 100" aria-hidden="true">
         <defs>
           <filter id="led" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="1.1" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
         </defs>
@@ -283,7 +285,7 @@ button{cursor:pointer}
         <g id="fgTicks" filter="url(#led)"></g>
         <g id="fgLabels" font-family="Orbitron, 'Share Tech Mono', monospace" font-weight="700" font-size="5.2" fill="#39ff3a" text-anchor="middle" filter="url(#led)"></g>
         <text id="fgText" x="50" y="54" text-anchor="middle" font-family="Orbitron, 'Share Tech Mono', monospace" font-weight="600" font-size="6.5" fill="#39ff3a" filter="url(#led)"></text>
-        <text x="50" y="87" text-anchor="middle" font-family="Orbitron, 'Share Tech Mono', monospace" font-weight="700" font-style="italic" font-size="9" letter-spacing=".5" fill="#39ff3a" filter="url(#led)" transform="skewX(-8) translate(12 0)">FUEL</text>
+        <text x="50" y="87" text-anchor="middle" font-family="Orbitron, 'Share Tech Mono', monospace" font-weight="700" font-style="italic" font-size="9" letter-spacing=".5" class="fgFuel" id="fgFuelWord" fill="#39ff3a" filter="url(#led)" transform="skewX(-8) translate(12 0)">FUEL</text>
       </svg>
     </button>
   </div>
@@ -393,6 +395,7 @@ button{cursor:pointer}
     <div class="switch"><label for="wake">Keep screen on while open</label><input type="checkbox" id="wake" checked></div>
     <div class="switch"><span>Try it without driving</span><button type="button" class="btn" id="demoBtn">Demo drive</button></div>
     <p class="note">Dial turns green at or under the limit, yellow up to 10 over, red past 10 over. The needle starts shaking at 60.</p>
+    <p class="note" id="appVer"></p>
   </div>
 </section>
 
@@ -434,6 +437,7 @@ const mk = (tag, attrs, parent) => { const e = document.createElementNS(NS, tag)
 const MAX = 90, SWEEP = 270, START = -135;
 const ang = v => START + (Math.max(0, Math.min(MAX + 4, v)) / MAX) * SWEEP;
 const fmt1 = n => (Math.round(n * 10) / 10).toFixed(1);
+const APP_VERSION = '14';
 const money = n => '$' + n.toFixed(2);
 const DIRS = ['N','NE','E','SE','S','SW','W','NW'];
 const dirOf = h => DIRS[Math.round(((h % 360) + 360) % 360 / 45) % 8];
@@ -604,9 +608,14 @@ function paintFuelGauge(){
   const lit = has && st.fuelLeft >= 0.05 ? Math.ceil(frac * FG_N - 1e-9) : 0;
   // an eighth of a tank or less: the bars and gallons go red
   const low = has && frac <= 1/8 + 1e-6;
-  const on = low ? '#ff3b30' : '#39ff3a', off = low ? '#2e0d0b' : '#0c2a0e';
+  const on = low ? '#ff3b30' : '#39ff3a', off = low ? '#5c1712' : '#0c2a0e';
   for (let i = 0; i < FG_N; i++) $('fgs'+i).setAttribute('fill', i < lit ? on : off);
   $('fgText').setAttribute('fill', low ? '#ff3b30' : '#39ff3a');
+  $('fgSvg').classList.toggle('low', low);
+  $('fgText').setAttribute('font-size', low ? '9' : '6.5');
+  $('fgText').setAttribute('y', low ? '55' : '54');
+  $('fgFuelWord').textContent = low ? 'LOW FUEL' : 'FUEL';
+  $('fgFuelWord').setAttribute('font-size', low ? '8.5' : '9');
   $('fgSegs').setAttribute('filter', lit ? 'url(#led)' : '');
   $('fgText').textContent = has ? (st.fuelLeft < 10 ? st.fuelLeft.toFixed(1) : Math.round(st.fuelLeft)) + ' GAL' : 'SET';
   $('fgLeft').textContent = has ? st.fuelLeft.toFixed(1) + ' gal' : '--';
@@ -1143,8 +1152,15 @@ if (location.hash.startsWith('#demo')){
   startGps();
 }
 keepOn(); // muted video may start on its own; if not, the first tap starts it
+$('appVer').textContent = 'Hammer Down version ' + APP_VERSION;
 if ('serviceWorker' in navigator && /github\.io$/.test(location.hostname)){
-  navigator.serviceWorker.register('sw.js').catch(() => {});
+  // always look for a newer version when the app opens or comes back, and reload once onto it
+  const hadSW = !!navigator.serviceWorker.controller; let reloaded = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadSW && !reloaded){ reloaded = true; location.reload(); } });
+  navigator.serviceWorker.register('sw.js', { updateViaCache:'none' }).then(reg => {
+    reg.update().catch(() => {});
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') reg.update().catch(() => {}); });
+  }).catch(() => {});
 }
 })();
 </script>
