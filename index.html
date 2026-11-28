@@ -1339,7 +1339,12 @@ var ROUTES = S.routes;
   /* ---------------- Now + forecast ---------------- */
   // The airport's sky sensor only sees clouds below about 12,000 ft, so it calls a sky "Clear" or "Fair"
   // under a high or mid-level deck. When it says clear but the cloud cover says otherwise, go by the cloud cover.
-  function upperCover(c) { return c.cloud_cover_high == null && c.cloud_cover_mid == null ? (c.cloud_cover || 0) : Math.max(c.cloud_cover_mid || 0, c.cloud_cover_high || 0); }
+  // High clouds alone are thin cirrus you can see stars and the moon through, so they can make a clear sky
+  // "Partly cloudy" at most, and only in daylight. Mid-level clouds are thick enough to count in full.
+  function upperCover(c) {
+    if (c.cloud_cover_high == null && c.cloud_cover_mid == null) return c.cloud_cover || 0;
+    return Math.max(c.cloud_cover_mid || 0, c.is_day !== 0 && (c.cloud_cover_high || 0) >= 85 ? 40 : 0);
+  }
   function skyWord(cover) { return cover >= 85 ? "Cloudy" : cover >= 60 ? "Mostly cloudy" : "Partly cloudy"; }
   function condShow() {
     // The airport measures low clouds itself, so the forecast model only gets a say about the high clouds it can't see
@@ -5640,7 +5645,7 @@ var ROUTES = S.routes;
   window.SKY = {
     weather: function (c) {
       if (!c) return;
-      WX.code = c.weather_code; WX.cover = c.cloud_cover || 0; WX.upper = c.cloud_cover_high == null && c.cloud_cover_mid == null ? WX.cover : Math.max(c.cloud_cover_mid || 0, c.cloud_cover_high || 0);
+      WX.code = c.weather_code; WX.cover = c.cloud_cover || 0; WX.upper = c.cloud_cover_high == null && c.cloud_cover_mid == null ? WX.cover : Math.max(c.cloud_cover_mid || 0, c.is_day !== 0 && (c.cloud_cover_high || 0) >= 85 ? 40 : 0);   // thin high clouds: see upperCover
       WX.wet = Math.max(c.precipitation || 0, c.rain || 0, c.showers || 0);
       if (WX.mph === 0 && c.wind_speed_10m != null) { WX.mph = Math.max(c.wind_speed_10m, 0.7 * (c.wind_gusts_10m || 0)); WX.dir = c.wind_direction_10m; }
       classify(); safeUpdate();
