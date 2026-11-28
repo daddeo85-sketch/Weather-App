@@ -1033,13 +1033,19 @@ select { max-width: 100%; text-overflow: ellipsis; }
 // Testing only: ?errlog lists script errors, failed files and failed data requests in a box at the bottom of the page
 (function () {
   if (!/[?&]errlog/.test(location.search)) return;
-  var errs = [], box = null;
+  var errs = {}, order = [], box = null, due = 0;
   function show() {
-    if (!document.body) return;
-    if (!box) { box = document.createElement("pre"); box.id = "errlog"; box.style.cssText = "position:fixed;left:0;right:0;bottom:0;z-index:2147483647;max-height:45vh;overflow:auto;margin:0;padding:6px;background:#300;color:#fdd;font:11px/1.3 monospace;white-space:pre-wrap"; document.body.appendChild(box); }
-    box.textContent = errs.length + " problem(s)\n" + errs.join("\n");
+    due = 0; if (!document.body) return;
+    if (!box) { box = document.createElement("pre"); box.id = "errlog"; box.style.cssText = "position:fixed;left:0;right:0;top:0;z-index:2147483647;max-height:30vh;overflow:auto;margin:0;padding:6px;background:#300;color:#fdd;font:11px/1.3 monospace;white-space:pre-wrap;pointer-events:none;opacity:0.9"; document.body.appendChild(box); }
+    box.textContent = order.length + " problem(s)\n" + order.map(function (k) { return (errs[k] > 1 ? errs[k] + "x " : "") + k; }).join("\n");
   }
-  function add(m) { errs.push(String(m).slice(0, 300)); if (document.body) show(); else document.addEventListener("DOMContentLoaded", show); }
+  function add(m) {
+    // Same kind of problem counted once (tile addresses differ only by their numbers)
+    var k = String(m).slice(0, 300).replace(/\/\d+\/\d+\/\d+(\.\w+)?/g, "/z/x/y$1");
+    if (!errs[k]) { errs[k] = 0; order.push(k); }
+    errs[k]++;
+    if (!due) due = setTimeout(show, 500);
+  }
   window.addEventListener("error", function (e) {
     var t = e.target;
     if (t && t !== window && (t.src || t.href)) add("FILE " + (t.src || t.href));
