@@ -437,7 +437,7 @@ const mk = (tag, attrs, parent) => { const e = document.createElementNS(NS, tag)
 const MAX = 90, SWEEP = 270, START = -135;
 const ang = v => START + (Math.max(0, Math.min(MAX + 4, v)) / MAX) * SWEEP;
 const fmt1 = n => (Math.round(n * 10) / 10).toFixed(1);
-const APP_VERSION = '15';
+const APP_VERSION = '16';
 const money = n => '$' + n.toFixed(2);
 const DIRS = ['N','NE','E','SE','S','SW','W','NW'];
 const dirOf = h => DIRS[Math.round(((h % 360) + 360) % 360 / 45) % 8];
