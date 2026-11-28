@@ -394,7 +394,7 @@ button{cursor:pointer}
     </div>
     <div class="switch"><label for="wake">Keep screen on while open</label><input type="checkbox" id="wake" checked></div>
     <div class="switch"><span>Try it without driving</span><button type="button" class="btn" id="demoBtn">Demo drive</button></div>
-    <p class="note">Dial turns green at or under the limit, yellow up to 10 over, red past 10 over. The needle starts shaking at 60.</p>
+    <p class="note">Dial turns bright green at 5 or more under the limit, green near the limit, yellow up to 10 over, red past 10 over. The needle starts shaking at 60.</p>
     <p class="note" id="appVer"></p>
   </div>
 </section>
@@ -437,7 +437,7 @@ const mk = (tag, attrs, parent) => { const e = document.createElementNS(NS, tag)
 const MAX = 90, SWEEP = 270, START = -135;
 const ang = v => START + (Math.max(0, Math.min(MAX + 4, v)) / MAX) * SWEEP;
 const fmt1 = n => (Math.round(n * 10) / 10).toFixed(1);
-const APP_VERSION = '14';
+const APP_VERSION = '15';
 const money = n => '$' + n.toFixed(2);
 const DIRS = ['N','NE','E','SE','S','SW','W','NW'];
 const dirOf = h => DIRS[Math.round(((h % 360) + 360) % 360 / 45) % 8];
@@ -521,13 +521,15 @@ function paintStatus(){
   const lim = currentLimit();
   const sp = live.target;
   const over = sp - lim;
-  const color = over <= 0 ? 'var(--ok)' : over <= 10 ? 'var(--warn)' : 'var(--bad)';
-  const raw = over <= 0 ? '#35d07f' : over <= 10 ? '#f2c230' : '#ff4646';
+  // 5 or more under the limit while moving (not stopped or crawling in traffic): bright green, a hint to go faster
+  const slow = sp >= 5 && over <= -5;
+  const color = slow ? '#5cff3a' : over <= 0 ? 'var(--ok)' : over <= 10 ? 'var(--warn)' : 'var(--bad)';
+  const raw = slow ? '#5cff3a' : over <= 0 ? '#35d07f' : over <= 10 ? '#f2c230' : '#ff4646';
   $('statusG').style.color = raw;
   $('spdNum').textContent = Math.round(sp); $('spdNum').setAttribute('fill', raw);
   $('gs1').setAttribute('stop-color', raw); $('gs2').setAttribute('stop-color', raw);
   $('ring').setAttribute('opacity', '0.95');
-  $('glowC').setAttribute('opacity', over <= 0 ? '0.35' : '0.75');
+  $('glowC').setAttribute('opacity', slow ? '0.8' : over <= 0 ? '0.35' : '0.75');
   $('lightR0').setAttribute('fill', over > 0 ? '#ff3b3b' : '#4a1717');
   $('lightG').setAttribute('fill', limitIsLive() || demo ? '#3ee68a' : '#1d4d33');
   $('limitNum').textContent = lim;
