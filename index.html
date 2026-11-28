@@ -1558,13 +1558,15 @@ var ROUTES = S.routes;
     var dirTxt = function (w) { return w.wd != null && w.ws >= 1 ? dir16(w.wd) + " " : ""; };
     var useF = f && f.ws >= 8 && (!a || a.ws < f.ws * 0.5);
     var show = useF ? f : a, sub;
-    if (!show) { $("windNow").textContent = "--"; $("windNowSub").textContent = D.obsFail ? "Couldn't load the wind. Tap reload." : "Airport wind sensor isn't reporting and the forecast didn't load. Tap reload."; D.windMph = D.gustMph = null; return; }
+    if (!show) { $("windNow").textContent = "--"; $("windNowSub").textContent = D.obsFail ? "Couldn't load the wind. Tap reload." : "Airport wind sensor isn't reporting and the forecast didn't load. Tap reload."; D.windMph = D.gustMph = D.gustShown = null; return; }
     $("windNow").textContent = show.ws < 1 ? "Calm" : dirTxt(show) + show.ws + " mph";
     if (useF) sub = (f.wg && f.wg > f.ws ? "Gusts to " + f.wg + " mph · " : "") + "Weather Service forecast for this hour. Airport sensor " + (a ? (a.ws < 1 ? "reads calm" : "reads " + a.ws + " mph") : "isn't reporting") + ".";
     else sub = (a.wg ? "Gusts to " + a.wg + " mph" : f && f.wg && f.wg >= a.ws + 8 ? "Gusts to " + f.wg + " mph possible (forecast)" : "No gusts measured") +
       (a.wd != null && a.ws >= 1 ? " · from the " + DIRWORD[Math.round(a.wd / 45) % 8] : "") + " · measured at the airport";
     $("windNowSub").textContent = sub;
     D.windMph = show.ws; D.gustMph = useF ? f.wg : a.wg || null; if (D.obs) D.obs.ws = D.windMph;
+    // The gust this card names (measured, or the forecast one it calls possible), so the Full Send tab shows the same
+    D.gustShown = useF ? (f.wg && f.wg > f.ws ? f.wg : null) : a.wg ? a.wg : f && f.wg && f.wg >= a.ws + 8 ? f.wg : null;
     renderScore();
     if (D.ride && typeof renderRide === "function") { try { renderRide(); } catch (e) {} }
     if (window.SKY) { try { window.SKY.wind(show.ws, D.gustMph || 0, show.wd); } catch (e) {} }
@@ -2123,7 +2125,7 @@ var ROUTES = S.routes;
         return '<div class="tide ' + x.type + (past ? " past" : "") + '"><div class="ty">' + (x.type === "H" ? "High tide" : "Low tide") + '</div>' +
           '<div class="tm">' + esc(hm(x.t)) + '</div><div class="small">' + esc(x.t.split(" ")[0] === t ? "Today" : "Tomorrow") + " · " + tin(x.v) + '</div></div>';
       }).join("");
-      var highs = p.filter(function (x) { return x.type === "H"; }).sort(function (a, b) { return b.v - a.v; }).slice(0, 5);
+      var highs = p.filter(function (x) { return x.type === "H" && x.t >= nowStr; }).sort(function (a, b) { return b.v - a.v; }).slice(0, 5);
       $("tideTop").innerHTML = highs.map(function (x) {
         return '<li><span class="tag high">High</span><div><b>' + esc(dayOf(x.t)) + " at " + esc(hm(x.t)) + "</b><div class=\"small\">" + (TOFF == null ? (+x.v).toFixed(2) + " ft above average low water" : tin(x.v)) + "</div></div></li>";
       }).join("");
@@ -3656,11 +3658,11 @@ var ROUTES = S.routes;
     var vis = vmi(h.visibility[i]), feel = Math.round(feelsF(c.temperature_2m, h.relative_humidity_2m && h.relative_humidity_2m[i], c.wind_speed_10m)), temp = Math.round(c.temperature_2m);
     // Same reading the Weather tab shows up top (the airport), so the two tabs agree; the model is the backup
     if (D.obs && D.obs.tf != null) { temp = Math.round(D.obs.tf); feel = Math.round(D.obs.feels != null ? D.obs.feels : D.obs.tf); }
-    if (D.windMph != null) { ws = Math.round(D.windMph); gust = Math.max(ws, Math.round(D.gustMph || gust)); }
+    if (D.windMph != null) { ws = Math.round(D.windMph); gust = Math.max(ws, D.gustShown != null ? Math.round(D.gustShown) : ws); }
     var st0 = SunCalc.getTimes(new Date(), HOME[0], HOME[1]), now = Date.now(), ss = st0.sunset.getTime(), sr = st0.sunrise.getTime(), dark = now >= ss || now < sr;
     var left = (ss - now) / 60000;
     var nowR = [road, storm ? [2, "Lightning in the area", "lightning nearby"] : raining ? [heavy ? 2 : 1, heavy ? "Heavy rain" : "Light rain", heavy ? "heavy rain" : "light rain"] : [0, "No rain", "no rain"],
-      [gust >= 40 ? 2 : gust >= 25 ? 1 : 0, ws + " mph, gusts " + gust, gust >= 25 ? "gusts to " + gust + " mph" : windWord(ws)],
+      [gust >= 40 ? 2 : gust >= 25 ? 1 : 0, (ws < 1 ? "Calm" : ws + " mph") + (gust > ws ? ", gusts " + gust : ""), gust >= 25 ? "gusts to " + gust + " mph" : windWord(ws)],
       vis == null ? [0, "--", ""] : [vis < 0.5 ? 2 : vis < 3 ? 1 : 0, vis >= 10 ? "10+ miles" : vis.toFixed(vis < 1 ? 1 : 0) + " mi" + (vis < 3 ? ", fog or haze" : ""), vis < 0.5 ? "thick fog" : "haze or fog"],
       [feel >= 105 ? 2 : feel >= 95 || temp <= 45 ? 1 : 0, temp + "°, feels " + feel + "°", feel >= 95 ? "heat index " + feel + "°" : temp <= 45 ? "cold, " + temp + "°" : temp + "°"],
       [dark ? 1 : 0, dark ? "Dark: lights on" : Math.floor(left / 60) + " hr " + Math.round(left % 60) + " min left", "dark out"]];
@@ -5678,7 +5680,12 @@ var ROUTES = S.routes;
   loadGround(); setInterval(loadGround, 30 * 60000);
   window.SKY.ground = function () { return GROUND; };
   window.SKY.bgMode = bgMode;
-  window.SKY.setBg = function (m) { try { localStorage.setItem("bgMode.v2", m); } catch (e) {} window.skyResize(); };
+  window.SKY.setBg = function (m) {
+    try { localStorage.setItem("bgMode.v2", m); } catch (e) {}
+    // Show the street again before measuring it: while the photo is up the street is hidden and measures 0 tall
+    if (m !== "photo") sky.classList.remove("photo");
+    window.skyResize();
+  };
 })();
 
 </script>
