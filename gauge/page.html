@@ -295,19 +295,19 @@ button{cursor:pointer}
     <div class="grab"></div>
     <h2>Trips <button type="button" data-close>Done</button></h2>
     <div>
-      <div class="row pick" data-pick="0"><div><div class="k">Trip 1<b class="act" hidden>Showing</b></div><div class="v" id="st1">0.0 mi</div></div><button type="button" class="btn" data-reset="0">Reset</button></div>
-      <div class="row pick" data-pick="1"><div><div class="k">Trip 2<b class="act" hidden>Showing</b></div><div class="v" id="st2">0.0 mi</div></div><button type="button" class="btn" data-reset="1">Reset</button></div>
-      <div class="row pick" data-pick="2"><div><div class="k">Trip 3<b class="act" hidden>Showing</b></div><div class="v" id="st3">0.0 mi</div></div><button type="button" class="btn" data-reset="2">Reset</button></div>
+      <div class="row pick" data-pick="0"><div><div class="k">Trip 1 · Car 1<b class="act" hidden>Showing</b></div><div class="v" id="st1">0.0 mi</div></div><button type="button" class="btn" data-reset="0">Reset</button></div>
+      <div class="row pick" data-pick="1"><div><div class="k">Trip 2 · Car 2<b class="act" hidden>Showing</b></div><div class="v" id="st2">0.0 mi</div></div><button type="button" class="btn" data-reset="1">Reset</button></div>
+      <div class="row pick" data-pick="2"><div><div class="k">Trip 3 · any car<b class="act" hidden>Showing</b></div><div class="v" id="st3">0.0 mi</div></div><button type="button" class="btn" data-reset="2">Reset</button></div>
       <div class="row"><div><div class="k">Odometer (miles counted by this app)</div><div class="v" id="stOdo">0.0 mi</div></div></div>
     </div>
-    <p class="note">Tap a trip to show it on the main screen. Tap Reset twice to zero it. All three keep counting.</p>
+    <p class="note">Trip 1 is Car 1 and Trip 2 is Car 2. Tap one to switch cars, and that car’s MPG, tank and fill-ups come up. It counts miles only while that car is picked. Trip 3 counts whatever you drive. Tap Reset twice to zero a trip.</p>
   </div>
 </section>
 
 <section class="sheet" id="sheet-fuel" hidden aria-label="Fuel">
   <div class="inner">
     <div class="grab"></div>
-    <h2>Fuel <button type="button" data-close>Done</button></h2>
+    <h2><span>Fuel · <span id="fuelCar">Car 1</span></span> <button type="button" data-close>Done</button></h2>
     <div class="result" id="fgBox" style="grid-template-columns:1fr 1fr">
       <div><small>Gas left</small><b id="fgLeft">--</b></div>
       <div><small>Miles to empty</small><b id="fgRange">--</b></div>
@@ -321,8 +321,11 @@ button{cursor:pointer}
         </div>
       </div>
     </div>
-    <div class="field"><label for="estMpg">Your miles per gallon</label><span class="inbox"><input id="estMpg" type="text" inputmode="decimal" enterkeyhint="done" placeholder="Type it here" autocomplete="off"><button type="button" class="clr" data-clear="estMpg" aria-label="Clear" hidden>&times;</button></span></div>
-    <p class="note" id="fgNote">Scroll the dial to how much gas you have, or tap Full tank when you fill up. With your MPG typed in, the gauge drops as you drive.</p>
+    <div class="two">
+    <div class="field"><label for="estMpg">Miles per gallon</label><span class="inbox"><input id="estMpg" type="text" inputmode="decimal" enterkeyhint="done" placeholder="Type it here" autocomplete="off"><button type="button" class="clr" data-clear="estMpg" aria-label="Clear" hidden>&times;</button></span></div>
+    <div class="field"><label for="tankSize">Tank size (gallons)</label><span class="inbox"><input id="tankSize" type="text" inputmode="decimal" enterkeyhint="done" placeholder="Type size" autocomplete="off"><button type="button" class="clr" data-clear="tankSize" aria-label="Clear" hidden>&times;</button></span></div>
+    </div>
+    <p class="note" id="fgNote">Each car keeps its own MPG, tank size, gas level and fill-ups. Scroll the dial to how much gas you have, or tap Full tank when you fill up.</p>
     <div class="row"><div><div class="k">Miles since last fill-up</div><div class="v" id="sinceFill">0.0 mi</div></div></div>
     <form id="fuelForm" class="inner" style="gap:12px">
       <div class="two">
@@ -364,11 +367,6 @@ button{cursor:pointer}
       </div>
       <p class="note" id="keyStatus">No key saved. The limit is set by hand.</p>
     </div>
-    <div class="field">
-      <label for="tankSize">Tank size (gallons)</label>
-      <span class="inbox"><input id="tankSize" type="text" inputmode="decimal" enterkeyhint="done" placeholder="27" autocomplete="off"><button type="button" class="clr" data-clear="tankSize" aria-label="Clear" hidden>&times;</button></span>
-      <p class="note">Set to 27, the stock tank on your 2007 F-150 regular cab long bed.</p>
-    </div>
     <div class="switch"><label for="wake">Keep screen on while open</label><input type="checkbox" id="wake" checked></div>
     <div class="switch"><span>Try it without driving</span><button type="button" class="btn" id="demoBtn">Demo drive</button></div>
     <p class="note">Dial turns green at or under the limit, yellow up to 10 over, red past 10 over. The needle starts shaking at 60.</p>
@@ -385,8 +383,22 @@ const store = {
   set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} },
   del(k){ try { localStorage.removeItem(k); } catch(e){} }
 };
-const blank = () => ({ trips:[0,0,0], odo:0, sinceFill:0, manualLimit:45, source:'manual', wake:true, fills:[], hasFill:false, tank:27, estMpg:null, fuelLeft:null, activeTrip:0 });
+const blank = () => ({ trips:[0,0,0], odo:0, sinceFill:0, manualLimit:45, source:'manual', wake:true, fills:[], hasFill:false, tank:null, estMpg:null, fuelLeft:null, activeTrip:0, car:0, cars:[null,null] });
+// Two cars: the top-level fuel fields are the car in use; the other car waits in S.cars[its number].
+const CARF = ['estMpg','tank','fuelLeft','fills','hasFill','sinceFill'];
+const blankCar = () => ({ estMpg:null, tank:null, fuelLeft:null, fills:[], hasFill:false, sinceFill:0 });
 let S = Object.assign(blank(), store.get(KEY, {}));
+if (!Array.isArray(S.cars) || S.cars.length !== 2){ S.cars = [null, null]; S.car = 0; }
+if (S.car !== 0 && S.car !== 1) S.car = 0;
+if (!S.cars[1 - S.car]) S.cars[1 - S.car] = blankCar();
+S.cars[S.car] = null;
+function switchCar(c){
+  if (c === S.car || (c !== 0 && c !== 1)) return;
+  const out = {}; CARF.forEach(k => { out[k] = S[k]; });
+  S.cars[S.car] = out;
+  Object.assign(S, blankCar(), S.cars[c] || {});
+  S.cars[c] = null; S.car = c;
+}
 let tomKey = store.get(KEY + '.tomtom', '') || '';
 let demo = null;          // demo state when running
 let saved = S;            // real state kept while demo runs
@@ -503,7 +515,7 @@ function paintOdo(){
   const s = String(tenths).padStart(6, '0');
   for (let i = 0; i < 6; i++) $('od'+i).textContent = s[i];
   const at = S.activeTrip || 0;
-  $('tripName').textContent = 'Trip ' + (at + 1); $('tripVal').textContent = fmt1(st.trips[at]);
+  $('tripName').textContent = at < 2 ? 'Trip ' + (at + 1) + ' · Car ' + (at + 1) : 'Trip 3'; $('tripVal').textContent = fmt1(st.trips[at]);
   for (let i = 0; i < 3; i++){ $('st'+(i+1)).textContent = fmt1(st.trips[i]) + ' mi'; const r = document.querySelector('[data-pick="'+i+'"]'); r.classList.toggle('on', i === at); r.querySelector('.act').hidden = i !== at; }
   $('stOdo').textContent = fmt1(st.odo) + ' mi';
   $('sinceFill').textContent = fmt1(st.sinceFill) + ' mi';
@@ -606,7 +618,7 @@ function onPos(p){
 }
 function addMiles(mi){
   const st = demo || S;
-  st.odo += mi; st.sinceFill += mi; st.trips = st.trips.map(x => x + mi);
+  st.odo += mi; st.sinceFill += mi; st.trips = st.trips.map((x, i) => (i === 2 || i === (S.car || 0)) ? x + mi : x);
   if (st.fuelLeft != null && st.estMpg > 0) st.fuelLeft = Math.max(0, st.fuelLeft - mi / st.estMpg);
 }
 function onErr(e){
@@ -749,7 +761,9 @@ document.querySelectorAll('[data-reset]').forEach(b => {
 // pick the active trip
 document.querySelectorAll('[data-pick]').forEach(r => r.addEventListener('click', e => {
   if (e.target.closest('[data-reset]')) return;
-  S.activeTrip = +r.dataset.pick; save(); paintOdo(); close();
+  const t = +r.dataset.pick; S.activeTrip = t;
+  if (t < 2 && !demo) switchCar(t);
+  save(); paintAll(); close();
 }));
 // limit stepper
 $('limDown').addEventListener('click', () => { S.manualLimit = Math.max(5, S.manualLimit - 5); save(); paintAll(); });
@@ -759,6 +773,8 @@ $('limUp').addEventListener('click', () => { S.manualLimit = Math.min(85, S.manu
 function paintFuel(){
   const st = demo || S;
   paintOdo(); paintFuelGauge(); syncWheel();
+  $('fuelCar').textContent = 'Car ' + ((S.car || 0) + 1);
+  if (document.activeElement !== $('tankSize')) $('tankSize').value = st.tank > 0 ? String(st.tank) : '';
   if (document.activeElement !== $('estMpg')) $('estMpg').value = st.estMpg > 0 ? String(st.estMpg) : '';
   if (typeof syncClears === 'function') syncClears();
   const h = $('hist'); h.textContent = '';
@@ -795,7 +811,7 @@ $('fuelForm').addEventListener('submit', e => {
     msg.textContent = 'Starting point saved. At your next fill-up this shows MPG and cost per mile.';
   }
   st.fills.push(entry); if (st.fills.length > 60) st.fills.shift();
-  st.sinceFill = 0; st.hasFill = true; st.fuelLeft = st.tank;
+  st.sinceFill = 0; st.hasFill = true; st.fuelLeft = st.tank > 0 ? st.tank : st.fuelLeft;
   $('ppg').value = ''; $('gal').value = ''; syncClears();
   save(); paintFuel();
 });
@@ -824,9 +840,9 @@ const ROW = 60, wheel = $('lvlWheel');
 const wheelOpts = () => wheel.querySelectorAll('.opt');
 function paintWheel(){
   const st = demo || S;
-  wheelOpts().forEach((o, i) => { o.querySelector('small').textContent = (LV[i] * st.tank).toFixed(1) + ' gal'; });
+  wheelOpts().forEach((o, i) => { o.querySelector('small').textContent = st.tank > 0 ? (LV[i] * st.tank).toFixed(1) + ' gal' : ''; });
   const has = st.fuelLeft != null && st.tank > 0;
-  $('lvlNow').textContent = has ? 'Now: ' + st.fuelLeft.toFixed(1) + ' of ' + st.tank + ' gallons' : 'Not set yet. Scroll to how much gas you have.';
+  $('lvlNow').textContent = has ? 'Now: ' + st.fuelLeft.toFixed(1) + ' of ' + st.tank + ' gallons' : st.tank > 0 ? 'Not set yet. Scroll to how much gas you have.' : 'Type the tank size first.';
 }
 function markWheel(i){
   wheelOpts().forEach((o, k) => { const on = k === i; o.classList.toggle('on', on); o.setAttribute('aria-selected', on ? 'true' : 'false'); });
@@ -850,6 +866,7 @@ function takeMpg(st){
 }
 function setLevel(i){
   const st = demo || S; takeMpg(st);
+  if (!(st.tank > 0)){ $('fgNote').textContent = 'Type this car’s tank size in gallons first, then set the gas level.'; $('tankSize').focus(); return; }
   st.fuelLeft = LV[i] * st.tank; save(); paintFuelGauge(); paintWheel();
   const what = i === 0 ? 'Full tank' : i === LV.length - 1 ? 'Empty' : LVN[i] + ' tank';
   $('fgNote').textContent = what + ' set: ' + st.fuelLeft.toFixed(1) + ' gallons.' + (st.estMpg ? ' The gauge drops from here at ' + st.estMpg + ' MPG.' : ' Type your MPG so the gauge can drop as you drive.');
@@ -900,7 +917,6 @@ function paintSettings(){
   $('tomKey').value = tomKey ? '•'.repeat(12) : '';
   $('tomKey').dataset.masked = tomKey ? '1' : '';
   $('wake').checked = !!S.wake;
-  $('tankSize').value = S.tank;
   syncClears();
   updateKeyStatus();
 }
@@ -921,9 +937,11 @@ $('keyClear').addEventListener('click', () => {
   tomKey = ''; store.del(KEY + '.tomtom'); live.limit = null; S.source = 'manual'; save(); paintSettings(); paintAll();
 });
 $('tankSize').addEventListener('change', e => {
+  const st = demo || S;
   const v = parseFloat(String(e.target.value).replace(/[,\s]/g, ''));
-  if (v >= 5 && v <= 80){ if (S.fuelLeft != null) S.fuelLeft = Math.min(S.fuelLeft, v); S.tank = v; save(); paintFuelGauge(); }
-  e.target.value = S.tank;
+  if (v >= 5 && v <= 80){ if (st.fuelLeft != null) st.fuelLeft = Math.min(st.fuelLeft, v); st.tank = v; save(); paintFuelGauge(); syncWheel(); }
+  else if (!e.target.value.trim()){ st.tank = null; st.fuelLeft = null; save(); paintFuelGauge(); syncWheel(); }
+  e.target.value = st.tank > 0 ? String(st.tank) : '';
 });
 $('wake').addEventListener('change', e => { S.wake = e.target.checked; save(); if (S.wake) wake(); else if (lock){ lock.release().catch(()=>{}); lock = null; } });
 
