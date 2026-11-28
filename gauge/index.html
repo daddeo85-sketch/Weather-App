@@ -91,6 +91,8 @@ button{cursor:pointer}
 .demo{position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 82px);
   background:var(--warn);color:#1b1500;border-radius:999px;padding:6px 8px 6px 14px;font-size:13px;font-weight:600;
   display:flex;gap:10px;align-items:center;z-index:30;white-space:nowrap}
+.wakehint{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 74px);z-index:31;
+  background:var(--mint);color:#06211a;border:0;border-radius:999px;padding:10px 18px;font-size:15px;font-weight:700;white-space:nowrap;box-shadow:0 4px 18px rgba(0,0,0,.5)}
 .demo button{background:#1b1500;color:var(--warn);border:0;border-radius:999px;padding:4px 10px;font-size:12px}
 
 /* sheets */
@@ -286,6 +288,7 @@ button{cursor:pointer}
   </div>
 </div>
 
+<button type="button" class="wakehint" id="wakeHint" hidden>Tap to keep the screen on</button>
 <div class="demo" id="demoBar" hidden><span>Demo drive, miles not saved</span><button type="button" id="demoStop">Stop</button></div>
 
 <div class="scrim" id="scrim" hidden></div>
@@ -718,13 +721,46 @@ function startCompass(){
 document.addEventListener('pointerdown', startCompass, { once:true });
 if (!(window.DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission === 'function')) startCompass();
 
-// ---------- wake lock ----------
-let lock = null;
+// ---------- keep the screen on ----------
+// 1) Screen Wake Lock, asked again whenever the phone drops it, on every tap and every 15 s.
+// 2) Backup for iPhones where that fails (older iOS, home screen mode): a tiny silent looping video,
+//    started on a tap, which keeps iOS from dimming the screen.
+let lock = null, vid = null, vidOn = false;
+const lockOn = () => !!(lock && !lock.released);
+// iPhone home-screen apps can say the lock worked when it didn't, so on iPhone count only the video
+const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const awake = () => vidOn || (lockOn() && !isIOS);
+function paintWake(){ const b = $('wakeHint'); if (b) b.hidden = !S.wake || awake() || document.visibilityState !== 'visible'; }
 async function wake(){
-  if (!S.wake || !('wakeLock' in navigator) || document.visibilityState !== 'visible') return;
-  try { lock = await navigator.wakeLock.request('screen'); } catch(e){}
+  if (!S.wake || document.visibilityState !== 'visible'){ paintWake(); return; }
+  if ('wakeLock' in navigator && !lockOn()){
+    try {
+      lock = await navigator.wakeLock.request('screen');
+      lock.addEventListener('release', () => { lock = null; paintWake(); if (S.wake && document.visibilityState === 'visible') setTimeout(wake, 500); });
+    } catch(e){ lock = null; }
+  }
+  paintWake();
 }
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') wake(); else save(); });
+function startVideo(){
+  if (!S.wake || vidOn) return;
+  if (!vid){
+    vid = document.createElement('video');
+    vid.setAttribute('playsinline', ''); vid.setAttribute('webkit-playsinline', ''); vid.setAttribute('muted', '');
+    vid.muted = true; vid.loop = true; vid.preload = 'auto'; vid.disablePictureInPicture = true;
+    vid.setAttribute('aria-hidden', 'true');
+    vid.style.cssText = 'position:fixed;left:0;bottom:0;width:2px;height:2px;opacity:.01;pointer-events:none;z-index:-2';
+    vid.src = 'awake.mp4';
+    vid.addEventListener('playing', () => { vidOn = true; paintWake(); });
+    vid.addEventListener('pause', () => { vidOn = false; paintWake(); });
+    document.body.appendChild(vid);
+  }
+  const p = vid.play(); if (p && p.catch) p.catch(() => { vidOn = false; paintWake(); });
+}
+function stopVideo(){ if (vid){ vid.pause(); } vidOn = false; }
+function keepOn(){ if (!S.wake) return; wake(); startVideo(); }
+['pointerdown', 'touchend', 'click'].forEach(ev => document.addEventListener(ev, keepOn, { passive: true, capture: true }));
+setInterval(() => { if (S.wake && document.visibilityState === 'visible'){ wake(); if (vid && vid.paused) startVideo(); } }, 15000);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible'){ wake(); if (vid) startVideo(); } else save(); paintWake(); });
 window.addEventListener('pagehide', save);
 
 // ---------- no pinch zoom (it got stuck zoomed on the dial); double-tap zoom is off by touch-action ----------
@@ -943,7 +979,7 @@ $('tankSize').addEventListener('change', e => {
   else if (!e.target.value.trim()){ st.tank = null; st.fuelLeft = null; save(); paintFuelGauge(); syncWheel(); }
   e.target.value = st.tank > 0 ? String(st.tank) : '';
 });
-$('wake').addEventListener('change', e => { S.wake = e.target.checked; save(); if (S.wake) wake(); else if (lock){ lock.release().catch(()=>{}); lock = null; } });
+$('wake').addEventListener('change', e => { S.wake = e.target.checked; save(); if (S.wake) keepOn(); else { if (lock){ lock.release().catch(()=>{}); lock = null; } stopVideo(); } paintWake(); });
 
 // ---------- demo drive ----------
 // Simulated GPS: feeds made-up positions through the same code the real GPS uses.
@@ -994,7 +1030,7 @@ if (location.hash.startsWith('#demo')){
 } else {
   startGps();
 }
-wake();
+keepOn(); // muted video may start on its own; if not, the first tap starts it
 if ('serviceWorker' in navigator && /github\.io$/.test(location.hostname)){
   navigator.serviceWorker.register('sw.js').catch(() => {});
 }
